@@ -4,6 +4,31 @@ import { ChannelCreateInputSchema, ChannelInputSchema, type ChannelScope, type C
 import { DEFAULT_SESSION_SETTINGS } from "../shared/surface-config";
 import { AuthError, sha256, type Actor } from "./auth";
 
+const CHANNEL_ID_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const CHANNEL_ID_LENGTH = 8;
+
+function randomChannelId(): string {
+  let id = "";
+  const bytes = new Uint8Array(16);
+  // Discard the top four byte values so modulo 36 stays uniformly distributed.
+  while (id.length < CHANNEL_ID_LENGTH) {
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte < 252) id += CHANNEL_ID_ALPHABET[byte % CHANNEL_ID_ALPHABET.length];
+      if (id.length === CHANNEL_ID_LENGTH) break;
+    }
+  }
+  return id;
+}
+
+async function availableChannelId(db: D1Database): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const id = randomChannelId();
+    if (!await db.prepare("SELECT 1 AS present FROM channels WHERE id = ?").bind(id).first()) return id;
+  }
+  throw new Error("Could not allocate a board id");
+}
+
 export async function channelScope(db: D1Database, channelId: string): Promise<ChannelScope> {
   const row = await db.prepare("SELECT c.id AS channelId, s.id AS sessionId FROM channels c JOIN sessions s ON s.id = c.active_session_id AND s.channel_id = c.id WHERE c.id = ? AND s.status = 'live'")
     .bind(channelId).first<ChannelScope>();
@@ -27,7 +52,7 @@ export async function listChannels(db: D1Database, actor: Actor): Promise<Channe
 
 export async function createChannel(db: D1Database, input: unknown): Promise<ChannelSummary> {
   const parsed = ChannelCreateInputSchema.parse(input);
-  const id = crypto.randomUUID();
+  const id = await availableChannelId(db);
   const sessionId = crypto.randomUUID();
   if (await db.prepare("SELECT 1 AS present FROM channels WHERE broadcaster_login = ?").bind(parsed.slug).first()) throw new AuthError("That channel slug is already in use", 409);
   await db.batch([

@@ -76,7 +76,9 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
   const create = async (slug: string) => {
     const response = await call("/api/channels", { method: "POST", cookie: ownerCookie, data: { displayName: slug, slug, twitchLogin: slug.replace(/-/g, "_"), primary: "#EE6039", accent: "#39C7EE" } });
     expect(response.status).toBe(201);
-    return (await response.json() as any).channel.id as string;
+    const id = (await response.json() as any).channel.id as string;
+    expect(id).toMatch(/^[a-z0-9]{8}$/);
+    return id;
   };
   const suggestion = async (channel: string, game = "Horror", name = "Alice") => {
     expect((await call("/api/session/submissions", { method: "PATCH", channel, cookie: ownerCookie, data: { open: true } })).status).toBe(200);
