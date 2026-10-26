@@ -88,13 +88,17 @@ export async function getActor(request: Request, env: AuthEnv): Promise<Actor | 
 }
 
 export async function authStatus(request: Request, env: AuthEnv) {
-  const actor = await getActor(request, env);
-  const stored = await env.DB.prepare("SELECT 1 AS present FROM auth_owner_credentials WHERE id = 1").first<{ present: number }>();
+  const [actor, stored] = await Promise.all([
+    getActor(request, env),
+    env.DB.prepare("SELECT control_room_name AS controlRoomName FROM auth_owner_credentials WHERE id = 1")
+      .first<{ controlRoomName: string }>(),
+  ]);
   const configured = Boolean(env.OWNER_PASSWORD || stored);
   return {
     authenticated: Boolean(actor),
     role: actor?.role ?? null,
     displayName: actor?.displayName ?? null,
+    controlRoomName: stored?.controlRoomName ?? "Control room",
     setup: configured ? "complete" as const : env.OWNER_SETUP_TOKEN ? "ready" as const : "needs_setup_token" as const,
   };
 }
@@ -130,19 +134,22 @@ async function recordLoginFailure(request: Request, env: AuthEnv): Promise<void>
   ).bind(key, now, now, LOGIN_WINDOW_MS, now, now, LOGIN_WINDOW_MS).run();
 }
 
-export async function setupOwner(env: AuthEnv, setupToken: string, password: string): Promise<string> {
+export async function setupOwner(env: AuthEnv, setupToken: string, password: string, controlRoomName: string): Promise<string> {
   if (env.OWNER_PASSWORD) throw new AuthError("Owner password is managed by the Worker secret", 409);
   if (!env.OWNER_SETUP_TOKEN || env.OWNER_SETUP_TOKEN.length < 16) throw new AuthError("Configure OWNER_SETUP_TOKEN as a Worker secret first", 503);
   if (password.length < 12 || password.length > 256) throw new AuthError("Use a password between 12 and 256 characters", 400);
+  const name = controlRoomName.trim();
+  if (name.length < 1 || name.length > 60) throw new AuthError("Control room name must be 1–60 characters", 400);
   if (!(await safeEqual(setupToken, env.OWNER_SETUP_TOKEN))) throw new AuthError("Invalid setup code", 401);
   const existing = await env.DB.prepare("SELECT 1 AS present FROM auth_owner_credentials WHERE id = 1").first<{ present: number }>();
   if (existing) throw new AuthError("Owner password is already set", 409);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await derivePassword(password, salt);
   const result = await env.DB.prepare(
-    "INSERT INTO auth_owner_credentials (id, password_hash, salt, iterations, created_at) VALUES (1, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
-  ).bind(hash, hex(salt), PASSWORD_ITERATIONS, Date.now()).run();
+    "INSERT INTO auth_owner_credentials (id, password_hash, salt, iterations, created_at, control_room_name) VALUES (1, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+  ).bind(hash, hex(salt), PASSWORD_ITERATIONS, Date.now(), name).run();
   if (result.meta.changes !== 1) throw new AuthError("Owner password is already set", 409);
+  await env.DB.prepare("UPDATE auth_users SET display_name = ? WHERE id = 'owner'").bind(name).run();
   return createSession(env, "owner");
 }
 

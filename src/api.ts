@@ -9,6 +9,7 @@ export interface AuthSession {
   authenticated: boolean;
   role: "owner" | "mod" | null;
   displayName: string | null;
+  controlRoomName: string;
   setup: "complete" | "ready" | "needs_setup_token";
 }
 
@@ -51,7 +52,7 @@ export const api = {
   publicState: () => request<PublicOverlayState>("/api/public/state"),
   authSession: () => request<AuthSession>("/api/auth/session"),
   login: (password: string) => request<AuthSession>("/api/auth/owner/login", { method: "POST", body: JSON.stringify({ password }) }),
-  setupOwner: (setupToken: string, password: string) => request<AuthSession>("/api/auth/setup", { method: "POST", body: JSON.stringify({ setupToken, password }) }),
+  setupOwner: (setupToken: string, password: string, controlRoomName: string) => request<AuthSession>("/api/auth/setup", { method: "POST", body: JSON.stringify({ setupToken, password, controlRoomName }) }),
   consumeInvite: (token: string) => request<AuthSession>("/api/auth/invites/consume", { method: "POST", body: JSON.stringify({ token }) }),
   logout: () => request<{ authenticated: false }>("/api/auth/session", { method: "DELETE" }),
   mods: (all = false) => request<{ mods: ModSummary[] }>(`/api/auth/mods${all ? "?all=1" : ""}`),

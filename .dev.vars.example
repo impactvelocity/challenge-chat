@@ -1,6 +1,8 @@
-# Choose one owner setup path:
+# Recommended first deployment: use a unique one-time claim code, then choose
+# the control-room name and owner password in the browser. The password hash lives in D1.
 OWNER_SETUP_TOKEN=replace-with-a-unique-random-setup-code
-OWNER_PASSWORD=password
+# Alternative for environment-managed access; setting this bypasses first-run setup:
+# OWNER_PASSWORD=replace-with-a-long-unique-password
 # Optional adapter-only bearer token:
 # INTEGRATION_TOKEN=replace-with-a-different-random-token
 # Optional: OPENAI_API_KEY=your-openai-api-key

@@ -31,7 +31,7 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Before starting Vite, copy `.dev.vars.example` to `.dev.vars` and replace `OWNER_SETUP_TOKEN` with a unique code (for example, from `openssl rand -hex 32`). Open the local URL printed by Vite, then set the owner password on the first visit. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
+Before starting Vite, copy `.dev.vars.example` to `.dev.vars` and replace `OWNER_SETUP_TOKEN` with a unique code (for example, from `openssl rand -hex 32`). Open the local URL printed by Vite, then name the control room and choose the owner password on the first visit. The name and salted password hash are stored in D1. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly and bypass first-run setup. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
 
 ## Surface routes
 
@@ -77,7 +77,7 @@ npx wrangler secret put OWNER_SETUP_TOKEN
 # optional: npx wrangler secret put OPENAI_API_KEY
 ```
 
-After setting `OWNER_SETUP_TOKEN`, visit `/` and choose a password of at least 12 characters. The stored password is salted and hashed in D1; the setup code cannot replace it later. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access; existing deployments must configure one of the new owner secrets.
+After setting `OWNER_SETUP_TOKEN`, visit `/`, name the control room, and choose a password of at least 12 characters. The control-room name and salted password hash are stored in D1; the setup code cannot replace them later. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access; existing deployments must configure one of the new owner secrets.
 
 The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. There is no Twitch OAuth or email provider. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
 

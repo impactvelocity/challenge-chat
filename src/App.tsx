@@ -100,6 +100,7 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [setupToken, setSetupToken] = useState('');
+  const [controlRoomName, setControlRoomName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const submit = async (event: FormEvent) => {
@@ -108,7 +109,7 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
     setBusy(true);
     setError(null);
     try {
-      if (auth.setup === 'ready') await api.setupOwner(setupToken, password);
+      if (auth.setup === 'ready') await api.setupOwner(setupToken, password, controlRoomName);
       else await api.login(password);
       await onAuthenticated();
     } catch (caught) {
@@ -121,12 +122,22 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
     <main className="page-bg grid min-h-screen place-items-center px-4 text-ink">
       <Panel as="form" onSubmit={submit} className="settings-form flex w-full max-w-[460px] flex-col gap-5 p-7 sm:p-9">
         <Logo size={32} />
-        <div><h1 className="m-0 text-[28px] text-ink-strong">Control room</h1><p className="mb-0 text-sm leading-relaxed text-ink-sub">{auth.setup === 'ready' ? 'Set the owner password with your one-time setup code.' : auth.setup === 'needs_setup_token' ? 'Configure OWNER_PASSWORD or OWNER_SETUP_TOKEN in the Worker, then reload.' : 'Sign in as the owner. Moderators use their one-time invite link.'}</p></div>
+        <div>
+          <h1 className="m-0 text-[28px] text-ink-strong">{auth.setup === 'ready' ? 'Create your control room' : auth.controlRoomName}</h1>
+          <p className="mb-0 text-sm leading-relaxed text-ink-sub">
+            {auth.setup === 'ready'
+              ? 'Name this deployment and choose the owner password stored securely in D1.'
+              : auth.setup === 'needs_setup_token'
+                ? 'Configure OWNER_SETUP_TOKEN for first-run setup, or OWNER_PASSWORD for environment-managed access, then reload.'
+                : 'Sign in as the owner. Moderators use their one-time invite link.'}
+          </p>
+        </div>
+        {auth.setup === 'ready' && <TextField label="Control room name" value={controlRoomName} maxLength={60} placeholder="Friday Night Control Room" onChange={(event) => setControlRoomName(event.target.value)} required />}
         {auth.setup === 'ready' && <TextField label="Setup code" type="password" value={setupToken} onChange={(event) => setSetupToken(event.target.value)} required />}
         {auth.setup !== 'needs_setup_token' && <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />}
         {auth.setup === 'ready' && <TextField label="Confirm password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />}
         {error && <p className="m-0 text-sm text-red-300" role="alert">{error}</p>}
-        {auth.setup === 'needs_setup_token' ? <Button type="button" variant="accent" onClick={() => window.location.reload()}>Check setup</Button> : <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Set owner password' : 'Sign in'}</Button>}
+        {auth.setup === 'needs_setup_token' ? <Button type="button" variant="accent" onClick={() => window.location.reload()}>Check setup</Button> : <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>}
       </Panel>
     </main>
   );

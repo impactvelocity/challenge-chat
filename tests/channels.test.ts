@@ -8,7 +8,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -105,11 +105,39 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0004_session_rules.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0005_single_leaderboard.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0006_surface_settings.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0007_owner_profile.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM sqlite_master WHERE type = 'table' AND name = 'leaderboards'").get()?.total).toBe(0);
     legacy.close();
+  });
+
+  it("creates the named control room and D1-backed owner password on first deployment", async () => {
+    env.OWNER_PASSWORD = undefined;
+    env.OWNER_SETUP_TOKEN = "one-time-setup-token-for-tests";
+    const before = await (await call("/api/auth/session")).json() as any;
+    expect(before).toMatchObject({ authenticated: false, setup: "ready", controlRoomName: "Control room" });
+
+    const setup = await call("/api/auth/setup", {
+      method: "POST",
+      data: {
+        setupToken: env.OWNER_SETUP_TOKEN,
+        password: "a-strong-owner-password",
+        controlRoomName: "Friday Night Control Room",
+      },
+    });
+    expect(setup.status).toBe(201);
+    const setupCookie = setup.headers.get("set-cookie")!.split(";")[0];
+    expect(db.sql.prepare("SELECT control_room_name FROM auth_owner_credentials WHERE id = 1").get()?.control_room_name).toBe("Friday Night Control Room");
+    expect(db.sql.prepare("SELECT display_name FROM auth_users WHERE id = 'owner'").get()?.display_name).toBe("Friday Night Control Room");
+    expect(await (await call("/api/auth/session", { cookie: setupCookie })).json()).toMatchObject({
+      authenticated: true,
+      role: "owner",
+      displayName: "Friday Night Control Room",
+      controlRoomName: "Friday Night Control Room",
+      setup: "complete",
+    });
   });
 
   it("creates independent channels and prevents cross-channel challenge and ballot mutations", async () => {

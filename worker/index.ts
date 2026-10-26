@@ -171,16 +171,28 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (method === "POST" && path === "/api/auth/setup") {
     const denied = requireSameOrigin(request);
     if (denied) return denied;
-    const input = await body<{ setupToken?: string; password?: string }>(request);
-    const token = await setupOwner(env, input.setupToken ?? "", input.password ?? "");
-    return authResponse(request, { authenticated: true, role: "owner", displayName: "Owner" }, token, 201);
+    const input = await body<{ setupToken?: string; password?: string; controlRoomName?: string }>(request);
+    const token = await setupOwner(env, input.setupToken ?? "", input.password ?? "", input.controlRoomName ?? "");
+    return authResponse(request, {
+      authenticated: true,
+      role: "owner",
+      displayName: input.controlRoomName?.trim() ?? "Owner",
+      controlRoomName: input.controlRoomName?.trim() ?? "Control room",
+      setup: "complete",
+    }, token, 201);
   }
   if (method === "POST" && path === "/api/auth/owner/login") {
     const denied = requireSameOrigin(request);
     if (denied) return denied;
     const input = await body<{ password?: string }>(request);
     const token = await loginOwner(request, env, input.password ?? "");
-    return authResponse(request, { authenticated: true, role: "owner", displayName: "Owner" }, token);
+    const status = await authStatus(request, env);
+    return authResponse(request, {
+      ...status,
+      authenticated: true,
+      role: "owner",
+      displayName: status.controlRoomName,
+    }, token);
   }
   if (method === "POST" && path === "/api/auth/invites/consume") {
     const denied = requireSameOrigin(request);
