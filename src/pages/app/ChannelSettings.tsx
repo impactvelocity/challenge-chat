@@ -33,7 +33,7 @@ import {
   Well,
 } from '@/components/ui';
 import { ORIGIN, SITE, VOTE_LENGTHS, type Channel, type Moderator } from '@/model';
-import { setOverlayTheme, setThemeSettings, useOverlayConfig, useOverlayDisplay } from '@/data/overlayConfig';
+import { displayOf, hydrateOverlayConfig, useOverlayConfig, type OverlayConfig } from '@/data/overlayConfig';
 import { hydrateSessionSettings, setSessionSettings, useSessionSettings } from '@/data/sessionSettings';
 import { formatClock } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -109,7 +109,7 @@ export function SettingsBody({ tab, channel, onSaved }: { tab: SettingsTab; chan
       {tab === 'general' && <General channel={channel} part="general" onSaved={onSaved} />}
       {tab === 'scoring' && <General channel={channel} part="scoring" onSaved={onSaved} />}
       {tab === 'voting' && <General channel={channel} part="voting" onSaved={onSaved} />}
-      {tab === 'theme' && <OverlayTheme />}
+      {tab === 'theme' && <OverlayTheme onSaved={onSaved} />}
       {tab === 'mods' && <Moderators channel={channel} />}
       {tab === 'obs' && <Overlays channel={channel} />}
       {tab === 'ai' && <AiSettings />}
@@ -907,15 +907,51 @@ const PREVIEW_SCENES = [
 ] as const;
 type PreviewScene = (typeof PREVIEW_SCENES)[number]['value'];
 
-/** The overlay's look: pick a theme, then fill in whatever settings it defines. Changes reach the overlay straight away. */
-function OverlayTheme() {
+/** The overlay's look: draft a theme and its settings, then save them together. */
+function OverlayTheme({ onSaved }: { onSaved?: () => Promise<void> }) {
   const config = useOverlayConfig();
-  const display = useOverlayDisplay();
+  const [draft, setDraft] = useState(config);
+  const [saved, setSaved] = useState(config);
+  const [saving, setSaving] = useState(false);
+  const toast = useToasts();
+  const display = useMemo(() => displayOf(draft), [draft]);
   const themes = useThemes();
   const theme = getTheme(display.theme) ?? themes[0];
   const values = resolveSettings(theme.settings, display.settings);
-  const edited = Object.keys(config.settings[theme.id] ?? {}).length > 0;
+  const edited = Object.keys(draft.settings[theme.id] ?? {}).length > 0;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const [scene, setScene] = useState<PreviewScene>('live');
+
+  useEffect(() => {
+    setDraft(config);
+    setSaved(config);
+  }, [config]);
+
+  const setTheme = (id: string) => setDraft((current) => ({ ...current, theme: id }));
+  const setSettings = (id: string, patch: Record<string, unknown> | null) => {
+    const safe = Object.fromEntries(Object.entries(patch ?? {}).filter(([, value]) =>
+      value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)),
+    )) as OverlayConfig['settings'][string];
+    setDraft((current) => ({
+      ...current,
+      settings: { ...current.settings, [id]: patch ? { ...current.settings[id], ...safe } : {} },
+    }));
+  };
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { config: persisted } = await api.updateOverlayConfig(draft);
+      hydrateOverlayConfig(persisted);
+      setDraft(persisted);
+      setSaved(persisted);
+      await onSaved?.();
+      toast.add({ title: 'Overlay updated', description: 'Theme and config are live in OBS' });
+    } catch (caught) {
+      toast.add({ title: 'Could not update overlay', description: caught instanceof Error ? caught.message : 'Try again' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // The theme's settings in its own groups, in the order it declares them
   const groups = new Map<string, [string, SettingDef][]>();
@@ -934,7 +970,7 @@ function OverlayTheme() {
             className="w-[260px] max-sm:w-full"
             options={themes.map((t) => ({ value: t.id, label: t.name, group: 'Built-in', meta: `${Object.keys(t.settings).length} settings` }))}
             value={theme.id}
-            onValueChange={setOverlayTheme}
+            onValueChange={setTheme}
           />
         }
       >
@@ -957,7 +993,7 @@ function OverlayTheme() {
         title="Config"
         actions={
           edited && (
-            <Button size="sm" variant="ghost" onClick={() => setThemeSettings(theme.id, null)}>
+            <Button size="sm" variant="ghost" onClick={() => setSettings(theme.id, null)}>
               Reset
             </Button>
           )
@@ -972,12 +1008,28 @@ function OverlayTheme() {
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {list.map(([key, def]) => (
-                <SettingControl key={`${theme.id}.${key}`} def={def} value={values[key]} onChange={(v) => setThemeSettings(theme.id, { [key]: v })} />
+                <SettingControl key={`${theme.id}.${key}`} def={def} value={values[key]} onChange={(v) => setSettings(theme.id, { [key]: v })} />
               ))}
             </div>
           </div>
         ))}
       </Section>
+
+      {dirty && (
+        <Well className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 p-3 pl-5">
+          <Led tone="warn" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-sm font-semibold text-ink-strong">Unsaved overlay changes</span>
+            <span className="hint">Previewed here only until you update the overlay</span>
+          </span>
+          <Button size="sm" variant="ghost" disabled={saving} onClick={() => setDraft(saved)}>
+            Discard
+          </Button>
+          <Button size="sm" variant="accent" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Updating…' : 'Update overlay'}
+          </Button>
+        </Well>
+      )}
     </>
   );
 }
