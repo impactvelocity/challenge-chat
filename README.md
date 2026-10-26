@@ -1,133 +1,262 @@
 # Challenge.chat
 
-A streamer-vs-chat challenge engine built for the TwitchCon + Codex hackathon. Viewers submit messy ideas, the app turns them into structured challenges, the streamer or moderators approve them, chat votes, and the broadcast overlay turns the attempt into a show moment.
+Run streamer-versus-chat challenges during a live broadcast. Viewers suggest ideas, the creator or moderators prepare a shortlist, chat votes, and an OBS overlay follows the attempts and results.
 
-The project is evolving into a self-hosted framework: game and service adapters emit normalized events, a headless rules engine owns live challenge state, and independently replaceable control-panel and OBS surfaces consume versioned APIs and WebSocket projections. See [the framework map](./docs/framework.md).
+Challenge.chat is also an API-first framework: a headless engine accepts normalized game events, applies rules, and publishes live state. The included React control panel and overlays are replaceable clients. Everything deploys as **one Cloudflare Worker**, with D1, Durable Objects, R2, and optional AI through Cloudflare AI Gateway.
 
-## What works now
+## Documentation
 
-- Structured challenge intake with an optional OpenAI parser and deterministic fallback
-- Moderator review/edit/approve/reject flow
-- Session lifecycle from open suggestions through configurable shortlists, multi-select votes, final challenge decks, live rounds, and recaps
-- Classic (1 point), Arcade (100 points), and Custom scoring with optional session bonuses and named clean-sweep multipliers
-- Attempt tracking, adjudication, Streamer/Chat session history and streaks, plus contributor and Challenger rankings
-- OBS-friendly `/overlay?channel=…` route driven by the public projection and live WebSocket updates
-- Nine registered overlay themes with per-theme settings, element switches, previews, and a full mock-data studio
-- Creator control room, first-board setup, public scoreboards, channel settings, and moderator-safe surface controls from one responsive design system
-- D1 persistence behind a Cloudflare Worker API
-- Generic counter/gauge/flag metrics, declarative rules, countdown/deadline alarms, idempotent event intake, and a live-run API
-- One Durable Object per session for serialized run updates and WebSocket fan-out
-- A public, read-only overlay projection separate from the creator control-plane state
-- Independent overlay and control-panel theme tokens, plus replaceable React surface composition
-- Owner password sign-in, owner-managed moderators, one-time moderator links, and role-checked sessions
-- Twitch OAuth/EventSub connection for `!challenge`, `!vote`, follows, subscriptions, gifts, raids, and cheers
+Start with the [documentation index](./docs/README.md) for the full guide set:
+
+- [App screens and workflow](./docs/app.md) and [settings reference](./docs/settings.md)
+- [Twitch setup](./docs/twitch-setup.md), [OBS setup](./docs/obs-setup.md), and [AI behavior/cost](./docs/ai.md)
+- [HTTP API](./docs/api.md), [MCP / WebMCP](./docs/mcp.md), and [game integrations](./docs/integrations.md)
+- [React SDK](./docs/react-sdk.md), [custom themes](./docs/custom-themes.md), and [Durable Object flow](./docs/durable-objects.md)
+- [Development](./docs/development.md), [security](./docs/security.md), and [testing/release checks](./docs/testing.md)
+
+Or use the overview sections below:
+
+- [Run locally](#run-locally)
+- [How the show works](#how-the-show-works)
+- [Architecture and storage](#architecture-and-storage)
+- [Deploy to Cloudflare](#deploy-to-cloudflare) — [full deployment runbook](./docs/deployment.md)
+- [React overlay SDK](#react-overlay-sdk) — [hooks, themes, elements, events, and sources](./src/overlay/README.md)
+- [API, MCP, and integrations](#api-mcp-and-integrations) — [endpoint and security reference](./docs/framework.md)
+- [System design](./docs/system-overview.md), [product plan](./PRODUCT_PLAN.md), and [known gaps](./GAPS.md)
+
+## Terms
+
+The UI uses show-friendly names; some API and database names predate them.
+
+| Product term | Meaning | Code/API term |
+| --- | --- | --- |
+| Board | A namespace for a creator, game, sponsor, or themed series. Owns settings, scores, history, moderators, and the Challenger leaderboard. | `Channel`, `channelId`, `?channel=…` |
+| Round | One collection → vote → play → results cycle, optionally named from its selected challenges. | `Session`, `sessionId` |
+| Challenge | One task with an objective and optional time/attempt limits. | Challenge/proposal; its attempt is stored in a `rounds` row |
+| Framework run | A separate metric-driven execution with declarative success/failure rules. | `ChallengeRun` |
+
+A framework run is not automatically a voted challenge. The reference show uses human adjudication; integrations can use the generic engine for verifiable metrics without assuming every game exposes an API.
 
 ## Run locally
 
-Requirements: Node 24+ and a Cloudflare account for eventual deployment. Integration tests exercise the actual schema using Node's built-in SQLite driver.
+Use Node.js **24+** and npm. Tests use Node's built-in SQLite support.
 
 ```bash
-npm install
+npm ci
 npm run db:migrate:local
 npm run dev
 ```
 
-Open the local URL printed by Vite, then name the control room and choose the owner password on the first visit. The name and salted password hash are stored in D1. No setup secret is required. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly and bypass first-run setup. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
+Open [http://127.0.0.1:5174](http://127.0.0.1:5174). Vite uses that fixed port. On first visit, choose the control-room name and owner password, then create a board. Local D1/R2/Durable Object state is separate from production.
 
-## Surface routes
+For an environment-managed local password, create `.dev.vars` using [`.dev.vars.example`](./.dev.vars.example) and set `OWNER_PASSWORD`. This overrides the D1-backed password. Do not commit secrets.
 
-| Route | Purpose | Access |
-| --- | --- | --- |
-| `/` and `/inbox` | Live creator control room and challenge inbox | Owner or assigned moderator |
-| `/settings/:tab?` | General, scoring, voting, theme, moderators, OBS, AI, and local mock-chat tools | Signed in; owner-only sections are also enforced by the Worker |
-| `/setup?channel=…` | New-board onboarding and overlay theme selection | Signed in |
-| `/overlay?channel=…` | Transparent OBS browser source using real public state | Public |
-| `/overlay/studio?channel=…` | Theme studio with mock game/events and channel-owned appearance settings | Signed in; moderator appearance controls are read-only |
-| `/c/:channelId` | Public scoreboard and history | Public when enabled for the Channel |
-| `/invite` | One-use moderator invite redemption | Public magic link |
+The `AI` binding is configured as **remote**, including during local development. AI calls can consume real credits. Turn off challenge parsing and AI titles in the board's AI settings for a no-AI workflow; editing, voting, manual round names, and overlays still work.
 
-The overlay registry and source contract are documented in [`src/overlay/README.md`](./src/overlay/README.md). UI/backend limitations that remain intentionally empty or disabled are tracked in [`GAPS.md`](./GAPS.md).
-
-Challenge cleanup and round naming use the Worker's `AI` binding through Cloudflare AI Gateway. The checked-in defaults use the `default` gateway and `openai/gpt-4.1-mini`; Cloudflare Unified Billing means no provider API key is needed. Override either value in `.dev.vars` only when needed:
-
-```dotenv
-AI_GATEWAY_ID=default
-AI_MODEL=openai/gpt-4.1-mini
+```bash
+npm test
+npm run build
 ```
 
-The deterministic parser and round-name generator remain available when AI is disabled or unavailable. AI calls happen only inside the Worker; no AI credentials or administrative state reach the browser or overlay.
+## How the show works
+
+```mermaid
+stateDiagram-v2
+    [*] --> Collecting
+    Collecting --> Voting: Approve shortlist and open ballot
+    Collecting --> Live: Start an approved challenge directly
+    Voting --> Ready: Close ballot and select top N
+    Ready --> Live: Start first challenge
+    Live --> Live: Resolve challenge and start next
+    Live --> Complete: Resolve lineup and finish round
+    Complete --> Collecting: Start a new round
+```
+
+1. **Collect.** Viewers send `!challenge …` through connected Twitch chat, or an operator enters an idea. Optional AI turns messy text into structured fields; deterministic parsing is the fallback. The original text is retained.
+2. **Review.** The creator or a moderator edits the objective, time limit, and attempt limit, then approves or deselects ideas before voting. Suggestions received outside open intake stay in the board's Inbox.
+3. **Vote.** Open a ballot from the shortlist and choose how many challenges advance. Each viewer gets that many distinct votes using `!vote N`. Repeating a vote is an idempotent retry, not an extra vote or an unvote. Shortlist order breaks ties. Unselected ideas return to Inbox.
+4. **Play.** Start a challenge, show the pre-start countdown, then switch to a smaller active overlay. Track attempts and pause/resume the timer when needed. The creator or moderator awards the outcome; the app cannot judge arbitrary gameplay from video.
+5. **Finish.** Resolve the selected lineup and complete the round. Scores, bonuses, sweep results, and history are preserved. Starting the next round keeps the same board and OBS URL.
+
+Scoring defaults are versioned per board and snapshotted for each round. Classic, Arcade, and Custom modes configure team points, Challenger awards, and optional round bonuses. Changing defaults does not rewrite historical results.
+
+The **Challenger leaderboard** is separate from Streamer-versus-Chat scores. An author earns the configured award when their challenge is selected and another if it defeats the streamer. Approval, votes, and generic telemetry do not themselves award leaderboard points.
+
+## Architecture and storage
+
+```mermaid
+flowchart LR
+    Creator[Creator control panel] -->|Authenticated API| Worker[Cloudflare Worker]
+    Twitch[Twitch EventSub] -->|Verified webhook| Worker
+    Adapter[Game server or local helper] -->|Normalized events| Worker
+    Tools[REST or MCP client] -->|Board token| Worker
+    Worker <-->|Product records| D1[(D1)]
+    Worker <-->|Uploaded assets| R2[(R2)]
+    Worker -->|Optional parsing and naming| AI[AI Gateway via AI binding]
+    Worker <-->|Active session ID| DO[LiveSessionCoordinator]
+    DO -->|Admin WebSocket| Creator
+    Worker -->|Public bootstrap| Overlay[React SDK and OBS themes]
+    DO -->|Public WebSocket projection| Overlay
+```
+
+| Component | Owns |
+| --- | --- |
+| Worker | Authentication, board scope, authorization, API/MCP tools, Twitch verification, product operations, and public projections |
+| D1 (`DB`) | Boards, active-session pointers, proposals, ballots/votes, show attempts/results, history, contribution awards, settings, and auth/Twitch records |
+| Durable Objects (`LIVE_SESSIONS`) | One coordinator **per session**, serialized generic-run state, metric-event idempotency, countdown/deadline alarms, and WebSocket fan-out |
+| R2 (`ASSETS_BUCKET`) | Uploaded branding assets |
+| AI binding (`AI`) | Server-side requests routed through AI Gateway; not required to operate a board |
+| Overlay SDK | Read-only derived scores, clocks, scenes, and elements; never authoritative outcomes |
+
+The Worker resolves the board's active session from D1 before selecting its Durable Object. A new round changes that session ID; the old coordinator closes its sockets, and clients bootstrap/reconnect to the new session. There is not one permanent object containing everything for a board.
+
+The current generic run and accepted-event markers are session-local Durable Object data, cleared when that coordinator is replaced. They are not an append-only event history or D1 archive. Product round results are persisted separately. See [the system design](./docs/system-overview.md) and [Durable Object flow](./docs/durable-objects.md) for update/reconnect sequences and trust boundaries.
 
 ## Deploy to Cloudflare
 
-This repo is prepared for Cloudflare's Deploy to Cloudflare flow: Wrangler defines D1, R2, and Durable Object bindings, and the deploy command applies D1 migrations. Once the project is published as a **public GitHub or GitLab repository**, replace `YOUR_PUBLIC_REPO_URL` in this button snippet with its URL:
+Use the [deployment runbook](./docs/deployment.md) for resource configuration, secrets, Twitch, AI, verification, and troubleshooting.
 
-```markdown
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=YOUR_PUBLIC_REPO_URL)
-```
+1. Sign in with `npx wrangler login` and verify the account with `npx wrangler whoami`.
+2. Create your D1 database and R2 bucket. Replace the repository's existing **`env.production` resource names and D1 ID** in [`wrangler.jsonc`](./wrangler.jsonc). Keep binding names unchanged.
+3. Build production and apply migrations **before** publishing:
 
-The public repository URL is not known in this workspace, so there is no live button yet. Cloudflare's deploy flow provisions supported resources from the Wrangler config. On first visit, name the control room and choose its owner password. `OWNER_PASSWORD` is an optional environment-managed alternative and `INTEGRATION_TOKEN` is an optional, separate secret.
+   ```bash
+   npm run build:production
+   npx wrangler d1 migrations apply DB --remote -c dist/worker/wrangler.json
+   ```
 
-For a direct CLI deployment:
+4. Prepare a private dotenv or JSON file **outside the repository** containing a long, unique `OWNER_PASSWORD`. Publish code and password together:
+
+   ```bash
+   npx wrangler deploy -c dist/worker/wrangler.json --secrets-file /absolute/private/path/challenge-chat.env
+   ```
+
+5. Open the emitted HTTPS URL, sign in, create the board, and copy its OBS URL. Review AI settings before accepting suggestions.
+
+Do not leave a publicly accessible first-run setup screen unclaimed. Supplying the password with the first upload avoids that window; Cloudflare supports [deploying secrets alongside code](https://developers.cloudflare.com/workers/configuration/secrets/#upload-secrets-alongside-code).
+
+For later releases, after checking the target resources:
 
 ```bash
-npx wrangler login
-npm run deploy
-# optional alternative to browser setup: npx wrangler secret put OWNER_PASSWORD
-# optional: npx wrangler secret put INTEGRATION_TOKEN
+npm test
+npm run deploy:production
 ```
 
-After deployment, visit `/`, name the control room, and choose a password of at least 6 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
+`deploy:production` builds production, migrates D1, then deploys. Existing Worker secrets are retained. **Do not substitute `npm run deploy`:** it uses the top-level demo configuration and deploys before migrating. The environment is selected at build time; use the generated `dist/worker/wrangler.json` for subsequent commands.
 
-The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. Twitch authorization is Channel-specific and owner-only. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
+### AI configuration and cost
 
-## Channels and leaderboard
+The deployment uses the Worker's `AI` binding, not an AI token entered into each board's settings. Configure `AI_GATEWAY_ID` and `AI_MODEL` in `env.production.vars`; the checked-in values are `default` and `openai/gpt-4.1-mini`.
 
-Use the Channel selector at the top of the control panel to switch Channels. Owners can use **+ New** or **Channel settings** to create a Channel and edit its name and slug. A new Channel starts empty with its own live session and Challenger leaderboard. The deployment owner can manage every Channel; moderators see only those assigned to them. An existing moderator can be granted access to another Channel without creating another account.
+Create/select that gateway in your account and arrange [AI Gateway Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/). The binding path can use Cloudflare-managed provider credentials, so no separate OpenAI API key is needed. See [Cloudflare's binding reference](https://developers.cloudflare.com/ai-gateway/usage/worker-binding-methods/).
 
-Every control API, WebSocket, integration event, and OBS URL accepts `?channel=CHANNEL_ID`. Omitting it selects the original `demo-channel` for compatibility. OBS URLs include the Channel ID so switching the control panel never switches the broadcast. Branding, scores, proposals, ballots, runs, and integration tokens are isolated by Channel. Slugs are display identifiers; stable IDs keep saved URLs working after a rename.
+Challenge parsing and AI titles are independent per-board switches, **enabled by default**. Turn them off explicitly if you do not want paid requests. With parsing off or unavailable, deterministic cleanup remains; operators can still edit challenges and set limits. With AI titles off, set round names manually. Requested title generation has a deterministic fallback and avoids recently used names for that round without a paid retry loop.
 
-Each Channel has one all-time Challenger leaderboard. A viewer earns the award configured in the session rules when their challenge is selected, plus another award if that challenge defeats the streamer. Those amounts are recorded when earned, so later rule changes do not rewrite historical scores. Approved ideas, voting finalists, played challenges, votes, and generic game telemetry do not add leaderboard points. The public ranking is available through `/api/public/leaderboard?channel=CHANNEL_ID`; it is not a separate OBS source.
+Challenge text and naming context are sent to the model when enabled. The current gateway call also enables log collection; review gateway retention settings for your privacy needs. A fallback is resilience, not a spending cap—configure account-side limits before opening intake to a large audience.
 
-Each Channel also owns versioned session rules. Classic awards 1 point per challenge, Arcade awards 100, and Custom exposes integer team and Challenger values, shortlist size, final challenge count, voting duration, session-win bonus, and an optional clean-sweep multiplier. Each viewer gets one distinct, non-removable vote per final challenge slot. The clean-sweep broadcast label is creator-defined. Rules are copied onto a session before its first ballot or challenge, so later changes cannot rewrite an active or historical contest. Completed sessions preserve exact scores, winners, sweep results, and history while Channel totals, the Challenger leaderboard, and streaks continue across sessions.
+### Twitch connection
 
-Generate a Channel's integration token in **Channel settings** and give it only to the server/local helper reporting events. It is shown once; replacing it immediately invalidates the old token. In the reporter SDK, pass `channelId` together with `integrationToken`. The legacy `INTEGRATION_TOKEN` Worker secret applies only to the default Channel until it has a generated Channel token. Framework run access remains limited to metric events; the ballot endpoint additionally accepts a Twitch-verified viewer ID from a trusted chat or extension backend.
+In **Settings → Twitch**, copy the deployment's application and OAuth redirect URLs. Register a confidential Twitch application, save its Client ID/Secret in the owner-only form, then choose **Connect broadcaster**. The callback is `/api/twitch/oauth/callback`; the signed EventSub endpoint is `/api/twitch/eventsub`. Public HTTPS is needed for webhook delivery.
 
-## Twitch connection
+The Worker validates signatures, timestamps, replay IDs, and board ownership before applying chat commands or projecting follow/sub/gift/raid/cheer moments. It does not send chat messages. Saved Twitch app/signing secrets are D1 strings without application-level encryption; OAuth tokens are used transiently rather than persisted in the current schema. The [Twitch guide](./docs/twitch-setup.md) and [security reference](./docs/security.md) cover these boundaries.
 
-Open **Settings → Twitch** after deployment. The tab shows the exact self-hosted application URL and OAuth Redirect URL for the current Worker origin. Register a confidential Twitch application, create its client secret, then paste the Client ID and Client Secret into the owner-only form. Challenge.chat saves the global application configuration in D1 and generates the EventSub signing secret automatically. Secret values are never returned by the API, though this hackathon-friendly setup stores them unencrypted in D1 and should be hardened before a higher-security rollout. Worker secrets named `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_EVENTSUB_SECRET` remain an optional fallback.
+## OBS setup and routes
 
-After saving, choose **Connect broadcaster**. The broadcaster grants read-only chat/bot, follower, and Bits scopes; Challenge.chat does not request permission to send chat messages.
+Copy the board-specific overlay link from Settings, add it as an OBS **Browser Source**, and set its size to **1920 × 1080**. Keep the page transparent and preserve `?channel=BOARD_ID`. The control panel's selected board does not change an existing OBS source.
 
-The Worker creates signed EventSub webhook subscriptions for chat messages, chat notifications, follows, and cheers. It validates Twitch's HMAC over the raw request, rejects stale or replayed messages, binds every subscription to one D1 Channel, and keeps credentials out of browser and OBS bundles. `!challenge …` enters the authoritative submission/inbox flow, `!vote N` resolves against the active ballot using the viewer's stable Twitch ID, and community moments travel through the Channel's Durable Object as public transient overlay projections.
+Choose a theme, then enable the elements you want: optional widgets start off. Use Studio to preview scenes and game/community events without changing live gameplay state. Theme/settings changes in Studio do persist to the board.
 
-For board automation, open **Settings → API** and create a named board token. The same channel-scoped `ccat_…` bearer token works with the REST endpoint at `/api/v1/board?channel=CHANNEL_ID` and the stateless Streamable HTTP MCP endpoint at `/mcp?channel=CHANNEL_ID`. Tokens are shown once, stored only as hashes, listed by name and last four characters, and can be revoked independently. They can operate the live board but cannot change branding, settings, moderators, credentials, or another Channel. The API tab also links to the deployment's OpenAPI document.
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `/`, `/inbox` | Creator control room and board Inbox | Owner or assigned moderator |
+| `/settings/:tab?` | Board settings and deployment integrations | Signed in; owner-only writes enforced by Worker |
+| `/setup?channel=…` | Board onboarding | Signed in |
+| `/overlay?channel=…` | Transparent live OBS source | Public, read-only |
+| `/overlay/studio?channel=…` | Mock scene/event studio and appearance editor | Authenticated; moderator appearance controls read-only |
+| `/c/:channelId` | Scoreboard and history | Public when enabled |
+| `/invite` | One-use moderator link redemption | Link holder |
 
-Signed-in owner pages register the same tool catalog through WebMCP when `document.modelContext` is available. This browser path uses the owner's HTTP-only session rather than placing a board token in client code, and it is not registered for moderators.
+## React overlay SDK
 
-## Architecture
+The SDK is repository-local TypeScript/React code, **not a published npm package**. The `@/` alias below points to `src/` in this Vite project.
 
-```text
-adapter → normalized event → Worker → session Durable Object
-                                     │ rules + alarm + WebSocket
-               ┌─────────────────────┴─────────────────────┐
-        creator control panel                      public OBS overlay
-               │                                           │
-              D1                                          R2
-       proposals / voting                            brand assets
+```tsx
+import { useState } from 'react';
+import { OverlayProvider, OverlayRenderer } from '@/overlay/sdk';
+import { createLiveSource } from '@/overlay/sources/live';
+import '@/overlay/themes';
+
+export function LiveOverlay() {
+  const [source] = useState(() => createLiveSource());
+  return (
+    <OverlayProvider source={source}>
+      <OverlayRenderer />
+    </OverlayProvider>
+  );
+}
 ```
 
-The live framework adds one `LiveSessionCoordinator` Durable Object per active session for serialized rules, deadline alarms, idempotent integration events, and WebSocket fan-out. D1 remains the product data store and R2 holds creator assets.
+Mount on a URL carrying `?channel=BOARD_ID`; the live source uses the selected board. Keep the source stable across renders to avoid reconnecting. `OverlayRenderer` reads the board's theme, validated settings, and element switches from the public snapshot.
 
-## Creator customization
+For a custom component, consume only the data it needs:
 
-- Start composition changes in `src/creator.tsx`.
-- Build custom React surfaces on `useChallengeChatState` or `useChallengeChatController` from `src/framework/use-challenge-chat.ts`.
-- Use `useChallengeChatState("overlay")` for public-only output; the default admin scope requires creator access.
-- Compose the creator experience under `src/pages/main/`; use `src/pages/app/ChannelSettings.tsx` for the shared settings body.
-- Add an overlay theme as a folder under `src/overlay/themes/`, then register it in `src/overlay/themes/index.ts`. Setup, Settings, Studio, and OBS all read that registry.
-- Keep overlay theme IDs, settings, and elements declarative. The Worker accepts only bounded primitive configuration values and never evaluates runtime JavaScript.
-- Add game telemetry through normalized `/api/v1/runs/:runId/events` envelopes.
-- Start from `integrations/reporter.ts` and the hypothetical `integrations/examples/horror-kills.ts` adapter when wiring a real game's server API or local helper.
-- Repository skills under `.agents/skills` guide Codex through surface customization and integration work.
+```tsx
+import { useChallenge, useMetric } from '@/overlay/sdk';
 
-Product scope and rollout decisions live in [PRODUCT_PLAN.md](./PRODUCT_PLAN.md).
+export function ChallengeHud() {
+  const { challenge, phase, countdown, clock } = useChallenge();
+  const kills = useMetric('kills');
+  if (!challenge) return null;
+  return (
+    <aside aria-live="polite">
+      <strong>{challenge.title}</strong>
+      <span>{phase === 'countdown' ? `Starts in ${countdown}` : clock?.text}</span>
+      {kills && <span>{kills.label}: {String(kills.value)}</span>}
+    </aside>
+  );
+}
+```
+
+Read the [overlay SDK guide](./src/overlay/README.md) for a complete theme, hook reference, custom events, source contract, clocks, and testing. Add themes under `src/overlay/themes/` and register them once in `src/overlay/themes/index.ts`; Setup, Settings, Studio, and OBS discover the same registry. Eight themes ship today: Broadcast, Arena, Arcade Clash, Creator Neon, Esports Command, Cozy Corner, Dark Relic, and Comic Chaos.
+
+## API, MCP, and integrations
+
+All board-scoped calls and sockets must preserve `?channel=BOARD_ID`. Omitting it selects the legacy `demo-channel`, not necessarily the board you meant. The Worker resolves IDs against that scope and checks permissions server-side.
+
+| Client | Credential | Intended access |
+| --- | --- | --- |
+| Creator/moderator UI | HTTP-only session cookie | Control assigned boards; owner-only settings stay owner-only |
+| REST board API / remote MCP | Named board token from Settings → API | Bounded board operations, not credentials/settings management |
+| Game server / trusted helper | Board integration token | Normalized metric events; trusted voting adapter route |
+| WebMCP on creator page | Signed-in owner's cookie | Same tool catalog, when `document.modelContext` is available |
+| OBS overlay | None | Public projections only |
+
+From a trusted server or terminal, read board state with a named API token:
+
+```bash
+curl 'https://YOUR_WORKER.workers.dev/api/v1/board?channel=BOARD_ID' \
+  -H "Authorization: Bearer $CHALLENGE_CHAT_BOARD_TOKEN"
+```
+
+The same token works with the Streamable HTTP MCP endpoint at `/mcp?channel=BOARD_ID`. The deployment exposes OpenAPI at `/api/v1/board/openapi.json?channel=BOARD_ID`.
+
+For game integration, start with [`integrations/reporter.ts`](./integrations/reporter.ts), the [example adapter](./integrations/examples/horror-kills.ts), and the [metric-run definition](./src/examples/kill-challenge.ts). Report facts such as `metric.incremented` with stable provider-derived idempotency keys to `/api/v1/runs/:runId/events`. The engine validates them and resolves its rules; the adapter never sets an overlay or awards a result directly. Never ship either bearer token in an overlay or browser bundle.
+
+See [the framework reference](./docs/framework.md) for endpoints, token boundaries, rules, and replay behavior.
+
+## Development map
+
+| Path | Purpose |
+| --- | --- |
+| [`src/creator.tsx`](./src/creator.tsx), [`src/pages/main/`](./src/pages/main/) | Creator composition and screens |
+| [`src/pages/app/ChannelSettings.tsx`](./src/pages/app/ChannelSettings.tsx) | Shared settings body |
+| [`src/framework/`](./src/framework/) | Headless React control hooks, API client, board scoping, and theme tokens |
+| [`src/overlay/`](./src/overlay/) | Read-only SDK, live/mock sources, themes, and preview controls |
+| [`shared/framework.ts`](./shared/framework.ts), [`shared/engine.ts`](./shared/engine.ts) | Versioned metric/event/rule contracts and deterministic engine |
+| [`worker/`](./worker/) | Worker API, auth, D1 operations, coordinator, Twitch, and AI |
+| [`migrations/`](./migrations/) | Ordered D1 schema migrations |
+| [`integrations/`](./integrations/) | Server/local-helper reporter and provider-neutral example |
+
+For creator customization, use `useChallengeChatState` / `useChallengeChatController` from `src/framework/use-challenge-chat.ts` rather than bypassing transport or authorization. Keep runtime themes declarative; custom React code is compiled at deployment time, not uploaded and evaluated as arbitrary JavaScript.
+
+Before releasing, run `npm test` and `npm run build:production`, then follow the [online smoke-test checklist](./docs/deployment.md#online-smoke-test). Automated checks cover the engine, D1 workflows, authorization, adapters, transport, and SDK contracts; they do not replace testing your real Twitch connection and OBS source.

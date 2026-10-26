@@ -10,11 +10,11 @@ const SIDES = ['streamer', 'chat'] as const;
  * The "who won?" keys on the Live step. Neutral keys so the label always reads; each side's colour is only a hint:
  * a tall lit stripe on the key's outer edge (like the active channel row), pointing at that side of the scoreboard.
  */
-export function WinButtons({ onWin }: { onWin: (side: Side, from: HTMLElement | null) => void }) {
+export function WinButtons({ onWin, busy = false, pendingAction }: { onWin: (side: Side, from: HTMLElement | null) => void; busy?: boolean; pendingAction?: string | null }) {
   return (
     <div className="grid grid-cols-2 gap-3.5">
       {SIDES.map((side) => (
-        <Button key={side} size="lg" data-side={side} className="relative [--btn-h:72px]" onClick={(e) => onWin(side, e.currentTarget)}>
+        <Button key={side} size="lg" data-side={side} className="relative [--btn-h:72px]" disabled={busy} loading={pendingAction === `win-${side}`} loadingLabel="Saving…" onClick={(e) => onWin(side, e.currentTarget)}>
           {side === 'streamer' ? (
             <TrophyIcon size={20} className="text-[var(--t-hi)] max-sm:hidden" />
           ) : (

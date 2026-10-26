@@ -50,6 +50,7 @@ import { complement, lighten } from '@/theme/accent';
 import { useTheme } from '@/theme/ThemeProvider';
 import { api, type ApiTokenSummary, type ModSummary } from '@/api';
 import { channelPath } from '@/framework/channel';
+import { usePendingAction } from '@/framework/use-pending-action';
 import { frameworkClient } from '@/framework/client';
 import { mockViewerId, parseMockChatMessage } from '@/dev/mock-chat';
 import { KILL_CHALLENGE_EXAMPLE } from '@/examples/kill-challenge';
@@ -67,7 +68,7 @@ export const SETTINGS_TABS = [
   { value: 'obs', label: 'OBS', icon: MonitorIcon },
   { value: 'twitch', label: 'Twitch', icon: TwitchIcon },
   { value: 'ai', label: 'AI', icon: BoltIcon },
-  { value: 'api', label: 'API', icon: KeyIcon },
+  { value: 'api', label: 'API / MCP', icon: KeyIcon },
   { value: 'dev', label: 'Dev', icon: KeyIcon },
 ] as const;
 
@@ -545,9 +546,10 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
             size="sm"
             variant="accent"
             disabled={saving}
+            loading={saving} loadingLabel="Saving…"
             onClick={() => void save()}
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            Save changes
           </Button>
         </Well>
       )}
@@ -571,11 +573,12 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
         confirmVariant="danger"
         onConfirm={() => {
           setDeleting(true);
-          void api.deleteChannel().then(({ nextChannel }) => {
+          return api.deleteChannel().then(({ nextChannel }) => {
             window.location.assign(channelPath('/', nextChannel.id));
           }).catch((caught) => {
             setDeleting(false);
             toast.add({ title: 'Could not delete board', description: caught instanceof Error ? caught.message : 'Try again' });
+            throw caught;
           });
         }}
       />
@@ -815,8 +818,8 @@ function Moderators({ channel }: { channel: Channel }) {
             <Button variant="ghost" onClick={() => setInviteOpen(false)}>
               Cancel
             </Button>
-            <Button variant="accent" disabled={inviteBusy || !inviteName.trim()} onClick={() => void invite()}>
-              {inviteBusy ? 'Creating invite…' : 'Create invite'}
+            <Button variant="accent" loading={inviteBusy} loadingLabel="Creating…" disabled={inviteBusy || !inviteName.trim()} onClick={() => void invite()}>
+              Create invite
             </Button>
           </div>
         }
@@ -853,10 +856,10 @@ function Moderators({ channel }: { channel: Channel }) {
         cancelLabel="Keep"
         onConfirm={() => {
           if (!removing) return;
-          void api.revokeMod(removing.id).then(() => {
+          return api.revokeMod(removing.id).then(() => {
             setMods((list) => list.filter((mod) => mod.id !== removing.id));
             toast.add({ title: 'Moderator removed', description: removing.name });
-          }).catch((caught) => toast.add({ title: 'Could not remove moderator', description: caught instanceof Error ? caught.message : 'Try again' }));
+          }).catch((caught) => { toast.add({ title: 'Could not remove moderator', description: caught instanceof Error ? caught.message : 'Try again' }); throw caught; });
         }}
       />
     </>
@@ -882,6 +885,7 @@ function TwitchSettings({ channel }: { channel: Channel }) {
   const [clientSecret, setClientSecret] = useState('');
   const [editingConfiguration, setEditingConfiguration] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
@@ -932,6 +936,7 @@ function TwitchSettings({ channel }: { channel: Channel }) {
   if (role !== 'owner') return <OwnerOnly what="Twitch connection" />;
 
   const connect = async () => {
+    setBusyAction('connect');
     setBusy(true);
     setError(null);
     try {
@@ -945,6 +950,7 @@ function TwitchSettings({ channel }: { channel: Channel }) {
 
   const disconnect = async () => {
     if (!window.confirm(`Disconnect @${status?.connection?.broadcasterLogin ?? 'this Twitch account'} from ${channel.displayName}?`)) return;
+    setBusyAction('disconnect');
     setBusy(true);
     setError(null);
     try {
@@ -959,6 +965,7 @@ function TwitchSettings({ channel }: { channel: Channel }) {
   };
 
   const saveConfiguration = async () => {
+    setBusyAction('save');
     setBusy(true);
     setError(null);
     try {
@@ -1028,12 +1035,12 @@ function TwitchSettings({ channel }: { channel: Channel }) {
               </span>
               {connection ? (
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" disabled={busy || !ready} onClick={() => void connect()}>Reconnect</Button>
-                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => void disconnect()}>Disconnect</Button>
+                  <Button size="sm" loading={busy && busyAction === 'connect'} disabled={busy || !ready} onClick={() => void connect()}>Reconnect</Button>
+                  <Button size="sm" variant="ghost" loading={busy && busyAction === 'disconnect'} disabled={busy} onClick={() => void disconnect()}>Disconnect</Button>
                 </div>
               ) : (
-                <Button variant="accent" disabled={busy || !ready} onClick={() => void connect()}>
-                  {busy ? 'Opening Twitch…' : 'Connect broadcaster'}
+                <Button variant="accent" loading={busy && busyAction === 'connect'} loadingLabel="Connecting…" disabled={busy || !ready} onClick={() => void connect()}>
+                  Connect broadcaster
                 </Button>
               )}
             </div>
@@ -1138,9 +1145,10 @@ function TwitchSettings({ channel }: { channel: Channel }) {
                 <Button
                   variant="accent"
                   disabled={busy || Boolean(connection) || clientId.trim().length < 5 || clientSecret.trim().length < 10}
+                  loading={busy && busyAction === 'save'} loadingLabel="Saving…"
                   onClick={() => void saveConfiguration()}
                 >
-                  <LockIcon size={14} /> {busy ? 'Saving…' : 'Save & lock'}
+                  <LockIcon size={14} /> Save & lock
                 </Button>
                 <span className="text-xs leading-relaxed text-ink-sub">A fresh EventSub signing secret is generated automatically.</span>
               </div>
@@ -1203,6 +1211,7 @@ function Connections({ channel }: { channel: Channel }) {
   const [integration, setIntegration] = useState<Awaited<ReturnType<typeof api.integrationStatus>> | null>(null);
   const [freshIntegration, setFreshIntegration] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState('');
   const [error, setError] = useState<string | null>(null);
   const base = window.location.origin;
   const restUrl = `${base}/api/v1/board?channel=${encodeURIComponent(channel.id)}`;
@@ -1223,6 +1232,7 @@ function Connections({ channel }: { channel: Channel }) {
 
   const create = async () => {
     if (!name.trim()) return;
+    setBusyAction('create');
     setBusy(true);
     setError(null);
     try {
@@ -1240,6 +1250,7 @@ function Connections({ channel }: { channel: Channel }) {
 
   const revoke = async (token: ApiTokenSummary) => {
     if (!window.confirm(`Revoke “${token.name}”? Anything using it will lose access immediately.`)) return;
+    setBusyAction(token.id);
     setBusy(true);
     try {
       await api.revokeApiToken(token.id);
@@ -1254,6 +1265,7 @@ function Connections({ channel }: { channel: Channel }) {
 
   const rotateIntegration = async () => {
     if ((integration?.token || integration?.environmentFallback) && !window.confirm('Replace the game integration token? Existing adapters will stop working immediately.')) return;
+    setBusyAction('integration');
     setBusy(true);
     setError(null);
     try {
@@ -1298,7 +1310,7 @@ function Connections({ channel }: { channel: Channel }) {
 
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
           <TextField label="Token name" placeholder="Stream Deck" value={name} maxLength={60} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void create(); }} />
-          <Button variant="accent" disabled={busy || !name.trim()} onClick={() => void create()}>Create token</Button>
+          <Button variant="accent" loading={busy && busyAction === 'create'} loadingLabel="Creating…" disabled={busy || !name.trim()} onClick={() => void create()}>Create token</Button>
         </div>
 
         {tokens.length > 0 && (
@@ -1311,7 +1323,7 @@ function Connections({ channel }: { channel: Channel }) {
                     <span className="mono text-[11px] text-ink-muted">ccat_…{token.lastFour} · created {new Date(token.createdAt).toLocaleDateString()}</span>
                   </div>
                   <span className="text-xs text-ink-muted">{token.lastUsedAt ? `Used ${new Date(token.lastUsedAt).toLocaleString()}` : 'Never used'}</span>
-                  <Button size="xs" variant="ghost" disabled={busy} onClick={() => void revoke(token)}>Revoke</Button>
+                  <Button size="xs" variant="ghost" loading={busy && busyAction === token.id} disabled={busy} onClick={() => void revoke(token)}>Revoke</Button>
                 </div>
               ))}
             </div>
@@ -1346,7 +1358,7 @@ function Connections({ channel }: { channel: Channel }) {
             </span>
             <span className="hint">Board ID: <b className="mono text-ink-soft">{channel.id}</b></span>
           </div>
-          <Button size="sm" disabled={busy || !integration} onClick={() => void rotateIntegration()}>
+          <Button size="sm" loading={busy && busyAction === 'integration'} disabled={busy || !integration} onClick={() => void rotateIntegration()}>
             {integration?.token || integration?.environmentFallback ? 'Replace token' : 'Create token'}
           </Button>
         </Well>
@@ -1412,6 +1424,11 @@ function Overlays({ channel }: { channel: Channel }) {
 /** Everything the model helps with. Each switch takes effect straight away; drafts always keep the viewer's original text. */
 function AiSettings() {
   const session = useSessionSettings();
+  const save = usePendingAction();
+  const update = (patch: Parameters<typeof setSessionSettings>[0]) => void save.run(async () => {
+    const { settings } = await api.updateSessionSettings({ ...session, ...patch });
+    hydrateSessionSettings(settings);
+  });
   const [status, setStatus] = useState<Awaited<ReturnType<typeof api.aiStatus>> | null>(null);
   useEffect(() => { void api.aiStatus().then(setStatus).catch(() => setStatus(null)); }, []);
   const parse = session.aiParsing;
@@ -1419,7 +1436,9 @@ function AiSettings() {
   const tone = session.aiRoundNameTone;
 
   return (
-    <>
+    <fieldset disabled={save.busy} className="m-0 flex min-w-0 flex-col gap-8 border-0 p-0" aria-busy={save.busy}>
+      {save.busy && <span role="status" className="hint">Saving AI settings…</span>}
+      {save.notice && <span role="alert" className="text-sm text-red-300">{save.notice}</span>}
       <Section title="Provider">
         <Well className="flex flex-wrap items-center gap-3 px-5 py-4">
           <Led tone={status?.configured ? 'ok' : 'warn'} />
@@ -1436,9 +1455,9 @@ function AiSettings() {
           label="Use AI parsing"
           description="Off uses the built-in rules parser, which is faster but needs more moderator edits"
           checked={parse}
-          onCheckedChange={(value) => setSessionSettings({ aiParsing: value })}
+          onCheckedChange={(value) => update({ aiParsing: value })}
         />
-        {parse && <RockerSwitch label="Write challenge titles" description="A short, readable name like “Pistol Purist”" checked={titles} onCheckedChange={(value) => setSessionSettings({ aiChallengeTitles: value })} />}
+        {parse && <RockerSwitch label="Write challenge titles" description="A short, readable name like “Pistol Purist”" checked={titles} onCheckedChange={(value) => update({ aiChallengeTitles: value })} />}
         <p className="hint m-0">Every draft keeps the viewer's original text and shows which parser made it</p>
       </Section>
 
@@ -1450,7 +1469,7 @@ function AiSettings() {
             label="Name rounds automatically"
             description="Off leaves rounds untitled until you name them"
             checked={session.aiTitles}
-            onCheckedChange={(v) => setSessionSettings({ aiTitles: v })}
+            onCheckedChange={(v) => update({ aiTitles: v })}
           />
           {session.aiTitles && (
             <Rule hint={tone === 'playful' ? 'Puns and in-jokes, like “Knives Out, Agents Random”' : tone === 'hype' ? 'Big and loud, like “The Low-Sens Gauntlet”' : 'Plain and descriptive, like “Five Pistol Challenges”'}>
@@ -1463,13 +1482,13 @@ function AiSettings() {
                   { value: 'straight', label: 'Straight' },
                 ]}
                 value={tone}
-                onValueChange={(value) => setSessionSettings({ aiRoundNameTone: value })}
+                onValueChange={(value) => update({ aiRoundNameTone: value })}
               />
             </Rule>
           )}
         </div>
       </Section>
-    </>
+    </fieldset>
   );
 }
 
@@ -1671,7 +1690,7 @@ function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Prom
                 if (error) setError(null);
               }}
               suffix={
-                <Button type="submit" variant="accent" size="xs" icon disabled={busy || !message.trim()} aria-label="Send chat event">
+                <Button type="submit" variant="accent" size="xs" icon loading={busy} disabled={busy || !message.trim()} aria-label="Send chat event">
                   <ArrowRightIcon size={15} />
                 </Button>
               }
@@ -1743,7 +1762,7 @@ function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Prom
               <KeyValue label="Current">{typeof kills?.value === 'number' ? `${kills.value} / ${typeof kills.target === 'number' ? kills.target : '—'}` : 'Not running'}</KeyValue>
               <KeyValue label="OBS element">{overlayConfig.elements.kills ? 'Enabled' : 'Off'}</KeyValue>
             </Well>
-            <Button variant="accent" disabled={gameBusy} onClick={() => void (gameActive ? sendKill() : startGameRun())}>
+            <Button variant="accent" loading={gameBusy} disabled={gameBusy} onClick={() => void (gameActive ? sendKill() : startGameRun())}>
               {gameActive ? 'Send enemy defeated' : 'Start kill tracker'}
             </Button>
             {gameActive && !overlayConfig.elements.kills && (
@@ -1907,8 +1926,8 @@ function OverlayTheme({ channelName, onSaved }: { channelName: string; onSaved?:
           <Button size="sm" variant="ghost" disabled={saving} onClick={() => setDraft(saved)}>
             Discard
           </Button>
-          <Button size="sm" variant="accent" disabled={saving} onClick={() => void save()}>
-            {saving ? 'Updating…' : 'Update overlay'}
+          <Button size="sm" variant="accent" loading={saving} loadingLabel="Updating…" disabled={saving} onClick={() => void save()}>
+            Update overlay
           </Button>
         </Well>
       )}

@@ -1915,6 +1915,11 @@
       inset 0 -4px 10px rgba(0, 0, 0, 0.25);
   }
 
+  /* Pending controls retain their original footprint; status stays legible, not dimmed. */
+  .btn[data-loading] { position: relative; cursor: progress; opacity: 1; }
+  .btn-loading-placeholder { display: inline-flex; align-items: center; gap: inherit; visibility: hidden; }
+  .btn-loading-content { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+
   /* Hold-to-confirm fill */
   .hold-fill {
     position: absolute;

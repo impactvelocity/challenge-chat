@@ -153,7 +153,7 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
         <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} minLength={auth.setup === 'ready' ? 6 : undefined} onChange={(event) => setPassword(event.target.value)} required />
         {auth.setup === 'ready' && <TextField label="Confirm password" type="password" value={confirmation} minLength={6} onChange={(event) => setConfirmation(event.target.value)} required />}
         {error && <p className="m-0 text-sm text-red-300" role="alert">{error}</p>}
-        <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>
+        <Button type="submit" variant="accent" loading={busy} loadingLabel="Connecting…">{auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>
       </Panel>
     </main>
   );

@@ -197,9 +197,9 @@ function AddChannel({
         <Button variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
-        <Button variant="accent" onClick={() => void create()} disabled={busy}>
+        <Button variant="accent" loading={busy} loadingLabel="Creating…" onClick={() => void create()} disabled={busy}>
           <PlusIcon size={15} />
-          {busy ? 'Creating…' : 'Create board'}
+          Create board
         </Button>
       </div>
     </div>

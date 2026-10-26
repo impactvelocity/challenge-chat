@@ -1,8 +1,10 @@
 import { Switch } from '@base-ui/react/switch';
 import { Link, useLocation } from 'react-router';
 import { Divider, Label, Sheet, Tooltip } from '@/components/ui';
-import { setOverlayElement, useOverlayDisplay } from '@/data/overlayConfig';
+import { hydrateOverlayConfig, useOverlayConfig, useOverlayDisplay } from '@/data/overlayConfig';
 import { getTheme, type ElementDef } from '@/overlay/sdk';
+import { api } from '@/api';
+import { usePendingAction } from '@/framework/use-pending-action';
 
 type Props = {
   open: boolean;
@@ -15,6 +17,8 @@ type Props = {
  */
 export function OverlayElementsSheet({ open, onOpenChange }: Props) {
   const display = useOverlayDisplay();
+  const config = useOverlayConfig();
+  const save = usePendingAction();
   const { search } = useLocation();
   const theme = getTheme(display.theme);
   if (!theme) return null;
@@ -29,7 +33,10 @@ export function OverlayElementsSheet({ open, onOpenChange }: Props) {
   const row = ([id, e]: [string, ElementDef]) => (
     // What each element does opens beside the drawer, so the rows stay one line
     <Tooltip key={id} side="left" content={e.description ?? e.label}>
-      <Switch.Root className="elemrow well" checked={!!display.elements[id]} onCheckedChange={(on) => setOverlayElement(id, on)} nativeButton render={<button type="button" />}>
+      <Switch.Root className="elemrow well" disabled={save.busy} aria-busy={save.pendingAction === id} checked={!!display.elements[id]} onCheckedChange={(on) => void save.run(async () => {
+        const { config: saved } = await api.updateOverlayConfig({ ...config, elements: { ...config.elements, [id]: on } });
+        hydrateOverlayConfig(saved);
+      }, id)} nativeButton render={<button type="button" />}>
         <span className="min-w-0 flex-1 truncate text-[15px] leading-tight font-semibold text-ink-strong">{e.label}</span>
         <span className="rocker" data-size="sm" aria-hidden="true">
           <span className="rocker-glow" />
@@ -40,7 +47,9 @@ export function OverlayElementsSheet({ open, onOpenChange }: Props) {
   );
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Overlay Elements">
+    <Sheet open={open} busy={save.busy} onOpenChange={onOpenChange} title="Overlay Elements">
+      {save.busy && <p role="status" className="hint">Updating overlay…</p>}
+      {save.notice && <p role="alert" className="text-sm text-red-300">{save.notice}</p>}
       {ordered.map(([group, list], i) => (
         <div key={group}>
           {i > 0 && (

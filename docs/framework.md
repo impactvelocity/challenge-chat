@@ -1,5 +1,7 @@
 # Challenge.chat framework map
 
+See the [HTTP API guide](./api.md) for authenticated requests, [MCP guide](./mcp.md) for tool clients, and [Durable Object flow](./durable-objects.md) for storage/timers/recovery. This page keeps the endpoint and contract inventory.
+
 ## Runtime flow
 
 ```text
@@ -37,7 +39,7 @@ GET  /api/v1/board                 (board state; board token or signed-in operat
 PATCH /api/v1/board/submissions
 POST /api/v1/board/challenges
 PATCH /api/v1/board/challenges/:id
-POST /api/v1/board/challenges/:id/status|start|attempt|resolve
+POST /api/v1/board/challenges/:id/status|start|attempt|resolve|pause
 POST /api/v1/board/ballots
 POST /api/v1/board/ballots/:id/close
 POST /api/v1/board/session/complete|cancel
@@ -101,7 +103,7 @@ Each Channel has one Challenger leaderboard. It sums the snapshotted `selected` 
 
 Event submissions require `source` and `idempotencyKey`. Retrying an accepted event is safe and returns `duplicate: true`.
 
-Only one countdown/active/paused run may exist per session. The engine, not integrations, emits `run.started` and `timer.expired`; late events cannot overtake a deadline. Pause freezes the displayed timer and resumes by extending the deadline. Runs currently live in Durable Object storage; event history and archived runs have not yet been promoted into D1.
+Only one countdown/active/paused run may exist per session. The engine, not integrations, emits `run.started` and `timer.expired`; late events cannot overtake a deadline. Pause freezes the displayed timer and resumes by extending the deadline. The current run and accepted-event markers live in the active session's Durable Object storage; replacing a session clears that coordinator. There is no full generic run/event archive in D1 or append-only event log in the coordinator. Product session/challenge results are persisted separately in D1.
 
 ## Surface customization
 
@@ -115,13 +117,13 @@ The control-panel primary and Chat colours are Channel-owned theme data and load
 
 ## Deploy and security state
 
-`wrangler.jsonc` intentionally omits an account-specific D1 ID so Cloudflare can provision a database for each creator deployment. The deploy script builds, deploys, then applies D1 migrations. A freshly deployed Worker may briefly return database errors before migration completes.
+Use the [deployment runbook](./deployment.md). The top-level demo configuration in `wrangler.jsonc` omits a fixed D1 ID, but `env.production` contains explicit resources for the existing deployment. Self-hosters must replace those names and the production database ID with their own. `npm run deploy:production` selects production at build time, applies remote D1 migrations, then deploys the generated Worker configuration. The older `npm run deploy` script uses the demo configuration and deploys before migration; it is not the production path.
 
-Auth has one deployment owner and channel-assigned moderators. On first visit, the owner chooses a control-room name and password; both the name and the unique-salt PBKDF2-HMAC-SHA256 password hash (600,000 iterations) live in D1. The same-origin setup endpoint cannot overwrite an existing profile. `OWNER_PASSWORD` remains available as an optional Worker-secret alternative and takes precedence over a stored password. `ADMIN_TOKEN` is retired.
+Auth has one deployment owner and channel-assigned moderators. On an unconfigured deployment, browser setup stores the control-room name and unique-salt PBKDF2-HMAC-SHA256 password hash (600,000 iterations) in D1. The same-origin setup endpoint cannot overwrite an existing profile, but an unclaimed public setup screen is not an ownership check: provision `OWNER_PASSWORD` with the first public upload, or restrict access while claiming the deployment. That Worker secret takes precedence over a stored password. `ADMIN_TOKEN` is retired.
 
 The owner creates named mod accounts and receives a one-use link with a random token in the URL fragment, so the token is not sent in the initial HTTP request. The link expires in 15 minutes; D1 stores only its SHA-256 hash. Redemption atomically marks it used and issues a random 12-hour session token. D1 also stores only session-token hashes. Cookies are HTTP-only, SameSite=Strict, and Secure on HTTPS; unsafe cookie-authenticated writes require a same-origin request. Login failures are rate-limited per Cloudflare client IP. Removing access deletes that Channel membership and its outstanding invitations and closes the moderator’s sockets in that Channel. Other Channel memberships and the shared sign-in session remain valid; every subsequent control request rechecks membership. Signing out closes the session’s sockets in every accessible Channel.
 
-Both roles can review challenges, run rounds, manage votes, and use the generic live-run controls. Only the owner can manage mods, change the theme or assets, create or revoke API credentials, and reset demo data. Channel integration tokens are random bearer credentials stored as hashes and accepted only by the normalized metric event endpoint. Named board API tokens are also hash-only but authorize the bounded board-control API and MCP tool catalog. The optional `INTEGRATION_TOKEN` environment secret is a compatibility fallback for the default Channel only, overridden when a Channel token is generated. It must stay in a server or local helper, not a browser bundle. The optional OpenAI key also stays in the Worker.
+Both roles can review challenges, run rounds, manage votes, and use the generic live-run controls. Only the owner can manage mods, change the theme or assets, create or revoke API credentials, and reset demo data. Channel integration tokens are random bearer credentials stored as hashes and accepted by normalized metric intake and the trusted voting-adapter route described above. Named board API tokens are also hash-only but authorize the bounded board-control API and MCP tool catalog. The optional `INTEGRATION_TOKEN` environment secret is a compatibility fallback for the default Channel only, overridden when a Channel token is generated. It must stay in a server or local helper, not a browser bundle. AI uses the server-side `AI` binding and deployment gateway/model variables; the reference UI does not accept an OpenAI key.
 
 For the hackathon deployment, the owner can save the global Twitch Client ID and Client Secret from **Settings → Twitch**. D1 stores those values in the singleton `twitch_app_configuration` row and the Worker generates the EventSub signing secret; neither secret is returned by the API. Existing `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_EVENTSUB_SECRET` Worker secrets remain a fallback when no D1 configuration exists. This intentionally favors self-hosting simplicity over encrypted-at-rest application credentials and should be revisited before a higher-security rollout. OAuth state is random, hash-only, one-use, Channel-bound, and expires after ten minutes. EventSub message IDs provide retry idempotency and are retained briefly for replay protection.
 

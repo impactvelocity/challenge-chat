@@ -21,12 +21,14 @@ type Props = {
   /** No session is running, so the queued ideas can open one. */
   canOpen: boolean;
   onAdd: (item: InboxIdea) => void;
-  onReject: (item: InboxIdea) => void;
+  onReject: (item: InboxIdea) => unknown;
   onAddAll: () => void;
   onOpen: () => void;
+  busy?: boolean;
+  pendingAction?: string | null;
 };
 
-export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onAddAll, onOpen }: Props) {
+export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onAddAll, onOpen, busy = false, pendingAction }: Props) {
   const waiting = items.filter((i) => !queued.includes(i.c.id)).length;
   const [deleting, setDeleting] = useState<InboxIdea | null>(null);
   const [page, setPage] = useState(1);
@@ -62,12 +64,12 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
           </Tooltip>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={onAddAll} disabled={!waiting}>
+          <Button size="sm" variant="ghost" onClick={onAddAll} loading={pendingAction === 'inbox-add'} disabled={busy || !waiting}>
             <PlusIcon size={14} />
             {submitting ? 'Add all to submissions' : 'Add all'}
           </Button>
           {canOpen && (
-            <Button size="sm" variant="accent" onClick={onOpen} disabled={!queued.length}>
+            <Button size="sm" variant="accent" onClick={onOpen} loading={pendingAction === 'open-submissions'} disabled={busy || !queued.length}>
               <PlayCircleIcon size={16} />
               {queued.length ? `Open submissions with ${queued.length}` : 'Open submissions'}
             </Button>
@@ -126,11 +128,11 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
                 </td>
                 <td>
                   <span className="flex items-center justify-end gap-2">
-                    <Button size="sm" variant={on ? 'accent' : 'ghost'} onClick={() => onAdd(item)} aria-pressed={submitting ? undefined : on}>
+                    <Button size="sm" variant={on ? 'accent' : 'ghost'} disabled={busy} onClick={() => onAdd(item)} aria-pressed={submitting ? undefined : on}>
                       {on ? <CheckIcon size={14} /> : <PlusIcon size={14} />}
                       <span className="max-sm:hidden">{on ? 'Added' : 'Add'}</span>
                     </Button>
-                    <Button size="xs" icon variant="ghost" onClick={() => setDeleting(item)} aria-label={`Delete ${c.title}`}>
+                    <Button size="xs" icon variant="ghost" disabled={busy} onClick={() => setDeleting(item)} aria-label={`Delete ${c.title}`}>
                       <TrashIcon size={14} />
                     </Button>
                   </span>

@@ -16,7 +16,7 @@ const LABEL: Record<SettingsTab, string> = {
   twitch: 'Twitch',
   ai: 'AI',
   dev: 'Dev',
-  api: 'API',
+  api: 'API / MCP',
 };
 
 /** Channel settings inside the main (/) shell: a row of text tabs over one section at a time. */

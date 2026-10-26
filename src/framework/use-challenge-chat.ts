@@ -4,6 +4,7 @@ import type { PublicOverlayState } from "../../shared/public-state";
 import type { LiveRunProjection } from "../../shared/framework";
 import { api } from "../api";
 import { channelPath } from "./channel";
+import { usePendingAction } from './use-pending-action';
 
 type SocketMessage =
   | { type: "state.changed"; revision: number; state: AppState }
@@ -97,21 +98,12 @@ export function useChallengeChatState(scope: "admin" | "overlay" = "admin") {
 /** Headless mutation/status model for fully custom creator control panels. */
 export function useChallengeChatController() {
   const live = useChallengeChatState();
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const mutate = useCallback(async (task: () => Promise<unknown>) => {
-    setBusy(true);
-    setNotice(null);
-    try {
+  const pending = usePendingAction();
+  const mutate = useCallback((task: () => Promise<unknown>, name = 'update') =>
+    pending.run(async () => {
       await task();
       await live.refresh();
-    } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : "Action failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [live.refresh]);
+    }, name), [live.refresh, pending.run]);
 
-  return { ...live, busy, notice, dismissNotice: () => setNotice(null), mutate, actions: api };
+  return { ...live, ...pending, mutate, actions: api };
 }

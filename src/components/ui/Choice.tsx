@@ -13,6 +13,7 @@ export function SegmentedControl<T extends string>({
   onValueChange,
   'aria-label': ariaLabel,
   fill,
+  disabled = false,
 }: {
   options: { value: T; label: ReactNode }[];
   value: T;
@@ -20,9 +21,11 @@ export function SegmentedControl<T extends string>({
   'aria-label'?: string;
   /** Stretch to the full width, keys sharing it equally. */
   fill?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <ToggleGroup
+      disabled={disabled}
       value={[value]}
       onValueChange={(v) => v[0] && onValueChange(v[0] as T)}
       className={fill ? 'segc well w-full min-w-max [&>*]:flex-1 [&>*]:whitespace-nowrap' : 'segc well self-start'}

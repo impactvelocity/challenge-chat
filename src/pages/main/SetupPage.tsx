@@ -135,7 +135,7 @@ export function SetupPage() {
                 <Select aria-label="Overlay theme" options={themes.map((t) => ({ value: t.id, label: t.name }))} value={overlay} onValueChange={setOverlay} />
               </div>
             </div>
-            <Button variant="accent" size="lg" className="mt-auto w-full" onClick={create}>
+            <Button variant="accent" size="lg" className="mt-auto w-full" loading={controller.busy} loadingLabel="Creating…" onClick={create}>
               <RocketIcon size={18} />
               Create Board
             </Button>

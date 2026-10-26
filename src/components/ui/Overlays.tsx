@@ -4,6 +4,7 @@ import { Toast } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Button } from './Button';
+import { usePendingAction } from '@/framework/use-pending-action';
 
 type Container = HTMLElement | null;
 
@@ -27,12 +28,13 @@ type SheetProps = {
   /** 640px instead of 440px. */
   wide?: boolean;
   container?: Container;
+  busy?: boolean;
 };
 
 /** Right-hand slide-in drawer (Base UI Dialog). */
-export function Sheet({ open, onOpenChange, title, children, footer, actions, trailing, wide, container }: SheetProps) {
+export function Sheet({ open, onOpenChange, title, children, footer, actions, trailing, wide, container, busy = false }: SheetProps) {
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange} modal={container !== undefined ? 'trap-focus' : true}>
+    <Dialog.Root open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }} modal={container !== undefined ? 'trap-focus' : true}>
       <Dialog.Portal container={container}>
         <Dialog.Backdrop className={cn('scrim z-40', pos(container))} />
         <Dialog.Popup className={cn('drawer z-50', pos(container), wide && 'w-[min(640px,100%)]')}>
@@ -41,7 +43,7 @@ export function Sheet({ open, onOpenChange, title, children, footer, actions, tr
             <div className="flex flex-none gap-2">
               {actions}
               {/* Words, not an X, so it can't be mistaken for delete */}
-              <Dialog.Close render={<Button size="xs" variant="solid" />}>Close</Dialog.Close>
+              <Dialog.Close disabled={busy} render={<Button size="xs" variant="solid" />}>Close</Dialog.Close>
               {trailing}
             </div>
           </div>
@@ -61,14 +63,17 @@ type ConfirmDialogProps = {
   confirmLabel: string;
   cancelLabel?: string;
   confirmVariant?: 'accent' | 'danger';
-  onConfirm: () => void;
+  onConfirm: () => unknown;
+  loading?: boolean;
   container?: Container;
 };
 
 /** Destructive confirmation (Base UI AlertDialog). */
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = 'Cancel', confirmVariant = 'accent', onConfirm, container }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = 'Cancel', confirmVariant = 'accent', onConfirm, container, loading = false }: ConfirmDialogProps) {
+  const action = usePendingAction();
+  const busy = loading || action.busy;
   return (
-    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+    <AlertDialog.Root open={open} onOpenChange={(next) => { if (!busy) { action.dismissNotice(); onOpenChange(next); } }}>
       <AlertDialog.Portal container={container}>
         {/* Above drawers (z-40/50), so a confirm opened from a drawer dims it too. Base UI skips the
             backdrop of a dialog nested in another one unless forced. */}
@@ -77,14 +82,19 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           <AlertDialog.Title className="m-0 text-lg leading-tight font-bold text-ink-strong">{title}</AlertDialog.Title>
           <AlertDialog.Description className="m-0 text-sm leading-normal text-ink-soft">{description}</AlertDialog.Description>
           <div className="mt-1 grid grid-cols-2 gap-2.5">
-            <AlertDialog.Close render={<Button variant="ghost" />}>{cancelLabel}</AlertDialog.Close>
-            <AlertDialog.Close
-              render={<Button variant={confirmVariant} />}
-              onClick={onConfirm}
+            <AlertDialog.Close disabled={busy} render={<Button variant="ghost" />}>{cancelLabel}</AlertDialog.Close>
+            <Button
+              variant={confirmVariant} loading={busy}
+              onClick={() => void action.run(async () => {
+                const result = await onConfirm();
+                if (result === false) throw new Error('Could not complete this action. Please try again.');
+                onOpenChange(false);
+              })}
             >
               {confirmLabel}
-            </AlertDialog.Close>
+            </Button>
           </div>
+          {action.notice && <p role="alert" className="m-0 text-sm text-red-300">{action.notice}</p>}
         </AlertDialog.Popup>
       </AlertDialog.Portal>
     </AlertDialog.Root>

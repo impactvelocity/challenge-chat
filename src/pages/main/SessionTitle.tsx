@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { RefreshIcon, SparkleIcon } from '@/components/icons';
 import { Button, Sheet, TextField } from '@/components/ui';
 import { api } from '@/api';
+import { usePendingAction } from '@/framework/use-pending-action';
 
 export type TitlePhase = 'loading' | 'streaming' | 'done';
 
@@ -10,30 +11,24 @@ export type TitlePhase = 'loading' | 'streaming' | 'done';
  */
 export function useStreamedTitle(initial = '') {
   const [text, setText] = useState(initial);
-  const [phase, setPhase] = useState<TitlePhase>('done');
+  const action = usePendingAction();
+  const phase: TitlePhase = action.busy ? 'loading' : 'done';
   useEffect(() => { setText(initial); }, [initial]);
-  const set = useCallback(async (title: string) => {
-    setPhase('loading');
-    try {
+  const set = useCallback((title: string) => action.run(async () => {
       const saved = await api.updateSessionName(title.trim());
       setText(saved.name);
-    } finally {
-      setPhase('done');
-    }
-  }, []);
+  }, 'save-title'), [action.run]);
   const regenerate = useCallback(async () => {
-    setPhase('loading');
-    try {
-      const generated = await api.generateSessionName();
+    let generated: Awaited<ReturnType<typeof api.generateSessionName>> | null = null;
+    await action.run(async () => {
+      generated = await api.generateSessionName();
       setText(generated.name);
-      return generated;
-    } finally {
-      setPhase('done');
-    }
-  }, []);
-  const clear = useCallback(() => { setText(''); setPhase('done'); }, []);
+    }, 'generate-title');
+    return generated as Awaited<ReturnType<typeof api.generateSessionName>> | null;
+  }, [action.run]);
+  const clear = useCallback(() => { setText(''); }, []);
 
-  return { text, phase, set, regenerate, clear };
+  return { text, phase, set, regenerate, clear, notice: action.notice, pendingAction: action.pendingAction };
 }
 
 /** The title as it appears in the window: a skeleton while loading, a caret while streaming. Fixed height so nothing below moves. */
@@ -82,18 +77,20 @@ export function SessionTitleSheet({ open, onOpenChange, title, aiNamingEnabled }
   return (
     <Sheet
       open={open}
-      onOpenChange={onOpenChange}
+      busy={busy}
+      onOpenChange={(next) => { if (!busy) onOpenChange(next); }}
       title={<span className="text-[20px] leading-tight font-bold">Round title</span>}
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
             variant="accent"
             disabled={busy || !draft.trim()}
+            loading={title.pendingAction === 'save-title'} loadingLabel="Saving…"
             onClick={() => {
-              void title.set(draft.trim()).then(() => onOpenChange(false));
+              void title.set(draft.trim()).then((saved) => { if (saved) onOpenChange(false); });
             }}
           >
             Save title
@@ -112,7 +109,7 @@ export function SessionTitleSheet({ open, onOpenChange, title, aiNamingEnabled }
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && draft.trim()) {
-                void title.set(draft.trim()).then(() => onOpenChange(false));
+                void title.set(draft.trim()).then((saved) => { if (saved) onOpenChange(false); });
               }
             }}
           />
@@ -122,12 +119,14 @@ export function SessionTitleSheet({ open, onOpenChange, title, aiNamingEnabled }
           size="sm"
           className="self-start"
           disabled={busy || !aiNamingEnabled}
-          onClick={() => void title.regenerate().then((generated) => setDraft(generated.name))}
+          loading={title.pendingAction === 'generate-title'} loadingLabel="Generating…"
+          onClick={() => void title.regenerate().then((generated) => { if (generated) setDraft(generated.name); })}
         >
           <RefreshIcon size={14} />
           Generate another
         </Button>
         {!aiNamingEnabled ? <span className="hint">AI round naming is off. Enable it in Settings to generate a title, or enter your own above.</span> : null}
+        {title.notice && <p role="alert" className="m-0 text-sm text-red-300">{title.notice}</p>}
         <span className="hint">Round titles are saved to this board and update the OBS overlay.</span>
       </div>
     </Sheet>

@@ -97,10 +97,10 @@ export function ChallengeEditorSheet({ challenge, onClose, onSave }: {
     finally { setBusy(false); }
   };
 
-  return <Sheet open onOpenChange={(open) => { if (!open && !busy) onClose(); }} title="Edit challenge" footer={
+  return <Sheet open busy={busy} onOpenChange={(open) => { if (!open && !busy) onClose(); }} title="Edit challenge" footer={
     <div className="flex justify-end gap-3">
       <Button variant="ghost" disabled={busy} onClick={onClose}>Cancel</Button>
-      <Button variant="accent" disabled={busy || !title.trim() || !objective.trim()} onClick={() => void save()}>{busy ? 'Saving…' : 'Save challenge'}</Button>
+      <Button variant="accent" loading={busy} loadingLabel="Saving…" disabled={busy || !title.trim() || !objective.trim()} onClick={() => void save()}>Save challenge</Button>
     </div>
   }>
     <fieldset disabled={busy} className="flex flex-col gap-5 border-0 p-0 pt-2">

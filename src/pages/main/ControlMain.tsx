@@ -203,7 +203,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const [approved, setApproved] = useState<string[]>(state.challenges.filter((item) => ['approved', 'queued'].includes(item.status)).map((item) => item.id));
   /** Open stage: ideas are streaming in. Closing pauses the stream so ideas can be picked for the vote. */
   const [accepting, setAccepting] = useState(state.session.submissionsOpen);
-  const [size, setSize] = useState(String(state.session.scoringRules.voting.winnersCount));
+  const [size, setSize] = useState(String(Math.min(state.session.scoringRules.voting.winnersCount, state.session.scoringRules.voting.shortlistSize - 1)));
   const [voteLength, setVoteLength] = useState(String(state.session.scoringRules.voting.durationSeconds));
   const [entries, setEntries] = useState<Entry[]>(state.ballot?.entries.map((entry) => ({ c: challengeFromState(entry.challenge), votes: entry.votes })) ?? []);
   const [voteLeft, setVoteLeft] = useState(() => state.ballot ? Math.max(0, Math.ceil((new Date(state.ballot.endsAt).getTime() - Date.now()) / 1000)) : 0);
@@ -229,10 +229,11 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   useEffect(() => {
     if (!onInbox || unseenInInbox === 0 || markingInboxSeen.current) return;
     markingInboxSeen.current = true;
-    void controller.mutate(() => controller.actions.markInboxSeen()).finally(() => {
+    // Read bookkeeping must not compete with stage-changing actions for the mutation lock.
+    void controller.actions.markInboxSeen().then(() => controller.refresh()).catch(() => undefined).finally(() => {
       markingInboxSeen.current = false;
     });
-  }, [controller.actions, controller.mutate, onInbox, unseenInInbox]);
+  }, [controller.actions, controller.refresh, onInbox, unseenInInbox]);
   const challengers: Challenger[] = state.leaderboard.map((entry) => ({
     name: entry.displayName,
     points: entry.points,
@@ -346,47 +347,49 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   }, [voteLeft]);
 
   /* ───────── Actions ───────── */
+  const actionProps = (name: string) => ({ loading: controller.pendingAction === name, disabled: controller.busy });
 
   /** Opens submissions, starting with any inbox ideas queued for this session. */
   const openSubmissions = () => {
-    setStartedAt(clockTime());
-    setSubmitLeft(SUBMIT_LENGTH);
-    setAccepting(true);
-    setOpened(true);
-    go('open');
-    void controller.mutate(async () => {
+    return controller.mutate(async () => {
       if (state.session.phase === 'complete') await controller.actions.createSession();
       await Promise.all(queued.map((id) => controller.actions.setStatus(id, 'pending_review')));
       await controller.actions.setSubmissionsOpen(true);
+      setStartedAt(clockTime());
+      setSubmitLeft(SUBMIT_LENGTH);
+      setAccepting(true);
+      setOpened(true);
+      go('open');
       setQueued([]);
-    });
+    }, 'open-submissions');
   };
 
   /* ───────── Inbox ───────── */
 
-  const moveToSubmissions = (items: InboxIdea[]) => {
+  const moveToSubmissions = async (items: InboxIdea[]) => {
     if (!items.length) return;
-    void controller.mutate(() => Promise.all(items.map((item) => controller.actions.setStatus(item.c.id, 'pending_review'))));
-    toast.add({
+    const saved = await controller.mutate(() => Promise.all(items.map((item) => controller.actions.setStatus(item.c.id, 'pending_review'))), 'inbox-add');
+    if (saved) toast.add({
       title: 'Added to submissions',
       description: items.length === 1 ? items[0].c.title : `${items.length} ideas`,
     });
   };
 
   const addFromInbox = (item: InboxIdea) => {
-    if (stage === 'open' && accepting) moveToSubmissions([item]);
+    if (stage === 'open' && accepting) return moveToSubmissions([item]);
     else setQueued((q) => (q.includes(item.c.id) ? q.filter((x) => x !== item.c.id) : [...q, item.c.id]));
   };
 
   const addAllFromInbox = () => {
-    if (stage === 'open' && accepting) moveToSubmissions(inbox);
+    if (stage === 'open' && accepting) return moveToSubmissions(inbox);
     else setQueued(inbox.map((i) => i.c.id));
   };
 
-  const rejectFromInbox = (item: InboxIdea) => {
+  const rejectFromInbox = async (item: InboxIdea) => {
     const wasQueued = queued.includes(item.c.id);
+    const saved = await controller.mutate(() => controller.actions.setStatus(item.c.id, 'rejected'), 'inbox-delete');
+    if (!saved) return false;
     setQueued((q) => q.filter((x) => x !== item.c.id));
-    void controller.mutate(() => controller.actions.setStatus(item.c.id, 'rejected'));
     toast.add({
       title: 'Deleted',
       description: item.c.title,
@@ -398,43 +401,41 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
         },
       },
     });
+    return true;
   };
 
   /** Take an idea out of this session but keep it for later, at the top of the inbox. */
-  const moveToInbox = (c: Challenge) => {
-    void controller.mutate(() => controller.actions.setStatus(c.id, 'inbox'));
-    toast.add({
+  const moveToInbox = async (c: Challenge) => {
+    const saved = await controller.mutate(() => controller.actions.setStatus(c.id, 'inbox'), 'inbox-move');
+    if (saved) toast.add({
       title: 'Moved to inbox',
       description: `${c.title} can be added to a later round.`,
     });
   };
 
   const rejectIdea = (c: Challenge) => {
-    void controller.mutate(() => controller.actions.setStatus(c.id, 'rejected'));
+    return controller.mutate(() => controller.actions.setStatus(c.id, 'rejected'), 'idea-delete');
   };
 
   /** Pause the stream and stay put: the list becomes pickable for the vote. */
   const closeSubmissions = () => {
-    setAccepting(false);
-    void controller.mutate(() => controller.actions.setSubmissionsOpen(false));
+    return controller.mutate(() => controller.actions.setSubmissionsOpen(false), 'close-submissions');
   };
   const reopenSubmissions = () => {
-    setAccepting(true);
-    void controller.mutate(() => controller.actions.setSubmissionsOpen(true));
+    return controller.mutate(() => controller.actions.setSubmissionsOpen(true), 'reopen-submissions');
   };
 
   const toggleApproved = (id: string) => {
     const on = approved.includes(id);
-    void controller.mutate(() => controller.actions.setStatus(id, on ? 'pending_review' : 'approved'));
+    return controller.mutate(() => controller.actions.setStatus(id, on ? 'pending_review' : 'approved'), `approve-${id}`);
   };
 
   const toggleAllApproved = () => {
     const selectAll = approved.length !== ideas.length;
-    setApproved(selectAll ? ideas.map((challenge) => challenge.id) : []);
-    void controller.mutate(() =>
+    return controller.mutate(() =>
       Promise.all(
         ideas.map((challenge) => controller.actions.setStatus(challenge.id, selectAll ? 'approved' : 'pending_review')),
-      ),
+      ), 'approve-all',
     );
   };
 
@@ -447,11 +448,11 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
 
   /** Approved ideas go on the ballot in the order they were submitted. */
   const openVoting = () => {
-    void controller.mutate(() => controller.actions.openBallot(approved, voteSecs, n));
+    return controller.mutate(() => controller.actions.openBallot(approved, voteSecs, n), 'open-vote');
   };
 
   function closeVoting() {
-    if (state.ballot) void controller.mutate(() => controller.actions.closeBallot(state.ballot!.id));
+    if (state.ballot) return controller.mutate(() => controller.actions.closeBallot(state.ballot!.id), 'close-vote');
   }
 
   /** The picked challenges in play order, shown on the Lock in step. */
@@ -462,7 +463,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const [titleOpen, setTitleOpen] = useState(false);
 
   const cancelRound = () => {
-    void controller.mutate(async () => {
+    return controller.mutate(async () => {
       try {
         const result = await controller.actions.cancelSession();
         sessionTitle.clear();
@@ -478,26 +479,30 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
         toast.add({ title: 'Could not cancel round', description: caught instanceof Error ? caught.message : 'Try again' });
         throw caught;
       }
-    });
+    }, 'cancel-round');
   };
 
   /** Lock in and Start are one step: starting locks the lineup and goes live with challenge 1. */
   const startSession = () => {
     const first = lockList[0];
-    if (first) void controller.mutate(() => controller.actions.start(first.id));
+    if (first) return controller.mutate(() => controller.actions.start(first.id), 'start-round');
   };
 
   const finish = (side: Side, from?: HTMLElement | null) => {
-    setRound((r) => ({ ...r, result: side }));
-    if (current) void controller.mutate(() => controller.actions.resolve(current.id, side === 'streamer' ? 'streamer_won' : 'chat_won'));
-    if (from) burst(centerOf(from), { count: 18 });
+    const origin = from ? centerOf(from) : null;
+    if (current) return controller.mutate(async () => {
+      await controller.actions.resolve(current.id, side === 'streamer' ? 'streamer_won' : 'chat_won');
+      if (origin) burst(origin, { count: 18 });
+    }, `win-${side}`);
   };
 
   const next = () => {
-    setRound(freshRound());
     const upcoming = lineup.find((item) => !played.some((done) => done.c.id === item.id) && item.id !== current?.id);
-    if (upcoming) void controller.mutate(() => controller.actions.start(upcoming.id));
-    else void controller.mutate(() => controller.actions.completeSession());
+    return controller.mutate(async () => {
+      if (upcoming) await controller.actions.start(upcoming.id);
+      else await controller.actions.completeSession();
+      setRound(freshRound());
+    }, 'next-challenge');
   };
 
   /* Auto-start: once a winner is called, count down and move on unless Undo, Next or Cancel comes first. */
@@ -520,19 +525,21 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const skip = () => {
     if (!current) return;
     const upcoming = lineup[index + 1];
-    void controller.mutate(async () => {
+    return controller.mutate(async () => {
       await controller.actions.resolve(current.id, 'skipped');
       if (upcoming) await controller.actions.start(upcoming.id);
       else await controller.actions.completeSession();
-    });
+    }, 'skip-challenge');
   };
 
   /** Files the finished (or abandoned) run into history and resets for a new one. */
   const startNew = () => {
-    sessionTitle.clear();
-    setRound(freshRound());
-    setOpened(false);
-    if (state.session.phase === 'complete') void controller.mutate(() => controller.actions.createSession());
+    return controller.mutate(async () => {
+      if (state.session.phase === 'complete') await controller.actions.createSession();
+      sessionTitle.clear();
+      setRound(freshRound());
+      setOpened(false);
+    }, 'new-round');
   };
 
   const onNewSession = () => (stage === 'done' ? startNew() : undefined);
@@ -599,6 +606,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                 <Button
                   variant="quiet"
                   icon
+                  {...actionProps('new-round')}
                   onClick={stage === 'done' ? onNewSession : () => setCancelOpen(true)}
                   aria-label={stage === 'done' ? 'New round' : 'Cancel round'}
                 >
@@ -636,6 +644,14 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
           </div>
         </Panel>
 
+        {controller.notice && <Well role="alert" className="flex items-center justify-between gap-3 px-5 py-3 text-sm text-red-300">
+          <span>{controller.notice}</span><Button size="xs" variant="ghost" onClick={controller.dismissNotice}>Dismiss</Button>
+        </Well>}
+        {controller.error && <Well role="alert" className="flex items-center justify-between gap-3 px-5 py-3 text-sm text-red-300">
+          <span>{controller.error}</span><Button size="xs" variant="ghost" {...actionProps('refresh')} onClick={() => void controller.mutate(async () => {}, 'refresh')}>Retry</Button>
+        </Well>}
+        {controller.busy && <span role="status" className="sr-only">Updating board…</span>}
+
         {onSettings ? (
           role === 'owner' ? <Settings tab={settingsTab} channel={channel} onSaved={controller.refresh} /> : <Panel className="p-8 text-center text-ink-sub">Owner access required.</Panel>
         ) : onInbox ? (
@@ -648,6 +664,8 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
             onReject={rejectFromInbox}
             onAddAll={addAllFromInbox}
             onOpen={openSubmissions}
+            busy={controller.busy}
+            pendingAction={controller.pendingAction}
           />
         ) : (
           <>
@@ -692,7 +710,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                   <Screen className="flex flex-col items-start gap-3 px-6 py-8 sm:px-8">
                     <span className="status">No round running</span>
                     <p className="m-0 text-[28px] leading-tight font-bold tracking-[-.015em] text-white">Start a new round</p>
-                    <Button variant="accent" className="mt-2 max-sm:self-stretch" onClick={openSubmissions}>
+                    <Button variant="accent" className="mt-2 max-sm:self-stretch" onClick={openSubmissions} {...actionProps('open-submissions')} loadingLabel="Opening…">
                       <PlayCircleIcon size={18} />
                       Open submissions
                     </Button>
@@ -719,9 +737,9 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                           ) : (
                             // Lives in the window (one line either way) so the controls below never shift
                             <span aria-live="polite">
-                              {approved.length < n ? (
+                              {approved.length <= n ? (
                                 <>
-                                  Pick at least <b className="text-ink-strong">{n}</b> for the vote, or choose a smaller top #
+                                  Pick at least <b className="text-ink-strong">{n + 1}</b> for a Top {n} vote, or choose a smaller top #
                                 </>
                               ) : leftovers.length > 0 ? (
                                 <>
@@ -747,17 +765,21 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                   {/* Vote settings appear once the stream is paused: how many make the round, and how long the vote runs */}
                   {!accepting && (
                     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                      <div className="min-w-0 max-w-full overflow-x-auto">
                       <SegmentedControl
                         aria-label="How many make the round"
-                        options={['3', '5', '7', '10'].map((v) => ({
+                        disabled={controller.busy}
+                        options={['1', '2', '3', '5', '7', '9'].filter((v) => Number(v) < state.session.scoringRules.voting.shortlistSize).map((v) => ({
                           value: v,
                           label: `Top ${v}`,
                         }))}
                         value={size}
                         onValueChange={setSize}
                       />
+                      </div>
                       <SegmentedControl
                         aria-label="Voting time"
+                        disabled={controller.busy}
                         options={VOTE_LENGTHS}
                         value={voteLength}
                         onValueChange={setVoteLength}
@@ -775,7 +797,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                         <>
                           <span className="text-ink-faint">·</span>
                           <span>
-                            <b className={cn('font-semibold', approved.length >= n ? 'text-accent-text' : 'text-ink-strong')}>{approved.length}</b> picked
+                            <b className={cn('font-semibold', approved.length > n ? 'text-accent-text' : 'text-ink-strong')}>{approved.length}</b> picked
                           </span>
                         </>
                       )}
@@ -783,22 +805,22 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
                       {accepting ? (
                         <>
-                          <Button variant="ghost" onClick={() => setCancelOpen(true)}>
+                          <Button variant="ghost" disabled={controller.busy} onClick={() => setCancelOpen(true)}>
                             Cancel
                           </Button>
-                          <Button variant="accent" onClick={closeSubmissions} disabled={!ideas.length}>
+                          <Button variant="accent" onClick={closeSubmissions} {...actionProps('close-submissions')} disabled={controller.busy || !ideas.length}>
                             <StopIcon size={13} />
                             Close
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Button variant="ghost" onClick={reopenSubmissions}>
+                          <Button variant="ghost" onClick={reopenSubmissions} {...actionProps('reopen-submissions')}>
                             <PlayCircleIcon size={17} />
                             Reopen
                           </Button>
-                          {approved.length >= n ? (
-                            <Button variant="accent" onClick={startVoting}>
+                          {approved.length > n ? (
+                            <Button variant="accent" onClick={startVoting} {...actionProps('open-vote')} loadingLabel="Opening…">
                               <MegaphoneIcon size={17} />
                               Open voting · {approved.length}
                             </Button>
@@ -807,7 +829,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                             <Tooltip
                               content={
                                 <>
-                                  Pick at least <b>{n}</b> ideas to open voting ({approved.length} picked), or choose a smaller top #.
+                                  Pick at least <b>{n + 1}</b> ideas for a Top {n} vote ({approved.length} picked), or choose a smaller top #.
                                 </>
                               }
                             >
@@ -832,13 +854,12 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                           <th className="w-[160px] max-md:hidden">From</th>
                           <th className="w-[132px] text-right sm:w-[140px]">
                             {!accepting && ideas.length > 0 && (
-                              <button
-                                type="button"
-                                className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-ink-muted uppercase hover:text-ink-strong"
+                              <Button
+                                size="xs" variant="ghost" {...actionProps('approve-all')}
                                 onClick={toggleAllApproved}
                               >
                                 {approved.length === ideas.length ? 'Clear' : 'Select all'}
-                              </button>
+                              </Button>
                             )}
                             <span className="sr-only">Actions</span>
                           </th>
@@ -869,15 +890,16 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                               <td className="mono truncate text-[14px] text-ink-soft max-md:hidden">@{c.by}</td>
                               <td>
                                 <span className="flex shrink-0 items-center justify-end gap-2">
-                                  <Button size="xs" icon variant="ghost" aria-label={`Edit ${c.title}`} onClick={() => setEditingId(c.id)}>
+                                  <Button size="xs" icon variant="ghost" disabled={controller.busy} aria-label={`Edit ${c.title}`} onClick={() => setEditingId(c.id)}>
                                     <EditIcon size={14} />
                                   </Button>
                                   {/* Picking is only possible once the stream is paused */}
                                   <Button
                                     size="xs"
+                                    loading={controller.pendingAction === `approve-${c.id}`}
                                     icon
                                     variant={on ? 'accent' : 'ghost'}
-                                    disabled={accepting}
+                                    disabled={accepting || controller.busy}
                                     onClick={() => toggleApproved(c.id)}
                                     aria-pressed={on}
                                     aria-label={on ? `Remove ${c.title} from the vote` : `Add ${c.title} to the vote`}
@@ -887,7 +909,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                                   </Button>
                                   <Menu
                                     trigger={
-                                      <Button size="xs" icon variant="ghost" aria-label={`Remove ${c.title}`}>
+                                      <Button size="xs" icon variant="ghost" disabled={controller.busy} aria-label={`Remove ${c.title}`}>
                                         <TrashIcon size={14} />
                                       </Button>
                                     }
@@ -955,10 +977,10 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       </span>
                     </Well>
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                      <Button variant="ghost" onClick={() => setCancelOpen(true)}>
+                      <Button variant="ghost" disabled={controller.busy} onClick={() => setCancelOpen(true)}>
                         Cancel
                       </Button>
-                      <Button variant="accent" onClick={closeVoting}>
+                      <Button variant="accent" onClick={closeVoting} {...actionProps('close-vote')} loadingLabel="Closing…">
                         <CheckIcon size={20} />
                         Close voting
                       </Button>
@@ -1059,13 +1081,13 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       </span>
                     </Well>
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                      <Button variant="ghost" onClick={() => setCancelOpen(true)}>
+                      <Button variant="ghost" disabled={controller.busy} onClick={() => setCancelOpen(true)}>
                         Cancel round
                       </Button>
-                      <Button variant="ghost" disabled={controller.busy} onClick={() => void controller.mutate(() => controller.actions.reopenVoting(voteSecs))}>
+                      <Button variant="ghost" {...actionProps('reopen-vote')} loadingLabel="Reopening…" onClick={() => void controller.mutate(() => controller.actions.reopenVoting(voteSecs), 'reopen-vote')}>
                         Reopen voting
                       </Button>
-                      <Button variant="accent" onClick={startSession} disabled={!lockList.length}>
+                      <Button variant="accent" onClick={startSession} {...actionProps('start-round')} disabled={controller.busy || !lockList.length} loadingLabel="Starting…">
                         <RocketIcon size={17} />
                         Start round
                       </Button>
@@ -1216,7 +1238,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                         <span />
                       )}
                       <div className="flex flex-col gap-3 sm:flex-row-reverse">
-                        <Button variant="accent" onClick={next}>
+                        <Button variant="accent" onClick={next} {...actionProps('next-challenge')} loadingLabel="Loading…">
                           {index + 1 < lineup.length ? `Next · ${lineup[index + 1].title}` : 'See results'}
                           <ArrowRightIcon size={18} />
                         </Button>
@@ -1228,20 +1250,21 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                     </div>
                   ) : (
                     <>
-                      <WinButtons onWin={finish} />
+                      <WinButtons onWin={finish} busy={controller.busy} pendingAction={controller.pendingAction} />
                       <div className="grid grid-cols-3 gap-3">
-                        <Button size="sm" onClick={() => current && void controller.mutate(() => controller.actions.setChallengePaused(current.id, !round.paused))} disabled={controller.busy || timeUp || !state.activeRound || new Date(state.activeRound.startedAt).getTime() > Date.now()}>
+                        <Button size="sm" loading={controller.pendingAction === 'pause-challenge'} onClick={() => current && void controller.mutate(() => controller.actions.setChallengePaused(current.id, !round.paused), 'pause-challenge')} disabled={controller.busy || timeUp || !state.activeRound || new Date(state.activeRound.startedAt).getTime() > Date.now()}>
                           {round.paused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
                           {round.paused ? 'Resume' : 'Pause'}
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => current && void controller.mutate(() => controller.actions.attempt(current.id, 1))}
-                          disabled={!!current.maxAttempts && round.attempts >= current.maxAttempts}
+                          loading={controller.pendingAction === 'attempt'}
+                          onClick={() => current && void controller.mutate(() => controller.actions.attempt(current.id, 1), 'attempt')}
+                          disabled={controller.busy || !!current.maxAttempts && round.attempts >= current.maxAttempts}
                         >
                           Failed try
                         </Button>
-                        <Button size="sm" onClick={skip}>
+                        <Button size="sm" onClick={skip} {...actionProps('skip-challenge')}>
                           Skip
                         </Button>
                       </div>
@@ -1281,11 +1304,11 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       )}
                     </Well>
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                      <Button variant="ghost" onClick={startNew}>
+                      <Button variant="ghost" onClick={startNew} {...actionProps('new-round')}>
                         <HomeIcon size={16} />
                         Home
                       </Button>
-                      <Button variant="accent" onClick={() => (startNew(), openSubmissions())}>
+                      <Button variant="accent" onClick={openSubmissions} {...actionProps('open-submissions')} loadingLabel="Opening…">
                         <PlusIcon size={18} />
                         New round
                       </Button>
@@ -1380,6 +1403,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
         confirmLabel="Cancel round"
         cancelLabel="Keep round"
         confirmVariant="danger"
+        loading={controller.pendingAction === 'cancel-round'}
         onConfirm={cancelRound}
       />
 
