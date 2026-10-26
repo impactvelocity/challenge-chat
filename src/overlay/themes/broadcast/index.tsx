@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
-import { defineTheme, ElementOutlet, SceneOutlet, useConnection, useElementOn, useSides } from '@/overlay/sdk';
+import { defineTheme, ElementOutlet, SceneOutlet, useConnection, useElementOn, useLeaderboard, useMetric, useSides, useSponsors } from '@/overlay/sdk';
 import { accentVars } from '@/theme/accent';
 import { Alerts, Counter, Goal, Leaderboard, Scoreboard, SponsorBar } from './elements';
 import { IdeasScene, LineupScene, LiveScene, RecapScene, ResultScene, VoteScene } from './scenes';
@@ -21,7 +21,18 @@ function Layout() {
   const s = useBroadcastSettings();
   const sides = useSides();
   const sponsor = useElementOn('sponsor');
+  const goal = useMetric('goal');
+  const kills = useMetric('kills');
+  const leaders = useLeaderboard(1);
+  const sponsors = useSponsors();
   const status = useConnection();
+  const available: Record<string, boolean> = {
+    goal: !!goal,
+    kills: !!kills,
+    leaderboard: leaders.length > 0,
+    sponsor: sponsors.length > 0,
+  };
+  const shown = (id: string, on: boolean) => on && (available[id] ?? true);
   const style = useMemo(
     () =>
       ({
@@ -35,11 +46,11 @@ function Layout() {
   );
 
   return (
-    <div className="bc" data-density={s.density} data-motion={s.motion} data-side={s.side} data-sponsor={sponsor || undefined} style={style}>
+    <div className="bc" data-density={s.density} data-motion={s.motion} data-side={s.side} data-sponsor={shown('sponsor', sponsor) || undefined} style={style}>
       <div className="bc-corner flex flex-col gap-4">
         <ElementOutlet region="corner">
           {(el) => (
-            <div className="bc-pop" data-on={el.on || undefined} aria-hidden={!el.on}>
+            <div className="bc-pop" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
               <el.Component />
             </div>
           )}
@@ -48,7 +59,7 @@ function Layout() {
       <div className="bc-stack">
         <ElementOutlet region="stack">
           {(el) => (
-            <div className="bc-slot" data-on={el.on || undefined} aria-hidden={!el.on}>
+            <div className="bc-slot" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
               <div className="bc-slot-in">
                 <el.Component />
               </div>
@@ -59,7 +70,7 @@ function Layout() {
       <div className="bc-top">
         <ElementOutlet region="top">
           {(el) => (
-            <div className="bc-top-in" data-on={el.on || undefined} aria-hidden={!el.on}>
+            <div className="bc-top-in" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
               <el.Component />
             </div>
           )}
@@ -68,7 +79,7 @@ function Layout() {
       <SceneOutlet />
       <ElementOutlet region="bottom">
         {(el) => (
-          <div className="bc-bottom" data-on={el.on || undefined} aria-hidden={!el.on}>
+          <div className="bc-bottom" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
             <el.Component />
           </div>
         )}

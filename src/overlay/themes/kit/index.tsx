@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
-import { ElementOutlet, SceneOutlet, useConnection, useElementOn, useSides, useThemeContext, type ElementDef, type SettingsSchema } from '@/overlay/sdk';
+import { ElementOutlet, SceneOutlet, useConnection, useElementOn, useLeaderboard, useMetric, useSides, useSponsors, useThemeContext, type ElementDef, type SettingsSchema } from '@/overlay/sdk';
 import { accentVars } from '@/theme/accent';
 import { Alerts, Counter, Goal, Leaderboard, Scoreboard, SponsorBar } from '../broadcast/elements';
 import '@/scoreboard/scoreboard.css';
@@ -79,7 +79,18 @@ export function styledLayout(skin: string) {
     const s = settings as { streamerColor: string | null; chatColor: string | null; side: string; scale: number };
     const sides = useSides();
     const sponsor = useElementOn('sponsor');
+    const goal = useMetric('goal');
+    const kills = useMetric('kills');
+    const leaders = useLeaderboard(1);
+    const sponsors = useSponsors();
     const status = useConnection();
+    const available: Record<string, boolean> = {
+      goal: !!goal,
+      kills: !!kills,
+      leaderboard: leaders.length > 0,
+      sponsor: sponsors.length > 0,
+    };
+    const shown = (id: string, on: boolean) => on && (available[id] ?? true);
     const { data, vars } = useMemo(() => skinAttrs(theme.settings, settings), [theme.settings, settings]);
     const style = useMemo(
       () =>
@@ -93,11 +104,11 @@ export function styledLayout(skin: string) {
     );
 
     return (
-      <div className="bc sk" data-skin={skin} data-side={s.side} data-sponsor={sponsor || undefined} {...data} style={style}>
+      <div className="bc sk" data-skin={skin} data-side={s.side} data-sponsor={shown('sponsor', sponsor) || undefined} {...data} style={style}>
         <div className="bc-corner flex flex-col gap-4">
           <ElementOutlet region="corner">
             {(el) => (
-              <div className="bc-pop" data-on={el.on || undefined} aria-hidden={!el.on}>
+              <div className="bc-pop" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
                 <el.Component />
               </div>
             )}
@@ -106,7 +117,7 @@ export function styledLayout(skin: string) {
         <div className="bc-stack">
           <ElementOutlet region="stack">
             {(el) => (
-              <div className="bc-slot" data-on={el.on || undefined} aria-hidden={!el.on}>
+              <div className="bc-slot" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
                 <div className="bc-slot-in">
                   <el.Component />
                 </div>
@@ -117,7 +128,7 @@ export function styledLayout(skin: string) {
         <div className="sk-head">
           <ElementOutlet region="banner">
             {(el) => (
-              <div className="sk-banner" data-on={el.on || undefined} aria-hidden={!el.on}>
+              <div className="sk-banner" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
                 <div className="sk-banner-in">
                   <el.Component />
                 </div>
@@ -126,7 +137,7 @@ export function styledLayout(skin: string) {
           </ElementOutlet>
           <ElementOutlet region="top">
             {(el) => (
-              <div className="bc-top-in" data-on={el.on || undefined} aria-hidden={!el.on}>
+              <div className="bc-top-in" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
                 <el.Component />
               </div>
             )}
@@ -135,7 +146,7 @@ export function styledLayout(skin: string) {
         <SceneOutlet />
         <ElementOutlet region="bottom">
           {(el) => (
-            <div className="bc-bottom" data-on={el.on || undefined} aria-hidden={!el.on}>
+            <div className="bc-bottom" data-on={shown(el.id, el.on) || undefined} aria-hidden={!shown(el.id, el.on)}>
               <el.Component />
             </div>
           )}

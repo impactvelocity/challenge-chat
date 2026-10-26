@@ -85,6 +85,7 @@ export function Goal({ metric = 'goal' }: { metric?: string }) {
 export function Leaderboard() {
   const { leaders } = useBroadcastSettings();
   const rows = useLeaderboard(leaders);
+  if (!rows.length) return null;
   return (
     <div className="bc-card bc-board">
       <div className="bc-kicker">Top challengers</div>
@@ -122,6 +123,7 @@ export function Counter({ metric = 'kills' }: { metric?: string }) {
 export function SponsorBar() {
   const sponsors = useSponsors();
   const { sponsorLabel } = useBroadcastSettings();
+  if (!sponsors.length) return null;
   // Doubled so the strip loops without a seam
   const names = [...sponsors, ...sponsors];
   return (
