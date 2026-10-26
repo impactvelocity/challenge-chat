@@ -175,6 +175,7 @@ export interface AppState {
     displayName: string;
     broadcasterLogin: string;
     slug: string;
+    setupComplete: boolean;
     scoringRules: ScoringRules;
   };
   session: {

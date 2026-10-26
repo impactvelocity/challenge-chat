@@ -8,7 +8,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -106,11 +106,32 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0005_single_leaderboard.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0006_surface_settings.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0007_owner_profile.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0008_channel_setup.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM sqlite_master WHERE type = 'table' AND name = 'leaderboards'").get()?.total).toBe(0);
     legacy.close();
+  });
+
+  it("keeps the bootstrap channel hidden until the owner creates their first board", async () => {
+    const channelsBefore = await (await call("/api/channels", { cookie: ownerCookie })).json() as any;
+    expect(channelsBefore.channels).toEqual([
+      expect.objectContaining({ id: "demo-channel", displayName: "Unconfigured board", setupComplete: false }),
+    ]);
+    expect((await state("demo-channel")).channel).toMatchObject({ setupComplete: false });
+
+    expect((await call("/api/channel", {
+      method: "PATCH",
+      channel: "demo-channel",
+      cookie: ownerCookie,
+      data: { displayName: "Dylan's Board", slug: "setup-pending-demo-channel" },
+    })).status).toBe(200);
+
+    const channelsAfter = await (await call("/api/channels", { cookie: ownerCookie })).json() as any;
+    expect(channelsAfter.channels).toEqual([
+      expect.objectContaining({ id: "demo-channel", displayName: "Dylan's Board", setupComplete: true }),
+    ]);
   });
 
   it("creates the named control room and D1-backed owner password on first deployment", async () => {

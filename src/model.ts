@@ -42,6 +42,7 @@ export type Channel = {
   displayName: string;
   slug: string;
   broadcasterLogin: string;
+  setupComplete: boolean;
   live: boolean;
   review: number;
   ready: number;
@@ -91,6 +92,7 @@ export function channelFromState(state: AppState, mods = 0): Channel {
     displayName: state.channel.displayName,
     slug: state.channel.slug,
     broadcasterLogin: state.sessionSettings.twitchLogin ?? state.channel.broadcasterLogin,
+    setupComplete: state.channel.setupComplete,
     live: state.session.phase === 'live',
     review: state.challenges.filter((challenge) => challenge.status === 'pending_review').length,
     ready: state.challenges.filter((challenge) => ['approved', 'queued'].includes(challenge.status)).length,

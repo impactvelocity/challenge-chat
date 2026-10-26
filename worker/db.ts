@@ -71,6 +71,7 @@ interface ChannelRow {
   id: string;
   display_name: string;
   broadcaster_login: string;
+  setup_completed: number;
   theme_json: string;
   scoring_rules_json: string;
   overlay_config_json: string;
@@ -187,10 +188,10 @@ export async function ensureDemoData(db: D1Database): Promise<void> {
   await db.batch([
     db
       .prepare(
-        `INSERT OR IGNORE INTO channels (id, display_name, broadcaster_login, theme_json, scoring_rules_json)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO channels (id, display_name, broadcaster_login, setup_completed, theme_json, scoring_rules_json)
+         VALUES (?, ?, ?, 0, ?, ?)`,
       )
-      .bind(DEMO_CHANNEL_ID, "NightShift", "nightshift", JSON.stringify(DEFAULT_THEME), JSON.stringify(ARCADE_SCORING_RULES)),
+      .bind(DEMO_CHANNEL_ID, "Unconfigured board", "setup-pending-demo-channel", JSON.stringify(DEFAULT_THEME), JSON.stringify(ARCADE_SCORING_RULES)),
     db
       .prepare(
         `INSERT OR IGNORE INTO sessions (id, channel_id, status, mode, scoring_rules_json)
@@ -830,6 +831,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
       displayName: channel.display_name,
       broadcasterLogin: channel.broadcaster_login,
       slug: channel.broadcaster_login,
+      setupComplete: Boolean(channel.setup_completed),
       scoringRules: channelRules,
     },
     session: {

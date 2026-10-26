@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { CheckIcon, ExternalIcon, MegaphoneIcon, PlayIcon, RocketIcon, UsersIcon } from '@/components/icons';
 import { Logo } from '@/components/Logo';
 import { Button, Label, Panel, Screen, Select, TextField, ThemeSwitcher, useToasts, VLine, Well } from '@/components/ui';
@@ -32,7 +31,6 @@ const STEPS = [
  */
 export function SetupPage() {
   useChatVars();
-  const navigate = useNavigate();
   const toast = useToasts();
   const controller = useChallengeChatController();
   const [name, setName] = useState('');
@@ -42,6 +40,7 @@ export function SetupPage() {
   const config = useOverlayConfig();
   const theme = useTheme();
   const accentApplied = useRef(false);
+  const fieldsInitialized = useRef(false);
   const [overlay, setOverlay] = useState(display.theme);
   const [tried, setTried] = useState(false);
   const ready = name.trim() && login;
@@ -54,11 +53,14 @@ export function SetupPage() {
   }, [theme]);
 
   useEffect(() => {
-    if (!controller.state || name || login) return;
-    setName(controller.state.channel.displayName);
-    setLogin(controller.state.sessionSettings.twitchLogin ?? controller.state.channel.broadcasterLogin);
+    if (!controller.state || fieldsInitialized.current) return;
+    fieldsInitialized.current = true;
+    if (controller.state.channel.setupComplete) {
+      setName(controller.state.channel.displayName);
+      setLogin(controller.state.sessionSettings.twitchLogin ?? controller.state.channel.broadcasterLogin);
+    }
     setOverlay(controller.state.overlayConfig.theme);
-  }, [controller.state, name, login]);
+  }, [controller.state]);
 
   const create = () => {
     setTried(true);
@@ -69,7 +71,7 @@ export function SetupPage() {
       await controller.actions.updateOverlayConfig({ ...config, theme: overlay });
       await controller.actions.updateTheme({ ...controller.state!.theme, primary: theme.hex, accent: theme.chatHex });
       toast.add({ title: 'Board ready', description: name.trim() });
-      navigate(channelPath('/', controller.state!.channel.id));
+      window.location.assign(channelPath('/', controller.state!.channel.id));
     });
   };
 

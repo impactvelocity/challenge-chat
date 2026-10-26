@@ -66,19 +66,24 @@ function AuthenticatedLayout() {
   const [auth, setAuth] = useState<AuthSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [boardSetupRequired, setBoardSetupRequired] = useState<boolean | null>(null);
+  const location = useLocation();
 
   const refresh = async () => {
     const next = await api.authSession();
     setAuth(next);
     if (!next.authenticated) return;
     const [{ channels: available }, state] = await Promise.all([api.channels(), api.state()]);
+    const selected = available.find((channel) => channel.id === selectedChannelId()) ?? available[0];
+    setBoardSetupRequired(Boolean(selected && !selected.setupComplete));
     hydrateOverlayConfig(state.overlayConfig);
     hydrateSessionSettings(state.sessionSettings);
-    setChannels(available.map((channel) => ({
+    setChannels(available.filter((channel) => channel.setupComplete).map((channel) => ({
       id: channel.id,
       displayName: channel.displayName,
       slug: channel.slug,
       broadcasterLogin: channel.slug,
+      setupComplete: channel.setupComplete,
       live: false,
       review: 0,
       ready: 0,
@@ -93,6 +98,8 @@ function AuthenticatedLayout() {
   if (error) return <StatusPage title="Signal lost">{error}</StatusPage>;
   if (!auth) return <StatusPage title="Checking access">Connecting…</StatusPage>;
   if (!auth.authenticated) return <AuthEntry auth={auth} onAuthenticated={refresh} />;
+  if (boardSetupRequired === null) return <StatusPage title="Loading your boards">Connecting…</StatusPage>;
+  if (boardSetupRequired && location.pathname !== '/setup') return <Navigate to={channelPath('/setup', selectedChannelId())} replace />;
   return <AppShellContext channels={channels} role={auth.role ?? 'mod'}><Outlet /></AppShellContext>;
 }
 

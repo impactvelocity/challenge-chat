@@ -9,6 +9,7 @@ export interface ChannelSummary {
   id: string;
   displayName: string;
   slug: string;
+  setupComplete: boolean;
 }
 export interface ChannelScope {
   channelId: string;

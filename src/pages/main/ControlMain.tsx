@@ -206,8 +206,8 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const [elementsOpen, setElementsOpen] = useState(false);
   const elementsOn = Object.values(useOverlayDisplay().elements).filter(Boolean).length;
   useEffect(() => {
-    void api.channels().then(({ channels: available }) => setChannels(available.map((item) => item.id === channel.id ? channel : {
-      id: item.id, displayName: item.displayName, slug: item.slug, broadcasterLogin: item.slug, live: false,
+    void api.channels().then(({ channels: available }) => setChannels(available.filter((item) => item.setupComplete).map((item) => item.id === channel.id ? channel : {
+      id: item.id, displayName: item.displayName, slug: item.slug, broadcasterLogin: item.slug, setupComplete: item.setupComplete, live: false,
       review: 0, ready: 0, mods: 0, score: { streamer: 0, chat: 0 }, lastActive: 'Available', assignedToMod: true,
     }))).catch(() => undefined);
   }, [channel.id, channel.displayName, channel.score.chat, channel.score.streamer]);
