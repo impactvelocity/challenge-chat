@@ -126,6 +126,7 @@ const freshRound = (): Round => ({
   paused: false,
   result: null,
 });
+const elapsedSince = (startedAt: string) => Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
 const byVotes = (a: Entry, b: Entry) => b.votes - a.votes;
 
 export function ControlMain() {
@@ -185,6 +186,12 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   /** The top-bar badge counts only ideas nobody has looked at yet. */
   const newInInbox = inbox.filter((i) => !i.seen && !queued.includes(i.c.id)).length;
   const initialChallenges = state.challenges.filter((item) => !['rejected', 'inbox'].includes(item.status)).map(challengeFromState);
+  const initialPlayed: Played[] = state.challenges
+    .filter((item) => ['streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status))
+    .map((item) => ({
+      c: challengeFromState(item),
+      winner: item.status === 'streamer_won' ? 'streamer' : item.status === 'chat_won' ? 'chat' : null,
+    }));
   const [ideas, setIdeas] = useState<Challenge[]>(initialChallenges);
   const [submitLeft, setSubmitLeft] = useState(SUBMIT_LENGTH);
   const [approved, setApproved] = useState<string[]>(state.challenges.filter((item) => ['approved', 'queued'].includes(item.status)).map((item) => item.id));
@@ -196,8 +203,13 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const [voteLeft, setVoteLeft] = useState(() => state.ballot ? Math.max(0, Math.ceil((new Date(state.ballot.endsAt).getTime() - Date.now()) / 1000)) : 0);
   const [picks, setPicks] = useState<string[]>(state.challenges.filter((item) => ['queued', 'active', 'streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map((item) => item.id));
   const [lineup, setLineup] = useState<Challenge[]>(state.challenges.filter((item) => ['queued', 'active', 'streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map(challengeFromState));
-  const [played, setPlayed] = useState<Played[]>(state.challenges.filter((item) => ['streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map((item) => ({ c: challengeFromState(item), winner: item.status === 'streamer_won' ? 'streamer' : item.status === 'chat_won' ? 'chat' : null })));
-  const [round, setRound] = useState<Round>(() => ({ elapsed: 0, attempts: (state.activeRound?.attemptsUsed ?? 0) + 1, paused: false, result: null }));
+  const [played, setPlayed] = useState<Played[]>(initialPlayed);
+  const [round, setRound] = useState<Round>(() => ({
+    elapsed: state.activeRound ? elapsedSince(state.activeRound.startedAt) : 0,
+    attempts: (state.activeRound?.attemptsUsed ?? 0) + 1,
+    paused: false,
+    result: !state.activeRound && state.session.phase === 'live' ? initialPlayed.at(-1)?.winner ?? null : null,
+  }));
   const historyFromState = (value: AppState): Session[] => value.sessionHistory.map((entry) => ({
     name: entry.name ?? (entry.completedAt ? new Date(entry.completedAt).toLocaleDateString() : 'Round'),
     date: entry.completedAt ? new Date(entry.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '',
@@ -207,7 +219,12 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     bouts: [entry.streamerChallengeWins, entry.chatChallengeWins],
   }));
   const [history, setHistory] = useState<Session[]>(() => historyFromState(state));
-  const challengers: Challenger[] = state.leaderboard.map((entry) => ({ name: entry.displayName, points: entry.points, played: 0, won: 0 }));
+  const challengers: Challenger[] = state.leaderboard.map((entry) => ({
+    name: entry.displayName,
+    points: entry.points,
+    played: entry.played,
+    won: entry.won,
+  }));
   const [channels, setChannels] = useState<Channel[]>([channel]);
   /** When the running session was opened, e.g. "7:42pm". */
   const [startedAt, setStartedAt] = useState(clockTime);
@@ -239,10 +256,11 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const past = (s: Stage) => at >= STAGES.indexOf(s);
   const n = state.ballot?.winnersCount ?? Number(size);
   const voteSecs = Number(voteLength);
-  const resolvedId = round.result ? played.at(-1)?.c.id : null;
+  const resolvedId = round.result && !state.activeRound ? played.at(-1)?.c.id : null;
   const activeId = state.activeRound?.challengeId ?? resolvedId;
   const activeIndex = activeId ? lineup.findIndex((item) => item.id === activeId) : -1;
-  const index = activeIndex >= 0 ? activeIndex : played.length;
+  const showingPersistedResult = stage === 'live' && !state.activeRound && !!round.result && played.length > 0;
+  const index = activeIndex >= 0 ? activeIndex : showingPersistedResult ? played.length - 1 : played.length;
   const current = lineup[index] ?? null;
   const limit = current?.timeLimit ?? null;
   const timeUp = limit != null && round.elapsed >= limit;
@@ -274,13 +292,18 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     setEntries(state.ballot?.entries.map((entry) => ({ c: challengeFromState(entry.challenge), votes: entry.votes })) ?? []);
     setPicks(selected.map((item) => item.id));
     setLineup(selected.map(challengeFromState));
-    setPlayed(selected.filter((item) => ['streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map((item) => ({
+    const resolved: Played[] = selected.filter((item) => ['streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map((item) => ({
       c: challengeFromState(item), winner: item.status === 'streamer_won' ? 'streamer' : item.status === 'chat_won' ? 'chat' : null,
-    })));
+    }));
+    setPlayed(resolved);
     setHistory(historyFromState(state));
     setAccepting(state.session.submissionsOpen);
     setQueued((current) => current.filter((id) => state.challenges.some((item) => item.id === id && item.status === 'inbox')));
-    if (state.activeRound) setRound((currentRound) => ({ ...currentRound, attempts: state.activeRound!.attemptsUsed + 1, result: null }));
+    if (state.activeRound) {
+      setRound({ elapsed: elapsedSince(state.activeRound.startedAt), attempts: state.activeRound.attemptsUsed + 1, paused: false, result: null });
+    } else if (state.session.phase === 'live') {
+      setRound((currentRound) => ({ ...currentRound, result: resolved.at(-1)?.winner ?? null }));
+    }
     if (state.ballot) setVoteLeft(Math.max(0, Math.ceil((new Date(state.ballot.endsAt).getTime() - Date.now()) / 1000)));
   }, [state]);
 
@@ -501,10 +524,13 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
 
   /* ───────── Render ───────── */
 
-  const run = score(played, current && round.result ? { c: current, winner: round.result } : null);
+  const pendingResult = current && round.result && !played.some((item) => item.c.id === current.id)
+    ? { c: current, winner: round.result }
+    : null;
+  const run = score(played, pendingResult);
   const sessionWinner: Side | null = run.streamer === run.chat ? null : run.streamer > run.chat ? 'streamer' : 'chat';
   const thisRun: Session | null =
-    run.wins.streamer + run.wins.chat > 0
+    stage !== 'done' && run.wins.streamer + run.wins.chat > 0
       ? {
           name: state.session.name ?? 'This round',
           date: 'Today',
@@ -1251,7 +1277,10 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                   {/* The lineup and how each went, then the challengers to shout out */}
                   <div className="-mx-5 flex flex-col gap-6 sm:-mx-7">
                     <ChallengeResults played={played} tableClass={PANEL_TABLE} />
-                    <ChallengerRecap rows={challengerRecap(played, challengers)} tableClass={PANEL_TABLE} />
+                    <ChallengerRecap
+                      rows={challengerRecap(played, challengers, state.session.scoringRules.challenger)}
+                      tableClass={PANEL_TABLE}
+                    />
                   </div>
                 </>
               )}

@@ -94,7 +94,12 @@ export function mapPublicOverlayState(
   }
 
   const ballotEnd = at(state.ballot?.endsAt);
-  const stage = PHASE_STAGE[state.session.phase];
+  const stage: Stage = state.session.phase === 'collecting'
+    && !state.session.submissionsOpen
+    && state.submissions.length === 0
+    && lineup.length === 0
+    ? 'idle'
+    : PHASE_STAGE[state.session.phase];
   const displayTheme = getTheme(state.overlayConfig.theme) ?? listThemes()[0];
   const session: Session = {
     id: state.session.id,
@@ -135,7 +140,13 @@ export function mapPublicOverlayState(
       points: { streamer: entry.streamerScore, chat: entry.chatScore },
       wins: { streamer: entry.streamerChallengeWins, chat: entry.chatChallengeWins },
     })),
-    challengers: state.leaderboard.map((entry) => ({ id: entry.userId, name: entry.displayName, points: entry.points, played: 0, won: 0 })),
+    challengers: state.leaderboard.map((entry) => ({
+      id: entry.userId,
+      name: entry.displayName,
+      points: entry.points,
+      played: entry.played,
+      won: entry.won,
+    })),
     scoring: {
       selectedPoints: state.session.scoringRules.challenger.selectedPoints,
       defeatedPoints: state.session.scoringRules.challenger.defeatedStreamerPoints,

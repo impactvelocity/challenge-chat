@@ -3,6 +3,7 @@ import { DEFAULT_THEME } from '../../../shared/contracts';
 import { ARCADE_SCORING_RULES } from '../../../shared/scoring';
 import type { PublicOverlayState } from '../../../shared/public-state';
 import { FRAMEWORK_API_VERSION, type LiveRunProjection } from '../../../shared/framework';
+import { deriveRound } from '../sdk/derive';
 import { mapPublicOverlayState } from './live';
 
 const challenge = {
@@ -33,7 +34,7 @@ const state: PublicOverlayState = {
   theme: DEFAULT_THEME,
   overlayConfig: { theme: 'neon', settings: { neon: { glow: 80 } }, elements: { scoreboard: true } },
   publicSettings: { publicPage: true, twitchLogin: null },
-  leaderboard: [{ userId: 'viewer', displayName: 'Viewer', points: 100 }],
+  leaderboard: [{ userId: 'viewer', displayName: 'Viewer', points: 100, played: 1, won: 0 }],
   streaks: { streamer: { challenge: { current: 1, best: 1 }, session: { current: 0, best: 0 }, cleanSweep: { current: 0, best: 0, total: 0 } }, chat: { challenge: { current: 0, best: 0 }, session: { current: 0, best: 0 }, cleanSweep: { current: 0, best: 0, total: 0 } } },
   sessionHistory: [],
   overallScore: { streamer: 200, chat: 100, streamerSessionWins: 0, chatSessionWins: 0 },
@@ -75,6 +76,32 @@ describe('live overlay source mapping', () => {
   it('falls back to the first registered theme for unknown stored ids', () => {
     const snapshot = mapPublicOverlayState({ ...state, overlayConfig: { ...state.overlayConfig, theme: 'missing-theme' } });
     expect(snapshot.display.theme).toBe('broadcast');
+  });
+
+  it('maps a fresh closed session to the idle OBS scene', () => {
+    const snapshot = mapPublicOverlayState({
+      ...state,
+      session: { ...state.session, phase: 'collecting', submissionsOpen: false },
+      activeRound: null,
+      activeChallenge: null,
+      lineup: [],
+    });
+    expect(snapshot.session?.stage).toBe('idle');
+    expect(deriveRound(snapshot).scene).toBe('idle');
+  });
+
+  it('does not double-count a persisted result while its OBS result card is showing', () => {
+    const resolved = { ...challenge, status: 'streamer_won' as const };
+    const snapshot = mapPublicOverlayState({
+      ...state,
+      activeRound: null,
+      activeChallenge: null,
+      recentResult: resolved,
+      lineup: [resolved],
+    }, null, 8, Date.parse(run.serverTime));
+    const round = deriveRound(snapshot);
+    expect(round.score.streamer).toEqual({ points: 100, wins: 1 });
+    expect(round.score.chat).toEqual({ points: 0, wins: 0 });
   });
 
   it('maps live challenge submissions for the OBS ideas scene', () => {

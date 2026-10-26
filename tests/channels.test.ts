@@ -519,7 +519,10 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     current = await state(channel);
     expect(current.session).toMatchObject({ phase: "complete", streamerScore: 0, chatScore: 231, winner: "chat", sweepWinner: "chat", sweepLabel: "Flawless Victory" });
     expect(current.streaks.chat).toMatchObject({ challenge: { current: 2, best: 2 }, session: { current: 1, best: 1 }, cleanSweep: { current: 1, best: 1, total: 1 } });
-    expect(current.leaderboard.map((entry: any) => [entry.displayName, entry.points])).toEqual([["Alice", 154], ["Bob", 154]]);
+    expect(current.leaderboard.map((entry: any) => [entry.displayName, entry.points, entry.played, entry.won])).toEqual([
+      ["Alice", 154, 1, 1],
+      ["Bob", 154, 1, 1],
+    ]);
     expect(current.sessionHistory[0]).toMatchObject({ streamerScore: 0, chatScore: 231, streamerChallengeWins: 0, chatChallengeWins: 2, sweepLabel: "Flawless Victory" });
 
     expect((await call("/api/sessions", { method: "POST", channel, cookie: ownerCookie })).status).toBe(201);

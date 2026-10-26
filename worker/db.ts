@@ -907,11 +907,23 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
 
   const [leaderboardRows, historyRows, challengeStreakRows, overallRow] = await Promise.all([
     db.prepare(
-      `SELECT p.user_id AS userId, MAX(p.display_name) AS displayName, SUM(p.amount) AS points
-       FROM points_ledger p JOIN sessions s ON s.id = p.session_id
-       WHERE s.channel_id = ? AND p.reason IN ('selected', 'defeated_streamer')
-       GROUP BY p.user_id HAVING points > 0 ORDER BY points DESC, displayName ASC, p.user_id ASC LIMIT 50`,
-    ).bind(scope.channelId).all<AppState["leaderboard"][number]>(),
+      `WITH scores AS (
+         SELECT p.user_id, MAX(p.display_name) AS display_name, SUM(p.amount) AS points
+         FROM points_ledger p JOIN sessions s ON s.id = p.session_id
+         WHERE s.channel_id = ? AND p.reason IN ('selected', 'defeated_streamer')
+         GROUP BY p.user_id HAVING points > 0
+       ), records AS (
+         SELECT c.author_id AS user_id,
+           SUM(CASE WHEN c.status IN ('streamer_won', 'chat_won') THEN 1 ELSE 0 END) AS played,
+           SUM(CASE WHEN c.status = 'chat_won' THEN 1 ELSE 0 END) AS won
+         FROM challenges c JOIN sessions s ON s.id = c.session_id
+         WHERE s.channel_id = ? GROUP BY c.author_id
+       )
+       SELECT scores.user_id AS userId, scores.display_name AS displayName, scores.points,
+         COALESCE(records.played, 0) AS played, COALESCE(records.won, 0) AS won
+       FROM scores LEFT JOIN records ON records.user_id = scores.user_id
+       ORDER BY points DESC, displayName ASC, userId ASC LIMIT 50`,
+    ).bind(scope.channelId, scope.channelId).all<AppState["leaderboard"][number]>(),
     db.prepare(
       `SELECT s.id, s.name, s.streamer_score AS streamerScore, s.chat_score AS chatScore,
         SUM(CASE WHEN r.result = 'streamer_won' THEN 1 ELSE 0 END) AS streamerChallengeWins,

@@ -121,7 +121,9 @@ function decided(snap: OverlaySnapshot): { challenge: Challenge; winner: Side }[
   const byId = new Map(s.lineup.map((c) => [c.id, c]));
   const list = s.results.flatMap((r) => (r.winner && byId.has(r.challengeId) ? [{ challenge: byId.get(r.challengeId)!, winner: r.winner }] : []));
   const live = s.round && s.lineup[s.round.index];
-  if (live && s.round?.call) list.push({ challenge: live, winner: s.round.call.winner });
+  if (live && s.round?.call && !s.results.some((result) => result.challengeId === live.id)) {
+    list.push({ challenge: live, winner: s.round.call.winner });
+  }
   return list;
 }
 

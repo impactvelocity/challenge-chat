@@ -4,9 +4,6 @@ import { cn } from '@/lib/cn';
 import type { Side } from '@/scoreboard/model';
 import { RankShield, SIDE_NAME, SideDot, type Challenger } from './Boards';
 
-/** Mock scoring for challengers: a flat bonus when their idea gets played, plus the round's points if it beat the streamer. */
-const PLAYED_BONUS = 50;
-
 type PlayedChallenge = { c: Challenge; winner: Side | null };
 
 type Row = {
@@ -19,18 +16,26 @@ type Row = {
 };
 
 /** Who suggested this session's challenges, what each earned, and how they moved on the leaderboard. */
-export function challengerRecap(played: PlayedChallenge[], board: Challenger[]): Row[] {
+export function challengerRecap(
+  played: PlayedChallenge[],
+  board: Challenger[],
+  scoring: { selectedPoints: number; defeatedStreamerPoints: number },
+): Row[] {
   const earned = new Map<string, PlayedChallenge[]>();
   for (const p of played) earned.set(p.c.by, [...(earned.get(p.c.by) ?? []), p]);
 
   const points = (list: PlayedChallenge[]) =>
-    list.reduce((s, p) => s + (p.winner ? PLAYED_BONUS : 0) + (p.winner === 'chat' ? p.c.roundValue : 0), 0);
+    list.reduce((sum, challenge) =>
+      sum + scoring.selectedPoints + (challenge.winner === 'chat' ? scoring.defeatedStreamerPoints : 0), 0);
 
-  const rank = (list: { name: string; points: number }[]) => [...list].sort((a, b) => b.points - a.points).map((x) => x.name);
-  const before = rank(board);
-  const merged = new Map(board.map((c) => [c.name, c.points]));
-  for (const [name, list] of earned) merged.set(name, (merged.get(name) ?? 0) + points(list));
-  const after = rank([...merged].map(([name, pts]) => ({ name, points: pts })));
+  const rank = (list: { name: string; points: number }[]) => [...list]
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
+    .map((x) => x.name);
+  const before = rank(board.map((challenger) => ({
+    name: challenger.name,
+    points: Math.max(0, challenger.points - points(earned.get(challenger.name) ?? [])),
+  })));
+  const after = rank(board);
 
   return [...earned]
     .map(([name, list]) => {

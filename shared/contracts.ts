@@ -168,6 +168,8 @@ export interface LeaderboardEntry {
   userId: string;
   displayName: string;
   points: number;
+  played: number;
+  won: number;
 }
 
 export interface AppState {
