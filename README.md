@@ -76,7 +76,7 @@ npm run deploy
 # optional: npx wrangler secret put OPENAI_API_KEY
 ```
 
-After deployment, visit `/`, name the control room, and choose a password of at least 12 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
+After deployment, visit `/`, name the control room, and choose a password of at least 6 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
 
 The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. There is no Twitch OAuth or email provider. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
 

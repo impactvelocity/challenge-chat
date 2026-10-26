@@ -125,13 +125,13 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
           <h1 className="m-0 text-[28px] text-ink-strong">{auth.setup === 'ready' ? 'Create your control room' : auth.controlRoomName}</h1>
           <p className="mb-0 text-sm leading-relaxed text-ink-sub">
             {auth.setup === 'ready'
-              ? 'Name this deployment and choose the owner password stored securely in D1.'
+              ? 'Name your control room and secure your scoreboard with an owner password.'
               : 'Sign in as the owner. Moderators use their one-time invite link.'}
           </p>
         </div>
         {auth.setup === 'ready' && <TextField label="Control room name" value={controlRoomName} maxLength={60} placeholder="Friday Night Control Room" onChange={(event) => setControlRoomName(event.target.value)} required />}
-        <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-        {auth.setup === 'ready' && <TextField label="Confirm password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />}
+        <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} minLength={auth.setup === 'ready' ? 6 : undefined} onChange={(event) => setPassword(event.target.value)} required />
+        {auth.setup === 'ready' && <TextField label="Confirm password" type="password" value={confirmation} minLength={6} onChange={(event) => setConfirmation(event.target.value)} required />}
         {error && <p className="m-0 text-sm text-red-300" role="alert">{error}</p>}
         <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>
       </Panel>

@@ -135,7 +135,7 @@ async function recordLoginFailure(request: Request, env: AuthEnv): Promise<void>
 
 export async function setupOwner(env: AuthEnv, password: string, controlRoomName: string): Promise<string> {
   if (env.OWNER_PASSWORD) throw new AuthError("Owner password is managed by the Worker secret", 409);
-  if (password.length < 12 || password.length > 256) throw new AuthError("Use a password between 12 and 256 characters", 400);
+  if (password.length < 6) throw new AuthError("Use a password with at least 6 characters", 400);
   const name = controlRoomName.trim();
   if (name.length < 1 || name.length > 60) throw new AuthError("Control room name must be 1–60 characters", 400);
   const existing = await env.DB.prepare("SELECT 1 AS present FROM auth_owner_credentials WHERE id = 1").first<{ present: number }>();
@@ -151,11 +151,10 @@ export async function setupOwner(env: AuthEnv, password: string, controlRoomName
 }
 
 export async function loginOwner(request: Request, env: AuthEnv, password: string): Promise<string> {
-  if (password.length > 256) throw new AuthError("Invalid password", 401);
   await checkLoginLimit(request, env);
   let valid = false;
   if (env.OWNER_PASSWORD) {
-    if (env.OWNER_PASSWORD.length < 12 || env.OWNER_PASSWORD.length > 256) throw new AuthError("OWNER_PASSWORD must be 12–256 characters", 503);
+    if (env.OWNER_PASSWORD.length < 6) throw new AuthError("OWNER_PASSWORD must have at least 6 characters", 503);
     valid = await safeEqual(password, env.OWNER_PASSWORD);
   } else {
     const row = await env.DB.prepare("SELECT password_hash AS passwordHash, salt, iterations FROM auth_owner_credentials WHERE id = 1")

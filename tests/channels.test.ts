@@ -118,6 +118,11 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     const before = await (await call("/api/auth/session")).json() as any;
     expect(before).toMatchObject({ authenticated: false, setup: "ready", controlRoomName: "Control room" });
 
+    expect((await call("/api/auth/setup", {
+      method: "POST",
+      data: { password: "12345", controlRoomName: "Too Short" },
+    })).status).toBe(400);
+
     const setup = await call("/api/auth/setup", {
       method: "POST",
       data: {
