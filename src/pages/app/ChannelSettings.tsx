@@ -653,8 +653,7 @@ function Moderators({ channel }: { channel: Channel }) {
             <Screen className="relative overflow-hidden px-6 py-10 text-center sm:px-10 sm:py-12">
               <div className="pointer-events-none absolute inset-x-[18%] top-0 h-px bg-gradient-to-r from-transparent via-accent/70 to-transparent" aria-hidden="true" />
               <div className="relative mx-auto flex max-w-[520px] flex-col items-center">
-                <div className="relative mb-6 flex h-[74px] w-[92px] items-center justify-center" aria-hidden="true">
-                  <span className="absolute left-0 h-12 w-12 rounded-full border border-white/10 bg-white/[.035]" />
+                <div className="relative mb-6 flex h-[74px] w-[74px] items-center justify-center" aria-hidden="true">
                   <span className="relative grid h-16 w-16 place-items-center rounded-[20px] border border-accent/35 bg-accent/10 text-accent-text shadow-[0_0_28px_rgba(var(--ar),.12)]">
                     <UsersIcon size={29} />
                   </span>
