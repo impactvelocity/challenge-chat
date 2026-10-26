@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { TWITCH_LOGIN_MAX_LENGTH, TWITCH_LOGIN_MIN_LENGTH } from '../../../shared/channels';
 import { ArrowLeftIcon, PlusIcon } from '@/components/icons';
 import { Button, Sheet, TextField, useToasts } from '@/components/ui';
 import { slugify, type Channel } from '@/model';
@@ -121,10 +122,16 @@ function AddChannel({
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const twitchError = !twitchChannel
+    ? tried ? 'Add the channel chat plays from' : undefined
+    : twitchChannel.length < TWITCH_LOGIN_MIN_LENGTH
+      ? tried ? `Use at least ${TWITCH_LOGIN_MIN_LENGTH} characters` : undefined
+      : twitchChannel.length > TWITCH_LOGIN_MAX_LENGTH
+        ? `Twitch channel names can be at most ${TWITCH_LOGIN_MAX_LENGTH} characters` : undefined;
 
   const create = async () => {
     setTried(true);
-    if (!name.trim() || !twitchChannel) return;
+    if (!name.trim() || twitchError || twitchChannel.length < TWITCH_LOGIN_MIN_LENGTH) return;
     // Slug comes from the name; add a number if another channel already has it.
     const base = slugify(name) || 'channel';
     let slug = base;
@@ -158,10 +165,11 @@ function AddChannel({
         prefix={<span className="mono text-[13px] text-ink-faint">twitch.tv/</span>}
         placeholder="your_channel"
         value={twitchChannel}
-        maxLength={25}
+        maxLength={TWITCH_LOGIN_MAX_LENGTH}
         spellCheck={false}
         onChange={(event) => setTwitchChannel(cleanTwitchChannel(event.target.value))}
-        error={tried && !twitchChannel ? 'Add the channel chat plays from' : undefined}
+        description={`${TWITCH_LOGIN_MIN_LENGTH}–${TWITCH_LOGIN_MAX_LENGTH} characters · letters, numbers, or underscores`}
+        error={twitchError}
       />
 
       <div className="flex flex-col gap-3.5">

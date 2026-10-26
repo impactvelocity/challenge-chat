@@ -196,6 +196,22 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect((await state(b)).theme.primary).toBe(original);
   });
 
+  it("returns a readable error when a Twitch channel name is too long", async () => {
+    const response = await call("/api/channels", {
+      method: "POST",
+      cookie: ownerCookie,
+      data: {
+        displayName: "Long login",
+        slug: "long-login",
+        twitchLogin: "abcdefghijklmnopqrstuvwxyz",
+        primary: "#EE6039",
+        accent: "#39C7EE",
+      },
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Twitch channel names can be at most 25 characters" });
+  });
+
   it("keeps closed and unselected suggestions in the channel inbox for later rounds", async () => {
     const channel = await create("persistent-inbox");
     expect((await state(channel)).session.submissionsOpen).toBe(false);

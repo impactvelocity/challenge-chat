@@ -1,4 +1,5 @@
 import { ThemeSchema } from "../shared/contracts";
+import { ZodError } from "zod";
 import { FRAMEWORK_API_VERSION } from "../shared/framework";
 import { projectOverlayState } from "../shared/public-state";
 import {
@@ -438,7 +439,8 @@ export default {
       }
       return response;
     } catch (error) {
-      if (!(error instanceof AuthError)) console.error(error);
+      if (!(error instanceof AuthError) && !(error instanceof ZodError)) console.error(error);
+      if (error instanceof ZodError) return json({ error: error.issues[0]?.message || "Check the information and try again" }, 400);
       return json({ error: error instanceof Error ? error.message : "Unexpected server error" }, error instanceof AuthError ? error.status : 400);
     }
   },
