@@ -1,0 +1,2424 @@
+{
+ "url": "http://127.0.0.1:5176/theme",
+ "at": "2026-10-24T20:26:44.424Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 3,
+   "filled": [
+    1,
+    1,
+    1
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 2580,
+     "screens": 2.9,
+     "words": 272,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 2,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "✓"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 1,
+     "size": 84,
+     "vw": 5.8,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 124,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Theme workbench",
+     "words": 2,
+     "lines": 1,
+     "size": 84,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Theme workbench",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 84,
+      "vw": 5.8,
+      "font": "Cal Sans",
+      "weight": 700,
+      "tracking": 0.025,
+      "leading": 0.9,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.57,
+      "top": 124,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Foundations",
+      "words": 1,
+      "chars": 11,
+      "lines": 1,
+      "size": 34,
+      "vw": 2.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.2,
+      "top": 299,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "words": 4,
+      "chars": 30,
+      "lines": 2,
+      "size": 64.8,
+      "vw": 4.5,
+      "font": "Cal Sans",
+      "weight": 650,
+      "tracking": 0.025,
+      "leading": 0.97,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.53,
+      "top": 448,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Controls",
+      "words": 1,
+      "chars": 8,
+      "lines": 1,
+      "size": 34,
+      "vw": 2.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.25,
+      "top": 861,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Forms and overlays",
+      "words": 3,
+      "chars": 18,
+      "lines": 1,
+      "size": 34,
+      "vw": 2.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.3,
+      "top": 1300,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Status and feedback",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 34,
+      "vw": 2.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.25,
+      "top": 1836,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Cards and panels",
+      "words": 3,
+      "chars": 16,
+      "lines": 1,
+      "size": 34,
+      "vw": 2.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.23,
+      "top": 2174,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Waterslide five",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.27,
+      "top": 2339,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 8,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 3,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.79,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.21,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      65,
+      84
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 61,
+     "max": {
+      "size": 84,
+      "vw": 5.8,
+      "font": "Cal Sans",
+      "text": "Theme workbench"
+     },
+     "monoShare": 0.21,
+     "monoProseShare": 0.18,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "Theme workbench",
+      "#111416",
+      "#2b3134",
+      "#ee6039",
+      "#84eba8",
+      "Base UI toggle primitive"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.13,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.48
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.25
+      },
+      {
+       "color": "#f7f9f9",
+       "share": 0.06
+      },
+      {
+       "color": "#281008",
+       "share": 0.05
+      },
+      {
+       "color": "#f5f8f8",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#ffe0bf",
+      "hsl": {
+       "h": 31,
+       "s": 1,
+       "l": 0.87
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 12,
+     "inHero": 1,
+     "radius": 12,
+     "height": 50,
+     "withShadow": 12,
+     "withGradient": 11,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Control room"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 32,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "article.theme-sample.theme-type-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 15,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.dashboard.theme-workbench → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "header.theme-workbench__top → linear-gradient(rgb(37, 43, 46), rgb(25, 30, 32))",
+      "article.theme-sample.theme-type-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))",
+      "article.theme-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.theme-workbench__top 1440px",
+      "section.theme-workbench__intro 1345px",
+      "code 812px",
+      "div.lane-head 393px"
+     ],
+     "outlinedBoxes": 17,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 19,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 7,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 448
+      },
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 943
+      },
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 1918
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 76,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 2580,
+    "margins": {
+     "left": 48,
+     "right": 79
+    },
+    "sections": [
+     {
+      "sel": "section#foundations.theme-section",
+      "tag": "section",
+      "top": 243,
+      "height": 562,
+      "words": 55,
+      "media": 0,
+      "middle": 212,
+      "heading": {
+       "text": "Fast controls, calm decisions.",
+       "size": 65,
+       "tag": "h1"
+      },
+      "left": 48,
+      "right": 156,
+      "textLeft": 48,
+      "textRight": 156,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#controls.theme-section",
+      "tag": "section",
+      "top": 805,
+      "height": 439,
+      "words": 43,
+      "media": 0,
+      "middle": 114,
+      "heading": {
+       "text": "Controls",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 48,
+      "right": 131,
+      "textLeft": 48,
+      "textRight": 131,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#forms.theme-section",
+      "tag": "section",
+      "top": 1244,
+      "height": 536,
+      "words": 57,
+      "media": 0,
+      "middle": 60,
+      "heading": {
+       "text": "Forms and overlays",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 48,
+      "right": 73,
+      "textLeft": 48,
+      "textRight": 73,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#feedback.theme-section",
+      "tag": "section",
+      "top": 1780,
+      "height": 338,
+      "words": 35,
+      "media": 0,
+      "middle": 168,
+      "heading": {
+       "text": "Status and feedback",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 48,
+      "right": 118,
+      "textLeft": 48,
+      "textRight": 118,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#cards.theme-section",
+      "tag": "section",
+      "top": 2118,
+      "height": 428,
+      "words": 57,
+      "media": 0,
+      "middle": 51,
+      "heading": {
+       "text": "Cards and panels",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 48,
+      "right": 531,
+      "textLeft": 48,
+      "textRight": 531,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Theme workbench",
+      "size": 84,
+      "top": 124,
+      "firstScreen": true
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "size": 65,
+      "top": 448,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 66,
+      "n": 8
+     },
+     {
+      "x": 48,
+      "n": 6
+     },
+     {
+      "x": 524,
+      "n": 4
+     },
+     {
+      "x": 675,
+      "n": 2
+     },
+     {
+      "x": 902,
+      "n": 1
+     },
+     {
+      "x": 942,
+      "n": 1
+     },
+     {
+      "x": 976,
+      "n": 1
+     },
+     {
+      "x": 1052,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 24,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.11,
+    "voidBox": {
+     "x": 240,
+     "y": 780,
+     "w": 1200,
+     "h": 120
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": {
+     "h": 76
+    },
+    "canvas": {
+     "left": 48,
+     "right": 73
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 1,
+     "size": 84,
+     "vw": 5.8,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 124,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 13,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": [
+      {
+       "gap": 202,
+       "at": 1494,
+       "panel": "Confirmation modal"
+      },
+      {
+       "gap": 169,
+       "at": 1494,
+       "panel": "Dropdown"
+      },
+      {
+       "gap": 87,
+       "at": 1124,
+       "panel": "Toggle and selection"
+      },
+      {
+       "gap": 65,
+       "at": 2020,
+       "panel": "Tags and indicators"
+      }
+     ]
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 17,
+     "radii": [
+      [
+       12,
+       12
+      ],
+      [
+       8,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#ee6039 on #111416 (5.61:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 14,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 0,
+     "kpiMax": 16
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      65,
+      84
+     ]
+    },
+    "title": {
+     "text": "Theme workbench",
+     "size": 84,
+     "top": 124
+    },
+    "colourShare": 0.022
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 4,
+   "filled": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 3925,
+     "screens": 3.8,
+     "words": 269,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 2,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "✓"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 2,
+     "size": 48,
+     "vw": 6.3,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 139,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Theme workbench",
+     "words": 2,
+     "lines": 2,
+     "size": 48,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Theme workbench",
+      "words": 2,
+      "chars": 15,
+      "lines": 2,
+      "size": 48,
+      "vw": 6.3,
+      "font": "Cal Sans",
+      "weight": 700,
+      "tracking": 0.025,
+      "leading": 0.9,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.54,
+      "top": 139,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Foundations",
+      "words": 1,
+      "chars": 11,
+      "lines": 1,
+      "size": 34,
+      "vw": 4.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 324,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "words": 4,
+      "chars": 30,
+      "lines": 1,
+      "size": 38,
+      "vw": 4.9,
+      "font": "Cal Sans",
+      "weight": 650,
+      "tracking": 0.025,
+      "leading": 0.97,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 473,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Controls",
+      "words": 1,
+      "chars": 8,
+      "lines": 1,
+      "size": 34,
+      "vw": 4.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.47,
+      "top": 1202,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Forms and overlays",
+      "words": 3,
+      "chars": 18,
+      "lines": 1,
+      "size": 34,
+      "vw": 4.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.57,
+      "top": 1991,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Status and feedback",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 34,
+      "vw": 4.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.47,
+      "top": 2991,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Cards and panels",
+      "words": 3,
+      "chars": 16,
+      "lines": 1,
+      "size": 34,
+      "vw": 4.4,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.43,
+      "top": 3501,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Waterslide five",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.41,
+      "top": 3666,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 8,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 3,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.8,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.2,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      38,
+      48
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 35,
+     "max": {
+      "size": 48,
+      "vw": 6.3,
+      "font": "Cal Sans",
+      "text": "Theme workbench"
+     },
+     "monoShare": 0.2,
+     "monoProseShare": 0.17,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "#111416",
+      "#2b3134",
+      "#ee6039",
+      "#84eba8",
+      "Base UI toggle primitive",
+      "Audience mix"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.13,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.49
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.25
+      },
+      {
+       "color": "#f7f9f9",
+       "share": 0.06
+      },
+      {
+       "color": "#281008",
+       "share": 0.05
+      },
+      {
+       "color": "#f5f8f8",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#ffe0bf",
+      "hsl": {
+       "h": 31,
+       "s": 1,
+       "l": 0.87
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 12,
+     "inHero": 1,
+     "radius": 12,
+     "height": 50,
+     "withShadow": 12,
+     "withGradient": 11,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Control room"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 32,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "article.theme-sample.theme-type-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 15,
+     "scrims": 1,
+     "gradientSamples": [
+      "div.dashboard.theme-workbench → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "header.theme-workbench__top → linear-gradient(rgb(37, 43, 46), rgb(25, 30, 32))",
+      "article.theme-sample.theme-type-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))",
+      "article.theme-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.theme-workbench__top 768px",
+      "section.theme-workbench__intro 732px",
+      "code 686px",
+      "div.lane-head 313px"
+     ],
+     "outlinedBoxes": 17,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 19,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 7,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 789
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 76,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 3925,
+    "margins": {
+     "left": 18,
+     "right": 41
+    },
+    "sections": [
+     {
+      "sel": "section.theme-workbench__intro",
+      "tag": "section",
+      "top": 124,
+      "height": 144,
+      "words": 21,
+      "media": 0,
+      "middle": 190,
+      "heading": {
+       "text": "Theme workbench",
+       "size": 48,
+       "tag": "h1"
+      },
+      "left": 18,
+      "right": 41,
+      "textLeft": 18,
+      "textRight": 41,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#foundations.theme-section",
+      "tag": "section",
+      "top": 268,
+      "height": 878,
+      "words": 55,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Fast controls, calm decisions.",
+       "size": 38,
+       "tag": "h1"
+      },
+      "left": 18,
+      "right": 67,
+      "textLeft": 18,
+      "textRight": 67,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#controls.theme-section",
+      "tag": "section",
+      "top": 1146,
+      "height": 789,
+      "words": 43,
+      "media": 0,
+      "middle": 32,
+      "heading": {
+       "text": "Controls",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 18,
+      "right": 41,
+      "textLeft": 18,
+      "textRight": 73,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#forms.theme-section",
+      "tag": "section",
+      "top": 1935,
+      "height": 999,
+      "words": 57,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Forms and overlays",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 18,
+      "right": 41,
+      "textLeft": 18,
+      "textRight": 253,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#feedback.theme-section",
+      "tag": "section",
+      "top": 2935,
+      "height": 510,
+      "words": 35,
+      "media": 0,
+      "middle": 88,
+      "heading": {
+       "text": "Status and feedback",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 18,
+      "right": 53,
+      "textLeft": 18,
+      "textRight": 53,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#cards.theme-section",
+      "tag": "section",
+      "top": 3445,
+      "height": 452,
+      "words": 57,
+      "media": 0,
+      "middle": 51,
+      "heading": {
+       "text": "Cards and panels",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 18,
+      "right": 48,
+      "textLeft": 18,
+      "textRight": 48,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Theme workbench",
+      "size": 48,
+      "top": 139,
+      "firstScreen": true
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "size": 38,
+      "top": 473,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 36,
+      "n": 13
+     },
+     {
+      "x": 18,
+      "n": 6
+     },
+     {
+      "x": 414,
+      "n": 4
+     },
+     {
+      "x": 470,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 24,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": {
+     "h": 76
+    },
+    "canvas": {
+     "left": 18,
+     "right": 41
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 2,
+     "size": 48,
+     "vw": 6.3,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 139,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 13,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": [
+      {
+       "gap": 132,
+       "at": 1465,
+       "panel": "Toggle and selection"
+      },
+      {
+       "gap": 47,
+       "at": 3823,
+       "panel": "Waterslide five"
+      }
+     ]
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 17,
+     "radii": [
+      [
+       12,
+       12
+      ],
+      [
+       8,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#ee6039 on #111416 (5.61:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 14,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 0,
+     "kpiMax": 16
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      38,
+      48
+     ]
+    },
+    "title": {
+     "text": "Theme workbench",
+     "size": 48,
+     "top": 139
+    },
+    "colourShare": 0.045
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 7,
+   "filled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 5185,
+     "screens": 6.1,
+     "words": 269,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 2,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "✓"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 2,
+     "size": 48,
+     "vw": 12.3,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 99,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Theme workbench",
+     "words": 2,
+     "lines": 2,
+     "size": 48,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Theme workbench",
+      "words": 2,
+      "chars": 15,
+      "lines": 2,
+      "size": 48,
+      "vw": 12.3,
+      "font": "Cal Sans",
+      "weight": 700,
+      "tracking": 0.025,
+      "leading": 0.9,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.94,
+      "top": 99,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Foundations",
+      "words": 1,
+      "chars": 11,
+      "lines": 1,
+      "size": 34,
+      "vw": 8.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.75,
+      "top": 379,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "words": 4,
+      "chars": 30,
+      "lines": 2,
+      "size": 38,
+      "vw": 9.7,
+      "font": "Cal Sans",
+      "weight": 650,
+      "tracking": 0.025,
+      "leading": 0.97,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.82,
+      "top": 528,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Challenge title and panel heading",
+      "words": 5,
+      "chars": 33,
+      "lines": 2,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Cal Sans",
+      "weight": 550,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.82,
+      "top": 627,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Controls",
+      "words": 1,
+      "chars": 8,
+      "lines": 1,
+      "size": 34,
+      "vw": 8.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.93,
+      "top": 1704,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Forms and overlays",
+      "words": 3,
+      "chars": 18,
+      "lines": 1,
+      "size": 34,
+      "vw": 8.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.94,
+      "top": 2705,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "⌄",
+      "words": 1,
+      "chars": 1,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Cal Sans",
+      "weight": 500,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.04,
+      "top": 3485,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "Status and feedback",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 34,
+      "vw": 8.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.93,
+      "top": 3842,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Cards and panels",
+      "words": 3,
+      "chars": 16,
+      "lines": 1,
+      "size": 34,
+      "vw": 8.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.84,
+      "top": 4491,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Waterslide five",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Cal Sans",
+      "weight": 600,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.82,
+      "top": 4926,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 10,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 1,
+     "medianWords": 3,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.8,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.2,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      38,
+      48
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 46,
+     "max": {
+      "size": 48,
+      "vw": 12.3,
+      "font": "Cal Sans",
+      "text": "Theme workbench"
+     },
+     "monoShare": 0.2,
+     "monoProseShare": 0.17,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "#111416",
+      "#2b3134",
+      "#ee6039",
+      "#84eba8",
+      "Base UI toggle primitive",
+      "Audience mix"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.13,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.49
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.25
+      },
+      {
+       "color": "#f7f9f9",
+       "share": 0.06
+      },
+      {
+       "color": "#281008",
+       "share": 0.05
+      },
+      {
+       "color": "#f5f8f8",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#ffe0bf",
+      "hsl": {
+       "h": 31,
+       "s": 1,
+       "l": 0.87
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 12,
+     "inHero": 1,
+     "radius": 11,
+     "height": 48,
+     "withShadow": 12,
+     "withGradient": 11,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Control room"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 32,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "article.theme-sample.theme-type-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "article.theme-sample → rgba(255, 255, 255, 0.09) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.18) -2px -3px 0",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 26,
+     "scrims": 2,
+     "gradientSamples": [
+      "div.dashboard.theme-workbench → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "header.theme-workbench__top → linear-gradient(rgb(37, 43, 46), rgb(25, 30, 32))",
+      "article.theme-sample.theme-type-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))",
+      "article.theme-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.theme-workbench__top 390px",
+      "section.theme-workbench__intro 366px",
+      "code 320px",
+      "div.lane-head 320px"
+     ],
+     "outlinedBoxes": 17,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 19,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 7,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 955
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 69,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 5185,
+    "margins": {
+     "left": 12,
+     "right": 26
+    },
+    "sections": [
+     {
+      "sel": "section.theme-workbench__intro",
+      "tag": "section",
+      "top": 99,
+      "height": 224,
+      "words": 19,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 12,
+      "right": 30,
+      "textLeft": 12,
+      "textRight": 30,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#foundations.theme-section",
+      "tag": "section",
+      "top": 323,
+      "height": 1325,
+      "words": 55,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Fast controls, calm decisions.",
+       "size": 38,
+       "tag": "h1"
+      },
+      "left": 12,
+      "right": 38,
+      "textLeft": 12,
+      "textRight": 38,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#controls.theme-section",
+      "tag": "section",
+      "top": 1648,
+      "height": 1001,
+      "words": 43,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Controls",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 12,
+      "right": 14,
+      "textLeft": 12,
+      "textRight": 14,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#forms.theme-section",
+      "tag": "section",
+      "top": 2649,
+      "height": 1136,
+      "words": 57,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Forms and overlays",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 12,
+      "right": 35,
+      "textLeft": 12,
+      "textRight": 37,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#feedback.theme-section",
+      "tag": "section",
+      "top": 3786,
+      "height": 649,
+      "words": 35,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Status and feedback",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 12,
+      "right": 15,
+      "textLeft": 12,
+      "textRight": 15,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#cards.theme-section",
+      "tag": "section",
+      "top": 4435,
+      "height": 723,
+      "words": 57,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Cards and panels",
+       "size": 34,
+       "tag": "h2"
+      },
+      "left": 12,
+      "right": 26,
+      "textLeft": 12,
+      "textRight": 38,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Theme workbench",
+      "size": 48,
+      "top": 99,
+      "firstScreen": true
+     },
+     {
+      "text": "Fast controls, calm decisions.",
+      "size": 38,
+      "top": 528,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [
+     {
+      "text": "A focused inventory of the control room's type, co",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Foundations",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Core tokens and typographic hierarchy.",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Controls",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Primary actions, physical toggles, and dial states",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Forms and overlays",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Readable inputs, a tactile dropdown, and a decisiv",
+      "side": "left",
+      "px": 12
+     },
+     {
+      "text": "Status and feedback",
+      "side": "left",
+      "px": 12
+     }
+    ],
+    "edges": [
+     {
+      "x": 30,
+      "n": 17
+     },
+     {
+      "x": 12,
+      "n": 7
+     }
+    ],
+    "leftBlocks": 24,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": {
+     "h": 69
+    },
+    "canvas": {
+     "left": 12,
+     "right": 26
+    },
+    "hero": {
+     "text": "Theme workbench",
+     "words": 2,
+     "chars": 15,
+     "lines": 2,
+     "size": 48,
+     "vw": 12.3,
+     "font": "Cal Sans",
+     "weight": 700,
+     "tracking": 0.03,
+     "leading": 0.9,
+     "top": 99,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 13,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 17,
+     "radii": [
+      [
+       12,
+       12
+      ],
+      [
+       8,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#ee6039 on #111416 (5.61:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 14,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 0,
+     "kpiMax": 16
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      19,
+      21,
+      24,
+      30,
+      34,
+      38,
+      48
+     ]
+    },
+    "title": {
+     "text": "Theme workbench",
+     "size": 48,
+     "top": 99
+    },
+    "colourShare": 0.005
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "emoji",
+   "width": 1440,
+   "message": "Emoji in the page: ✓",
+   "fix": "Remove. Use words or real imagery.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "width": 1440,
+   "message": "15 gradient fill(s): div.dashboard.theme-workbench → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a | header.theme-workbench__top → linear-gradient(rgb(37, 43, 46), rgb(25, 30, 32)) | article.theme-sample.theme-type-sample → linear-gradient(145deg, rgb(43, 50, 53), rgb(32, 38, 41))",
+   "fix": "Use a flat colour or a real image. The only gradient allowed by default is a neutral scrim over a photo for legibility.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "text-shadow",
+   "width": 1440,
+   "message": "7 text-shadow(s).",
+   "fix": "Remove; fix legibility with a scrim or a different crop.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with gradient fill and shadow/glow.",
+   "fix": "Flat fill, one colour.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "many-h1",
+   "width": 1440,
+   "message": "2 h1 elements.",
+   "fix": "One h1 per page; section titles are h2.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "below-fold",
+   "width": 1440,
+   "message": "Only 2 of 13 blocks start on the first 1440px screen.",
+   "fix": "Every block the brief names shows its header and first rows on the first desktop screen: size the headline block to its question, cap long lists with \"View all\", and put time-sensitive blocks before long tables."
+  },
+  {
+   "level": "WARN",
+   "id": "panel-void",
+   "width": 1440,
+   "message": "4 card(s) hold a blank band inside: 202px in \"Confirmation modal\", 169px in \"Dropdown\", 87px in \"Toggle and selection\".",
+   "fix": "A card stretches to its neighbour only when it has content to fill. Keep a legend or a note directly under its chart (only an action or a total may sit at a stretched card's foot), let a short card keep its own height (align-items: start), and let a filtered block shrink to its rows."
+  },
+  {
+   "level": "WARN",
+   "id": "app-title-size",
+   "width": 1440,
+   "message": "The h1 is 84px (\"Theme workbench\").",
+   "fix": "An app screen is not a landing page: the title is 18-32px (20-24px on a phone).",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "edge-text",
+   "width": 390,
+   "message": "8 text block(s) sit 12–15px from the phone's edge: \"A focused inventory of the con\" (12px); \"Foundations\" (12px); \"Core tokens and typographic hi\" (12px)",
+   "fix": "The page margin is 16–20px on a phone; the header and the corner labels sit on it too."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/desktop-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/tablet-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/mobile-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-theme/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

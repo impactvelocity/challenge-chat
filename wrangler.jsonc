@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "challenge-chat",
+  "compatibility_date": "2026-10-23",
+  "main": "./worker/index.ts",
+  "upload_source_maps": true,
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "challenge-chat",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ASSETS_BUCKET",
+      "bucket_name": "challenge-chat-assets"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LIVE_SESSIONS",
+        "class_name": "LiveSessionCoordinator"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["LiveSessionCoordinator"]
+    }
+  ],
+  "vars": {
+    "APP_MODE": "demo",
+    "OPENAI_MODEL": "gpt-6-astra"
+  }
+}

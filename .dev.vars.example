@@ -1,0 +1,6 @@
+# Choose one owner setup path:
+OWNER_SETUP_TOKEN=replace-with-a-unique-random-setup-code
+OWNER_PASSWORD=password
+# Optional adapter-only bearer token:
+# INTEGRATION_TOKEN=replace-with-a-different-random-token
+# Optional: OPENAI_API_KEY=your-openai-api-key

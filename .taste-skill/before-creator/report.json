@@ -1,0 +1,1191 @@
+{
+ "url": "http://127.0.0.1:5176/",
+ "at": "2026-10-24T20:27:14.886Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    1
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 900,
+     "screens": 1,
+     "words": 21,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 0,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 2.9,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 316,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Control room",
+     "words": 2,
+     "lines": 1,
+     "size": 42,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Control room",
+      "words": 2,
+      "chars": 12,
+      "lines": 1,
+      "size": 42,
+      "vw": 2.9,
+      "font": "Cal Sans",
+      "weight": 800,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": true,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.27,
+      "top": 316,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.12,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      42
+     ],
+     "sizeCount": 2,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 49,
+     "max": {
+      "size": 42,
+      "vw": 2.9,
+      "font": "Cal Sans",
+      "text": "Control room"
+     },
+     "monoShare": 0.12,
+     "monoProseShare": 0.12,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "Owner password"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.06,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.84
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.1
+      },
+      {
+       "color": "#281008",
+       "share": 0.06
+      }
+     ],
+     "button": {
+      "bg": "#f47755",
+      "hsl": {
+       "h": 13,
+       "s": 0.88,
+       "l": 0.65
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 1,
+     "inHero": 1,
+     "radius": 5,
+     "height": 42,
+     "withShadow": 1,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Sign in"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 3,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "form.admin-login → rgba(255, 255, 255, 0.08) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.32) 10px 16px 3",
+      "input → rgba(0, 0, 0, 0.58) 0px 3px 7px 0px inset, rgba(255, 255, 255, 0.035) 0px 1px 0p",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 2,
+     "scrims": 0,
+     "gradientSamples": [
+      "main.boot.auth-screen → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "form.admin-login → linear-gradient(145deg, rgb(44, 51, 54), rgb(32, 37, 40) 68%)"
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 1,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": null,
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 900,
+    "margins": {
+     "left": 523,
+     "right": 523
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Control room",
+      "size": 42,
+      "top": 316,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 523,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.33,
+    "voidBox": {
+     "x": 0,
+     "y": 600,
+     "w": 1440,
+     "h": 300
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 523,
+     "right": 523
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 2.9,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 316,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 1,
+     "radii": [
+      [
+       12,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 1,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      42
+     ]
+    },
+    "title": {
+     "text": "Control room",
+     "size": 42,
+     "top": 316
+    },
+    "colourShare": 0.013
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    1
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1024,
+     "screens": 1,
+     "words": 21,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 0,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 5.5,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 378,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Control room",
+     "words": 2,
+     "lines": 1,
+     "size": 42,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Control room",
+      "words": 2,
+      "chars": 12,
+      "lines": 1,
+      "size": 42,
+      "vw": 5.5,
+      "font": "Cal Sans",
+      "weight": 800,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": true,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.51,
+      "top": 378,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.12,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      42
+     ],
+     "sizeCount": 2,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 49,
+     "max": {
+      "size": 42,
+      "vw": 5.5,
+      "font": "Cal Sans",
+      "text": "Control room"
+     },
+     "monoShare": 0.12,
+     "monoProseShare": 0.12,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "Owner password"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.06,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.84
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.1
+      },
+      {
+       "color": "#281008",
+       "share": 0.06
+      }
+     ],
+     "button": {
+      "bg": "#f47755",
+      "hsl": {
+       "h": 13,
+       "s": 0.88,
+       "l": 0.65
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 1,
+     "inHero": 1,
+     "radius": 5,
+     "height": 42,
+     "withShadow": 1,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Sign in"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 3,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "form.admin-login → rgba(255, 255, 255, 0.08) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.32) 10px 16px 3",
+      "input → rgba(0, 0, 0, 0.58) 0px 3px 7px 0px inset, rgba(255, 255, 255, 0.035) 0px 1px 0p",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 3,
+     "scrims": 0,
+     "gradientSamples": [
+      "main.boot.auth-screen → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "form.admin-login → linear-gradient(145deg, rgb(44, 51, 54), rgb(32, 37, 40) 68%)",
+      "button.button.button--acid → linear-gradient(rgb(244, 119, 85), rgb(238, 96, 57) 52%, rgb(197, 69, 38))"
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 1,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": null,
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1024,
+    "margins": {
+     "left": 187,
+     "right": 187
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Control room",
+      "size": 42,
+      "top": 378,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 187,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 187,
+     "right": 187
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 5.5,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 378,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 1,
+     "radii": [
+      [
+       12,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 1,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      42
+     ]
+    },
+    "title": {
+     "text": "Control room",
+     "size": 42,
+     "top": 378
+    },
+    "colourShare": 0.019
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    1
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 844,
+     "screens": 1,
+     "words": 21,
+     "img": 0,
+     "video": 0,
+     "canvas": 0,
+     "svg": 0,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 10.8,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 275,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Control room",
+     "words": 2,
+     "lines": 1,
+     "size": 42,
+     "font": "Cal Sans"
+    },
+    "headings": [
+     {
+      "text": "Control room",
+      "words": 2,
+      "chars": 12,
+      "lines": 1,
+      "size": 42,
+      "vw": 10.8,
+      "font": "Cal Sans",
+      "weight": 800,
+      "tracking": 0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": true,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.75,
+      "top": 275,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Cal Sans",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "Geist Mono Variable",
+       "share": 0.12,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      16,
+      42
+     ],
+     "sizeCount": 2,
+     "notLoaded": [],
+     "body": {
+      "font": "Cal Sans",
+      "size": 16,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 37,
+     "max": {
+      "size": 42,
+      "vw": 10.8,
+      "font": "Cal Sans",
+      "text": "Control room"
+     },
+     "monoShare": 0.12,
+     "monoProseShare": 0.12,
+     "monoFamilies": [
+      "Geist Mono Variable"
+     ],
+     "monoSamples": [
+      "Owner password"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.06,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#0d0e10",
+     "bodyBgHsl": {
+      "h": 220,
+      "s": 0.1,
+      "l": 0.06
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#111416",
+       "top": 0,
+       "hsl": {
+        "h": 204,
+        "s": 0.13,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#dbe1e2",
+       "share": 0.84
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.1
+      },
+      {
+       "color": "#281008",
+       "share": 0.06
+      }
+     ],
+     "button": {
+      "bg": "#f47755",
+      "hsl": {
+       "h": 13,
+       "s": 0.88,
+       "l": 0.65
+      },
+      "fg": "#281008"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 1,
+     "inHero": 1,
+     "radius": 5,
+     "height": 42,
+     "withShadow": 1,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Sign in"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 3,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "form.admin-login → rgba(255, 255, 255, 0.08) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.32) 10px 16px 3",
+      "input → rgba(0, 0, 0, 0.58) 0px 3px 7px 0px inset, rgba(255, 255, 255, 0.035) 0px 1px 0p",
+      "button.button.button--acid → rgba(255, 216, 200, 0.82) 0px 2px 3px 0px inset, rgba(255, 192, 147, 0.62) 0px -"
+     ],
+     "gradients": 3,
+     "scrims": 0,
+     "gradientSamples": [
+      "main.boot.auth-screen → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a",
+      "form.admin-login → linear-gradient(145deg, rgb(44, 51, 54), rgb(32, 37, 40) 68%)",
+      "button.button.button--acid → linear-gradient(rgb(244, 119, 85), rgb(238, 96, 57) 52%, rgb(197, 69, 38))"
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 1,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": null,
+    "fontsLoaded": [
+     "cal sans",
+     "geist mono variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 844,
+    "margins": {
+     "left": 49,
+     "right": 49
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Control room",
+      "size": 42,
+      "top": 275,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 49,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#0d0e10",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 49,
+     "right": 49
+    },
+    "hero": {
+     "text": "Control room",
+     "words": 2,
+     "chars": 12,
+     "lines": 1,
+     "size": 42,
+     "vw": 10.8,
+     "font": "Cal Sans",
+     "weight": 800,
+     "tracking": 0.03,
+     "leading": 1.2,
+     "top": 275,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 1,
+     "firstScreen": 1,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 1,
+     "radii": [
+      [
+       12,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 1,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 0,
+     "tabularShare": null,
+     "kpiMax": null
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      16,
+      42
+     ]
+    },
+    "title": {
+     "text": "Control room",
+     "size": 42,
+     "top": 275
+    },
+    "colourShare": 0.037
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "width": 1440,
+   "message": "2 gradient fill(s): main.boot.auth-screen → radial-gradient(circle at 74% -10%, rgba(238, 96, 57, 0.11), rgba(0, 0, 0, 0) 544px), radial-gradient(circle a | form.admin-login → linear-gradient(145deg, rgb(44, 51, 54), rgb(32, 37, 40) 68%)",
+   "fix": "Use a flat colour or a real image. The only gradient allowed by default is a neutral scrim over a photo for legibility.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "text-shadow",
+   "width": 1440,
+   "message": "1 text-shadow(s).",
+   "fix": "Remove; fix legibility with a scrim or a different crop.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with gradient fill and shadow/glow.",
+   "fix": "Flat fill, one colour.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "hero-void",
+   "width": 1440,
+   "message": "33% of the first screen is one empty block (1440×300px at 0,600).",
+   "fix": "Place the void on purpose or fill it: move the picture, the film or one fact into it, grow the headline to meet it, or shrink the screen to its content. A void reads as placed only when something closes it on the far side and it is the screen's one rest."
+  },
+  {
+   "level": "WARN",
+   "id": "app-title-size",
+   "width": 1440,
+   "message": "The h1 is 42px (\"Control room\").",
+   "fix": "An app screen is not a landing page: the title is 18-32px (20-24px on a phone).",
+   "alsoAt": [
+    768,
+    390
+   ]
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/desktop-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/tablet-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/mobile-fold.jpg",
+   "pages": [
+    "/Users/dylanjones/apps/codex-twitch/.taste-skill/before-creator/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}
