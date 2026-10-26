@@ -328,7 +328,6 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
             <Well className="flex flex-wrap items-center gap-4 px-5 py-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="text-[13px] leading-relaxed text-ink-soft">Removes {channel.displayName} with its rounds, challenges and moderator access. Its OBS links will stop working.</span>
-                <span className="hint">You need at least one other board to continue.</span>
               </div>
               <Button size="sm" variant="ghost" className="text-[#ff8a95]" onClick={() => setDeleteOpen(true)} disabled={deleting}>
                 {deleting ? 'Deleting…' : 'Delete board'}
