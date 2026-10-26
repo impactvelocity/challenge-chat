@@ -710,7 +710,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                                 </>
                               ) : leftovers.length > 0 ? (
                                 <>
-                                  Ready — <b className="text-ink-strong">{leftovers.length}</b> unpicked will go to the inbox, marked as seen
+                                  Ready — <b className="text-ink-strong">{leftovers.length}</b> unpicked will go back to the inbox
                                 </>
                               ) : (
                                 <>
