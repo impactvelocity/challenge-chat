@@ -23,6 +23,7 @@ import {
   Screen,
   SegmentedControl,
   Select,
+  Sheet,
   Stepper,
   TextField,
   ThemeSwitcher,
@@ -577,6 +578,10 @@ function Moderators({ channel }: { channel: Channel }) {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [fresh, setFresh] = useState<Invite | null>(null);
   const [removing, setRemoving] = useState<Moderator | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const now = useNow();
 
   const asModerator = (mod: ModSummary): Moderator => ({
@@ -594,17 +599,33 @@ function Moderators({ channel }: { channel: Channel }) {
     void api.mods(true).then(({ mods: available }) => setMods(available.filter((mod) => mod.channelIds.includes(channel.id)).map(asModerator))).catch(() => undefined);
   }, [channel.id]);
 
+  const openInvite = () => {
+    setInviteName('');
+    setInviteError(null);
+    setInviteOpen(true);
+  };
+
   const invite = async () => {
-    const displayName = window.prompt('Moderator display name')?.trim();
-    if (!displayName) return;
+    const displayName = inviteName.trim();
+    if (!displayName) {
+      setInviteError('Enter a name for this moderator');
+      return;
+    }
+    setInviteBusy(true);
+    setInviteError(null);
     try {
       const created = await api.createMod(displayName);
       const inv = { id: created.mod.id, url: created.link, expires: new Date(created.expiresAt).getTime() };
       setInvites((list) => [inv, ...list]);
       setFresh(inv);
       setMods((list) => [...list, asModerator(created.mod)]);
+      setInviteOpen(false);
+      setInviteName('');
+      toast.add({ title: 'Invite link ready', description: `Send it to ${created.mod.displayName}` });
     } catch (caught) {
-      toast.add({ title: 'Could not create moderator', description: caught instanceof Error ? caught.message : 'Try again' });
+      setInviteError(caught instanceof Error ? caught.message : 'Could not create this invite');
+    } finally {
+      setInviteBusy(false);
     }
   };
 
@@ -617,7 +638,7 @@ function Moderators({ channel }: { channel: Channel }) {
         title="Moderators"
         actions={
           (mods.length > 0 || pending.length > 0) && (
-            <Button variant="accent" size="sm" onClick={() => void invite()}>
+            <Button variant="accent" size="sm" onClick={openInvite}>
               <PlusIcon size={16} />
               Invite moderator
             </Button>
@@ -665,7 +686,7 @@ function Moderators({ channel }: { channel: Channel }) {
                 <p className="mt-3 mb-0 max-w-[48ch] text-sm leading-relaxed text-pretty text-ink-sub">
                   Invite someone you trust to review challenges, run votes, and keep rounds moving while you play.
                 </p>
-                <Button variant="accent" className="mt-6" onClick={() => void invite()}>
+                <Button variant="accent" className="mt-6" onClick={openInvite}>
                   <PlusIcon size={16} />
                   Invite moderator
                 </Button>
@@ -769,6 +790,44 @@ function Moderators({ channel }: { channel: Channel }) {
           ))}
         </Well>
       </div>
+
+      <Sheet
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        title={<span className="text-[20px] leading-tight font-bold">Invite moderator</span>}
+        footer={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setInviteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="accent" disabled={inviteBusy || !inviteName.trim()} onClick={() => void invite()}>
+              {inviteBusy ? 'Creating invite…' : 'Create invite'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-5 pt-2">
+          <p className="m-0 text-sm leading-relaxed text-pretty text-ink-sub">
+            Give them a recognizable name. You’ll get a private, one-use link to send directly to them.
+          </p>
+          <TextField
+            label="Moderator name"
+            placeholder="Alex"
+            value={inviteName}
+            maxLength={60}
+            autoFocus
+            error={inviteError ?? undefined}
+            onChange={(event) => {
+              setInviteName(event.target.value);
+              if (inviteError) setInviteError(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !inviteBusy) void invite();
+            }}
+          />
+          <span className="hint">Invite links work once and expire after 15 minutes.</span>
+        </div>
+      </Sheet>
 
       <ConfirmDialog
         open={!!removing}
