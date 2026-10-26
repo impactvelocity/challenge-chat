@@ -360,7 +360,7 @@ export async function createBallot(
   const statements: D1PreparedStatement[] = [
     db
       .prepare("INSERT INTO ballots (id, session_id, status, ends_at, winners_count, votes_per_viewer) VALUES (?, ?, 'open', ?, ?, ?)")
-      .bind(id, scope.sessionId, endsAt, winnersCount, rules.voting.votesPerViewer),
+      .bind(id, scope.sessionId, endsAt, winnersCount, winnersCount),
     db.prepare("UPDATE sessions SET phase = 'voting', submissions_open = 0 WHERE id = ?").bind(scope.sessionId),
     db.prepare(
       `UPDATE challenges SET status = 'inbox', needs_review = CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END,
@@ -404,15 +404,13 @@ export async function castVote(db: D1Database, scope: ChannelScope, ballotId: st
   const safeVoter = voterId.slice(0, 100);
   const existing = await db.prepare("SELECT 1 AS present FROM votes WHERE ballot_id = ? AND voter_id = ? AND challenge_id = ?")
     .bind(ballotId, safeVoter, challengeId).first();
-  if (existing) {
-    await db.prepare("DELETE FROM votes WHERE ballot_id = ? AND voter_id = ? AND challenge_id = ?")
-      .bind(ballotId, safeVoter, challengeId).run();
-    return;
-  }
+  // Chat retries and repeated commands are idempotent. Once cast, a vote cannot
+  // be toggled off; a viewer may only add another distinct choice.
+  if (existing) return;
   const count = await db.prepare("SELECT COUNT(*) AS total FROM votes WHERE ballot_id = ? AND voter_id = ?")
     .bind(ballotId, safeVoter).first<{ total: number }>();
   if (Number(count?.total ?? 0) >= entry.votes_per_viewer) throw new Error(`Each viewer can choose up to ${entry.votes_per_viewer} challenges`);
-  await db.prepare("INSERT INTO votes (ballot_id, voter_id, challenge_id) VALUES (?, ?, ?)")
+  await db.prepare("INSERT OR IGNORE INTO votes (ballot_id, voter_id, challenge_id) VALUES (?, ?, ?)")
     .bind(ballotId, safeVoter, challengeId).run();
 }
 

@@ -21,7 +21,7 @@ export const ScoringRulesSchema = z.object({
   voting: z.object({
     shortlistSize: z.number().int().min(2).max(10),
     winnersCount: z.number().int().min(1).max(10),
-    votesPerViewer: z.number().int().min(1).max(5),
+    votesPerViewer: z.number().int().min(1).max(10),
     durationSeconds: z.number().int().min(10).max(900),
   }),
   streaks: z.object({
@@ -44,7 +44,7 @@ export type ScoringPreset = (typeof scoringPresetValues)[number];
 
 const shared = {
   schemaVersion: 1 as const,
-  voting: { shortlistSize: 10, winnersCount: 5, votesPerViewer: 3, durationSeconds: 600 },
+  voting: { shortlistSize: 10, winnersCount: 5, votesPerViewer: 5, durationSeconds: 600 },
   streaks: { trackChallengeWins: true, trackSessionWins: true, trackCleanSweeps: true, showOnOverlay: true },
 };
 
@@ -68,5 +68,6 @@ export function scoringPreset(preset: Exclude<ScoringPreset, "custom">): Scoring
 
 export function parseScoringRules(value: unknown, fallback: ScoringRules = ARCADE_SCORING_RULES): ScoringRules {
   const parsed = ScoringRulesSchema.safeParse(value);
-  return parsed.success ? parsed.data : structuredClone(fallback);
+  const rules = parsed.success ? parsed.data : structuredClone(fallback);
+  return { ...rules, voting: { ...rules.voting, votesPerViewer: rules.voting.winnersCount } };
 }

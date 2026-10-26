@@ -185,7 +185,7 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
       beats: rules?.challenger.defeatedStreamerPoints ?? PRESETS.arcade.beats,
       shortlist: rules?.voting.shortlistSize ?? 10,
       picks: rules?.voting.winnersCount ?? 5,
-      votes: rules?.voting.votesPerViewer ?? 3,
+      votes: rules?.voting.winnersCount ?? 5,
       vote: String(rules?.voting.durationSeconds ?? 600),
       streaks: rules?.streaks.showOnOverlay ?? true,
       autoNext: session.autoNext,
@@ -238,7 +238,7 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
             cleanSweep: { enabled: form.sweep, multiplierPercent: form.sweepPct, label: form.sweepLabel },
           },
           challenger: { selectedPoints: form.selected, defeatedStreamerPoints: form.beats },
-          voting: { shortlistSize: form.shortlist, winnersCount: form.picks, votesPerViewer: form.votes, durationSeconds: Number(form.vote) },
+          voting: { shortlistSize: form.shortlist, winnersCount: form.picks, votesPerViewer: form.picks, durationSeconds: Number(form.vote) },
           streaks: { ...channel.scoringRules.streaks, showOnOverlay: form.streaks },
         }));
       }
@@ -495,19 +495,19 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
       {part === 'voting' && (
         <>
           <Section title="Voting Rules">
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Stepper
                 label="Shortlist size"
                 value={form.shortlist}
                 min={2}
                 max={10}
-                onValueChange={(v) => setForm((f) => ({ ...f, shortlist: v, picks: Math.min(f.picks, v - 1), votes: Math.min(f.votes, v) }))}
+                onValueChange={(v) => setForm((f) => {
+                  const picks = Math.min(f.picks, v - 1);
+                  return { ...f, shortlist: v, picks, votes: picks };
+                })}
               />
-              <Rule hint="Ties keep shortlist order">
-                <Stepper label="Challenges selected" value={form.picks} min={1} max={form.shortlist - 1} onValueChange={(v) => set('picks', v)} />
-              </Rule>
-              <Rule hint="One vote per challenge">
-                <Stepper label="Votes per viewer" value={form.votes} min={1} max={Math.min(5, form.shortlist)} onValueChange={(v) => set('votes', v)} />
+              <Rule hint={`Each viewer gets ${form.picks} distinct vote${form.picks === 1 ? '' : 's'}; cast votes cannot be removed`}>
+                <Stepper label="Challenges selected" value={form.picks} min={1} max={form.shortlist - 1} onValueChange={(v) => setForm((f) => ({ ...f, picks: v, votes: v }))} />
               </Rule>
             </div>
             <Rule hint="You can still change it when you open each vote">

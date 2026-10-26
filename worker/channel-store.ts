@@ -87,7 +87,8 @@ export async function deleteChannel(db: D1Database, channelId: string): Promise<
 }
 
 export async function updateScoringRules(db: D1Database, channelId: string, input: unknown): Promise<ScoringRules> {
-  const rules = ScoringRulesSchema.parse(input);
+  const parsed = ScoringRulesSchema.parse(input);
+  const rules = { ...parsed, voting: { ...parsed.voting, votesPerViewer: parsed.voting.winnersCount } };
   const serialized = JSON.stringify(rules);
   await db.batch([
     db.prepare("UPDATE channels SET scoring_rules_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(serialized, channelId),

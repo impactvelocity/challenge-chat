@@ -22,8 +22,9 @@ const state: PublicOverlayState = {
   channel: { id: 'channel-1', displayName: 'Night Shift', broadcasterLogin: 'nightshift' },
   session: {
     id: 'session-1', streamerScore: 200, chatScore: 100, phase: 'live', winner: null,
-    sweepWinner: null, sweepLabel: null, scoringRules: ARCADE_SCORING_RULES,
+    submissionsOpen: false, sweepWinner: null, sweepLabel: null, scoringRules: ARCADE_SCORING_RULES,
   },
+  submissions: [],
   activeRound: { challengeId: challenge.id, startedAt: '2026-10-25T20:00:00.000Z', endsAt: '2026-10-25T20:01:30.000Z', attemptsUsed: 1 },
   activeChallenge: challenge,
   ballot: null,
@@ -73,5 +74,29 @@ describe('live overlay source mapping', () => {
   it('falls back to the first registered theme for unknown stored ids', () => {
     const snapshot = mapPublicOverlayState({ ...state, overlayConfig: { ...state.overlayConfig, theme: 'missing-theme' } });
     expect(snapshot.display.theme).toBe('broadcast');
+  });
+
+  it('maps live challenge submissions for the OBS ideas scene', () => {
+    const createdAt = '2026-10-25T20:00:10.000Z';
+    const submission = { ...challenge, createdAt };
+    const snapshot = mapPublicOverlayState({
+      ...state,
+      session: { ...state.session, phase: 'collecting', submissionsOpen: true },
+      submissions: [submission],
+      activeChallenge: null,
+      activeRound: null,
+      lineup: [],
+    });
+
+    expect(snapshot.session?.stage).toBe('open');
+    expect(snapshot.session?.submissions).toEqual({
+      open: true,
+      clock: null,
+      command: '!challenge',
+      ideas: [{
+        at: Date.parse(createdAt),
+        challenge: expect.objectContaining({ id: challenge.id, title: challenge.title, by: challenge.authorLogin }),
+      }],
+    });
   });
 });

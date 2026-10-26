@@ -1,5 +1,5 @@
 import type { LiveRunProjection } from '../../../shared/framework';
-import type { PublicChallenge, PublicOverlayState } from '../../../shared/public-state';
+import type { PublicChallenge, PublicOverlayState, PublicSubmission } from '../../../shared/public-state';
 import { channelPath } from '@/framework/channel';
 import type {
   Challenge,
@@ -25,7 +25,7 @@ const PHASE_STAGE: Record<PublicOverlayState['session']['phase'], Stage> = {
 
 const at = (value: string | null | undefined): number | null => value ? new Date(value).getTime() : null;
 
-function challenge(value: PublicChallenge): Challenge {
+function challenge(value: PublicChallenge | PublicSubmission): Challenge {
   return {
     id: value.id,
     title: value.title,
@@ -102,9 +102,9 @@ export function mapPublicOverlayState(
     stage,
     startedAt: ballotEnd ? ballotEnd - state.session.scoringRules.voting.durationSeconds * 1000 : serverTime,
     submissions: {
-      open: stage === 'open',
+      open: stage === 'open' && state.session.submissionsOpen,
       clock: null,
-      ideas: [],
+      ideas: state.submissions.map((item) => ({ challenge: challenge(item), at: at(item.createdAt) ?? serverTime })),
       command: '!challenge',
     },
     ballot: state.ballot && ballotEnd ? {

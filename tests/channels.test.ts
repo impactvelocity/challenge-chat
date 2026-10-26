@@ -219,7 +219,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(await response.json()).toEqual({ error: "Twitch channel names can be at most 25 characters" });
   });
 
-  it("persists voting defaults and updates an untouched collecting round", async () => {
+  it("ties each viewer's vote limit to the number of selected challenges", async () => {
     const channel = await create("voting-rules");
     const current = await state(channel);
     const voting = { shortlistSize: 6, winnersCount: 2, votesPerViewer: 4, durationSeconds: 180 };
@@ -233,10 +233,30 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     });
 
     expect(response.status).toBe(200);
-    expect((await response.json() as any).rules.voting).toEqual(voting);
+    expect((await response.json() as any).rules.voting).toEqual({ ...voting, votesPerViewer: voting.winnersCount });
     const refreshed = await state(channel);
-    expect(refreshed.channel.scoringRules.voting).toEqual(voting);
-    expect(refreshed.session.scoringRules.voting).toEqual(voting);
+    expect(refreshed.channel.scoringRules.voting).toEqual({ ...voting, votesPerViewer: voting.winnersCount });
+    expect(refreshed.session.scoringRules.voting).toEqual({ ...voting, votesPerViewer: voting.winnersCount });
+  });
+
+  it("broadcasts new submissions to the OBS projection", async () => {
+    const channel = await create("overlay-ideas");
+    const sessionId = (await state(channel)).session.id;
+    const messages: any[] = [];
+    live.getByName(sessionId);
+    live.instances.get(sessionId)!.sockets.push({
+      deserializeAttachment: () => ({ role: "overlay" }),
+      send: (message: string) => messages.push(JSON.parse(message)),
+      close: () => {},
+    });
+
+    const challengeId = await suggestion(channel, "Puzzle", "Alice");
+    const update = messages.filter((message) => message.type === "overlay.changed").at(-1);
+    expect(update?.state.session.submissionsOpen).toBe(true);
+    expect(update?.state.submissions).toEqual([
+      expect.objectContaining({ id: challengeId, title: "Five Kills In 90 Seconds", authorLogin: "alice" }),
+    ]);
+    expect(JSON.stringify(update?.state.submissions)).not.toContain("pending_review");
   });
 
   it("deletes a board and its scoped data, then returns the next board", async () => {
@@ -413,7 +433,42 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(opened.status).toBe(201);
     const { id } = await opened.json() as any;
     expect((await state(channel)).ballot.winnersCount).toBe(1);
+    expect((await state(channel)).ballot.votesPerViewer).toBe(1);
     expect((await (await call(`/api/ballots/${id}/close`, { method: "POST", channel, cookie: ownerCookie })).json() as any).winnerIds).toHaveLength(1);
+  });
+
+  it("accepts Top X distinct votes per viewer and never toggles a vote off", async () => {
+    const channel = await create("fixed-votes");
+    const ids = await Promise.all([
+      suggestion(channel, "Puzzle", "Alice"),
+      suggestion(channel, "Puzzle", "Bob"),
+      suggestion(channel, "Puzzle", "Carol"),
+      suggestion(channel, "Puzzle", "Dana"),
+    ]);
+    for (const id of ids) await approve(channel, id);
+    const opened = await call("/api/ballots", {
+      method: "POST",
+      channel,
+      cookie: ownerCookie,
+      data: { challengeIds: ids, durationSeconds: 60, winnersCount: 3 },
+    });
+    const { id: ballotId } = await opened.json() as any;
+
+    for (const challengeId of ids.slice(0, 3)) {
+      expect((await call(`/api/ballots/${ballotId}/vote`, {
+        method: "POST", channel, cookie: ownerCookie, data: { challengeId, voterId: "viewer-1" },
+      })).status).toBe(200);
+    }
+    expect((await call(`/api/ballots/${ballotId}/vote`, {
+      method: "POST", channel, cookie: ownerCookie, data: { challengeId: ids[0], voterId: "viewer-1" },
+    })).status).toBe(200);
+    expect((await call(`/api/ballots/${ballotId}/vote`, {
+      method: "POST", channel, cookie: ownerCookie, data: { challengeId: ids[3], voterId: "viewer-1" },
+    })).status).toBe(400);
+
+    const ballot = (await state(channel)).ballot;
+    expect(ballot.votesPerViewer).toBe(3);
+    expect(ballot.entries.map((entry: any) => entry.votes)).toEqual([1, 1, 1, 0]);
   });
 
   it("applies custom voting, scoring, sweep labels, challenger awards, lifecycle history, and streaks", async () => {

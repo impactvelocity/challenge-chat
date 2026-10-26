@@ -6,9 +6,15 @@ export type PublicChallenge = Pick<
   "id" | "title" | "objective" | "authorLogin" | "maxAttempts" | "roundValue" | "status" | "difficulty" | "timeLimitSeconds" | "game"
 >;
 
+export type PublicSubmission = Pick<
+  Challenge,
+  "id" | "title" | "objective" | "authorLogin" | "maxAttempts" | "roundValue" | "difficulty" | "timeLimitSeconds" | "game" | "createdAt"
+>;
+
 export interface PublicOverlayState {
   channel: Pick<AppState["channel"], "id" | "displayName" | "broadcasterLogin">;
-  session: Pick<AppState["session"], "id" | "streamerScore" | "chatScore" | "phase" | "winner" | "sweepWinner" | "sweepLabel" | "scoringRules">;
+  session: Pick<AppState["session"], "id" | "streamerScore" | "chatScore" | "phase" | "submissionsOpen" | "winner" | "sweepWinner" | "sweepLabel" | "scoringRules">;
+  submissions: PublicSubmission[];
   activeRound: Pick<ActiveRound, "challengeId" | "startedAt" | "endsAt" | "attemptsUsed"> | null;
   activeChallenge: PublicChallenge | null;
   ballot: { endsAt: string; winnersCount: number; votesPerViewer: number; entries: { challenge: PublicChallenge; votes: number }[] } | null;
@@ -28,6 +34,11 @@ function publicChallenge(challenge: Challenge): PublicChallenge {
   return { id, title, objective, authorLogin, maxAttempts, roundValue, status, difficulty, timeLimitSeconds, game };
 }
 
+function publicSubmission(challenge: Challenge): PublicSubmission {
+  const { id, title, objective, authorLogin, maxAttempts, roundValue, difficulty, timeLimitSeconds, game, createdAt } = challenge;
+  return { id, title, objective, authorLogin, maxAttempts, roundValue, difficulty, timeLimitSeconds, game, createdAt };
+}
+
 export function projectOverlayState(state: AppState): PublicOverlayState {
   const active = state.challenges.find((challenge) => challenge.id === state.activeRound?.challengeId);
   const recentResult = [...state.challenges].reverse().find((challenge) =>
@@ -45,11 +56,16 @@ export function projectOverlayState(state: AppState): PublicOverlayState {
       streamerScore: state.session.streamerScore,
       chatScore: state.session.chatScore,
       phase: state.session.phase,
+      submissionsOpen: state.session.submissionsOpen,
       winner: state.session.winner,
       sweepWinner: state.session.sweepWinner,
       sweepLabel: state.session.sweepLabel,
       scoringRules: state.session.scoringRules,
     },
+    submissions: [...state.challenges]
+      .filter((challenge) => challenge.status === "pending_review" || challenge.status === "approved")
+      .reverse()
+      .map(publicSubmission),
     activeRound: state.activeRound
       ? {
           challengeId: state.activeRound.challengeId,
