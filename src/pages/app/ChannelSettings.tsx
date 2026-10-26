@@ -649,7 +649,7 @@ function Moderators({ channel }: { channel: Channel }) {
         )}
 
         {mods.length === 0 && pending.length === 0 ? (
-          <div className="pt-8 pb-2">
+          <div className="pt-3 pb-2">
             <Screen className="relative overflow-hidden px-6 py-10 text-center sm:px-10 sm:py-12">
               <div className="pointer-events-none absolute inset-x-[18%] top-0 h-px bg-gradient-to-r from-transparent via-accent/70 to-transparent" aria-hidden="true" />
               <div className="relative mx-auto flex max-w-[520px] flex-col items-center">
