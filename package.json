@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:production": "tsc -b && CLOUDFLARE_ENV=production vite build",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy -c dist/worker/wrangler.json && wrangler d1 migrations apply DB --remote -c dist/worker/wrangler.json",
+    "deploy:production": "npm run build:production && wrangler d1 migrations apply DB --remote -c dist/worker/wrangler.json && wrangler deploy -c dist/worker/wrangler.json",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
@@ -50,6 +52,8 @@
     "@types/node": "^26.6.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/react-test-renderer": "^19.3.0",
+    "react-test-renderer": "^19.3.1",
     "tailwindcss": "^4.3.3",
     "typescript": "latest",
     "vite": "latest",
@@ -66,6 +70,15 @@
       },
       "INTEGRATION_TOKEN": {
         "description": "Optional separate bearer token for server-side game adapters publishing normalized events. Do not put it in browser code or overlay URLs."
+      },
+      "TWITCH_CLIENT_ID": {
+        "description": "Client ID from the self-hosted creator's Twitch developer application."
+      },
+      "TWITCH_CLIENT_SECRET": {
+        "description": "Secret from the Twitch developer application. Store only as a Worker secret."
+      },
+      "TWITCH_EVENTSUB_SECRET": {
+        "description": "Random 10-100 character secret used to verify Twitch EventSub webhook signatures."
       }
     }
   }

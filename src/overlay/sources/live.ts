@@ -1,5 +1,6 @@
 import type { LiveRunProjection } from '../../../shared/framework';
 import type { PublicChallenge, PublicOverlayState, PublicSubmission } from '../../../shared/public-state';
+import type { TwitchMoment } from '../../../shared/twitch';
 import { channelPath } from '@/framework/channel';
 import type {
   Challenge,
@@ -73,7 +74,7 @@ export function mapPublicOverlayState(
   const recentIndex = recent ? Math.max(0, lineup.findIndex((item) => item.id === recent.id)) : -1;
   const startsAt = at(state.activeRound?.startedAt) ?? at(liveRun?.startsAt) ?? serverTime;
   const endsAt = at(state.activeRound?.endsAt) ?? at(liveRun?.endsAt);
-  const pausedAt = at(liveRun?.pausedAt);
+  const pausedAt = state.activeRound ? at(state.activeRound.pausedAt) : at(liveRun?.pausedAt);
 
   let round: Session['round'] = null;
   if (active && state.activeRound) {
@@ -140,6 +141,7 @@ export function mapPublicOverlayState(
       points: { streamer: entry.streamerScore, chat: entry.chatScore },
       wins: { streamer: entry.streamerChallengeWins, chat: entry.chatChallengeWins },
     })),
+    challengerPointsIncludeCurrentSession: true,
     challengers: state.leaderboard.map((entry) => ({
       id: entry.userId,
       name: entry.displayName,
@@ -163,7 +165,8 @@ export function mapPublicOverlayState(
 
 type SocketUpdate =
   | { type: 'overlay.changed'; revision: number; state: PublicOverlayState }
-  | { type: 'framework.run.changed'; projection: LiveRunProjection };
+  | { type: 'framework.run.changed'; projection: LiveRunProjection }
+  | { type: 'integration.moment'; source: 'twitch'; moment: TwitchMoment };
 
 export function createLiveSource(): OverlaySource {
   return {
@@ -183,7 +186,9 @@ export function createLiveSource(): OverlaySource {
       const bootstrap = async () => {
         const response = await fetch(channelPath('/api/public/state'));
         if (!response.ok) throw new Error('Could not load overlay state');
-        state = await response.json() as PublicOverlayState;
+        const next = await response.json() as PublicOverlayState;
+        if (state?.session.id !== next.session.id) run = null;
+        state = next;
         revision += 1;
         publish();
       };
@@ -196,10 +201,19 @@ export function createLiveSource(): OverlaySource {
         socket.addEventListener('open', () => {
           retry = 0;
           sink.status('live');
+          void bootstrap().catch(() => socket?.close());
         });
         socket.addEventListener('message', (message) => {
           if (message.data === 'pong') return;
           const update = JSON.parse(String(message.data)) as SocketUpdate;
+          if (update.type === 'integration.moment') {
+            sink.event({
+              type: 'custom',
+              name: update.moment.kind,
+              data: { user: update.moment.user, amount: update.moment.amount },
+            });
+            return;
+          }
           if (update.type === 'overlay.changed') {
             state = update.state;
             revision = Math.max(revision + 1, update.revision);
@@ -212,6 +226,7 @@ export function createLiveSource(): OverlaySource {
         socket.addEventListener('close', () => {
           if (disposed) return;
           retry += 1;
+          run = null;
           sink.status('reconnecting');
           retryTimer = window.setTimeout(connect, Math.min(1_000 * 2 ** retry, 15_000));
         });

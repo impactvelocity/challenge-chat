@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fallbackParseChallenge, generateRoundName, parseChallenge } from "./parser";
 
 describe("fallbackParseChallenge", () => {
+  it("rejects punctuation/case-only repeats without another model call", async () => {
+    const run = vi.fn(async () => ({ choices: [{ message: { content: JSON.stringify({ name: "PISTOLS AT DAWN!!!" }) } }] }));
+    const result = await generateRoundName([{ title: "Pistol Purist", objective: "Use pistols", game: "Fortnite" }], "hype", { AI: { run } }, ["Pistols at Dawn", "Pistol Purist Gauntlet"]);
+    expect(result.name).toBe("Pistol Purist Gauntlet Remix");
+    expect(run).toHaveBeenCalledTimes(1);
+  });
   it("extracts the core primitives from a messy viewer request", () => {
     const result = fallbackParseChallenge(
       "Do five kickflips in a row on the waterslide, three attempts, in 90 seconds",

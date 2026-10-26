@@ -3,7 +3,7 @@ import { DEFAULT_THEME } from '../../../shared/contracts';
 import { ARCADE_SCORING_RULES } from '../../../shared/scoring';
 import type { PublicOverlayState } from '../../../shared/public-state';
 import { FRAMEWORK_API_VERSION, type LiveRunProjection } from '../../../shared/framework';
-import { deriveRound } from '../sdk/derive';
+import { deriveBoard, deriveRound } from '../sdk/derive';
 import { mapPublicOverlayState } from './live';
 
 const challenge = {
@@ -57,6 +57,36 @@ const run: LiveRunProjection = {
 };
 
 describe('live overlay source mapping', () => {
+  it('does not call a round with skipped challenges a clean sweep', () => {
+    const lineup = [
+      { ...challenge, id: 'won', status: 'chat_won' as const },
+      { ...challenge, id: 'skip-1', status: 'skipped' as const },
+      { ...challenge, id: 'skip-2', status: 'skipped' as const },
+    ];
+    const snapshot = mapPublicOverlayState({ ...state, session: { ...state.session, phase: 'complete' }, activeRound: null, activeChallenge: null, lineup });
+    expect(deriveRound(snapshot).sweep).toBeNull();
+  });
+  it('does not add current awards a second time to authoritative live standings', () => {
+    const snapshot = mapPublicOverlayState(state, run);
+    const board = deriveBoard(snapshot, deriveRound(snapshot));
+    expect(board.leaderboard.find((item) => item.id === 'viewer')?.points).toBe(100);
+  });
+
+  it('does not count an already-persisted completed round twice in season history', () => {
+    const snapshot = mapPublicOverlayState({ ...state, activeRound: null, activeChallenge: null, session: { ...state.session, phase: 'complete' } });
+    snapshot.history = [{ id: state.session.id, name: 'Completed', endedAt: Date.now(), points: {streamer: 200, chat: 100}, wins: {streamer: 2, chat: 1} }];
+    const board = deriveBoard(snapshot, deriveRound(snapshot));
+    expect(board.history).toHaveLength(1);
+    expect(board.totals.streamer.points).toBe(200);
+    expect(board.totals.chat.points).toBe(100);
+  });
+  it('uses the persisted creator pause time rather than an unrelated framework run', () => {
+    const pausedAt = '2026-10-25T20:00:20.000Z';
+    const snapshot = mapPublicOverlayState({ ...state, activeRound: { ...state.activeRound!, pausedAt } }, run, 8, Date.parse('2026-10-25T20:00:50.000Z'));
+    expect(snapshot.session?.round?.clock.pausedAt).toBe(Date.parse(pausedAt));
+    const resumed = mapPublicOverlayState({ ...state, activeRound: { ...state.activeRound!, pausedAt: null } }, { ...run, pausedAt }, 9);
+    expect(resumed.session?.round?.clock.pausedAt).toBeNull();
+  });
   it('maps public state, clocks, framework metrics, and persisted display config', () => {
     const snapshot = mapPublicOverlayState(state, run, 7, Date.parse(run.serverTime));
     expect(snapshot.session?.stage).toBe('live');

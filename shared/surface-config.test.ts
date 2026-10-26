@@ -5,7 +5,7 @@ describe("surface configuration", () => {
   it("accepts primitive per-theme settings and rejects executable or nested values", () => {
     expect(OverlayConfigSchema.parse({
       theme: "creator-neon",
-      settings: { "creator-neon": { glow: true, intensity: 0.8, accent: "#ff4d2e", image: null } },
+      settings: { "creator-neon": { glow: true, intensity: 0.8, streamerColor: "#ff4d2e", sponsorLabel: null } },
       elements: { scoreboard: true, "hype-meter": false },
     }).theme).toBe("creator-neon");
 
@@ -15,6 +15,8 @@ describe("surface configuration", () => {
       elements: {},
     })).toThrow();
     expect(() => OverlayConfigSchema.parse({ theme: "../theme", settings: {}, elements: {} })).toThrow();
+    expect(() => OverlayConfigSchema.parse({ theme: "broadcast", settings: { broadcast: { "Not-Safe": true } }, elements: {} })).toThrow();
+    expect(() => OverlayConfigSchema.parse({ theme: "broadcast", settings: { broadcast: { constructor: true } }, elements: {} })).toThrow();
   });
 
   it("bounds session timing and Twitch login values", () => {

@@ -1,6 +1,7 @@
 import { ThemeSchema } from "../shared/contracts";
 import { ZodError } from "zod";
 import { FRAMEWORK_API_VERSION } from "../shared/framework";
+import { isBoardToolName, type BoardToolName } from "../shared/board-tools";
 import { projectOverlayState } from "../shared/public-state";
 import {
   castVote,
@@ -13,12 +14,14 @@ import {
   incrementAttempt,
   insertChallenge,
   loadState,
+  markInboxSeen,
   readSessionSettings,
   resetDemo,
   resolveChallenge,
   selectedChallengeSummaries,
   setChallengeStatus,
   setSubmissionsOpen,
+  setChallengePaused,
   startChallenge,
   updateChallengeDraft,
   updateOverlayConfig,
@@ -46,10 +49,37 @@ import {
   type AuthEnv,
 } from "./auth";
 import { DEFAULT_CHANNEL_ID, type ChannelScope } from "../shared/channels";
-import { channelScope, createChannel, deleteChannel, integrationStatus, listChannels, requireChannelAccess, rotateIntegrationToken, updateChannel, updateScoringRules } from "./channel-store";
+import {
+  channelScope,
+  createApiToken,
+  createChannel,
+  deleteChannel,
+  hasBoardApiToken,
+  integrationStatus,
+  listApiTokens,
+  listChannels,
+  requireChannelAccess,
+  revokeApiToken,
+  rotateIntegrationToken,
+  updateChannel,
+  updateScoringRules,
+} from "./channel-store";
+import { executeBoardTool } from "./board-api";
+import { handleMcpRequest } from "./mcp";
+import { boardOpenApi } from "./board-openapi";
+import type { TwitchFact } from "../integrations/twitch/eventsub";
+import {
+  disconnectTwitch,
+  finishTwitchOAuth,
+  handleTwitchWebhook,
+  saveTwitchConfiguration,
+  startTwitchOAuth,
+  twitchStatus,
+  type TwitchEnv,
+} from "./twitch";
 export { LiveSessionCoordinator } from "./live-session";
 
-interface Env extends AuthEnv {
+interface Env extends AuthEnv, TwitchEnv {
   ASSETS_BUCKET: R2Bucket;
   LIVE_SESSIONS: DurableObjectNamespace;
   APP_MODE?: "demo" | "live";
@@ -117,6 +147,7 @@ async function handleFrameworkApi(request: Request, env: Env): Promise<Response 
       metrics: ["counter", "gauge", "flag"],
       rules: ["compare", "timer_expired", "all", "any"],
       surfaces: ["control-panel", "overlay"],
+      boardApi: { rest: "/api/v1/board", openapi: "/api/v1/board/openapi.json", mcp: "/mcp", webmcp: true },
     });
   }
 
@@ -151,13 +182,126 @@ async function handleFrameworkApi(request: Request, env: Env): Promise<Response 
   return json({ error: "Not found" }, 404);
 }
 
+function mutatedJson(data: unknown, status = 200): Response {
+  const headers = new Headers(jsonHeaders);
+  headers.set("X-Challenge-Mutated", "1");
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+async function handleBoardApi(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const isMcp = path === "/mcp";
+  const isBoardApi = path === "/api/v1/board" || path.startsWith("/api/v1/board/");
+  if (!isMcp && !isBoardApi) return null;
+
+  if (request.method === "GET" && path === "/api/v1/board/openapi.json") {
+    return json(boardOpenApi(url.origin, requestedChannel(request)));
+  }
+
+  await ensureDemoData(env.DB);
+  const actor = isMcp ? null : await getActor(request, env);
+  if (!actor && !await hasBoardApiToken(request, env.DB, requestedChannel(request))) {
+    return new Response(JSON.stringify({ error: "A board API token is required" }), {
+      status: 401,
+      headers: { ...jsonHeaders, "WWW-Authenticate": 'Bearer realm="Challenge.chat board API"' },
+    });
+  }
+  if (actor && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    const denied = requireSameOrigin(request);
+    if (denied) return denied;
+  }
+  const scope = await resolveScope(request, env, actor ?? undefined);
+  const execute = (name: BoardToolName, input: unknown) => executeBoardTool(name, input, env, scope, liveSession(env, scope));
+
+  if (isMcp) {
+    let mutated = false;
+    const response = await handleMcpRequest(request, async (name, input) => {
+      const result = await execute(name, input);
+      mutated ||= result.mutated;
+      return result;
+    });
+    if (!mutated) return response;
+    const headers = new Headers(response.headers);
+    headers.set("X-Challenge-Mutated", "1");
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
+
+  let tool: BoardToolName | null = null;
+  let input: unknown = {};
+  if (request.method === "GET" && path === "/api/v1/board") tool = "get_board";
+  else if (request.method === "PATCH" && path === "/api/v1/board/submissions") { tool = "set_submissions"; input = await body(request); }
+  else if (request.method === "PATCH" && path === "/api/v1/board/session/name") { tool = "set_round_name"; input = await body(request); }
+  else if (request.method === "PATCH") {
+    const challengeMatch = path.match(/^\/api\/v1\/board\/challenges\/([^/]+)$/);
+    if (challengeMatch) { tool = "update_challenge"; input = { challengeId: decodeURIComponent(challengeMatch[1]), updates: await body(request) }; }
+  } else if (request.method === "POST" && path === "/api/v1/board/challenges") { tool = "create_challenge"; input = await body(request); }
+  else if (request.method === "POST") {
+    const challengeMatch = path.match(/^\/api\/v1\/board\/challenges\/([^/]+)\/(status|start|attempt|resolve|pause)$/);
+    const ballotMatch = path.match(/^\/api\/v1\/board\/ballots\/([^/]+)\/close$/);
+    const namedTool = path.match(/^\/api\/v1\/board\/tools\/([^/]+)$/)?.[1];
+    if (challengeMatch) {
+      const action = challengeMatch[2];
+      tool = action === "status" ? "set_challenge_status" : action === "start" ? "start_challenge" : action === "attempt" ? "adjust_attempts" : action === "pause" ? "set_challenge_paused" : "resolve_challenge";
+      input = { ...(action === "start" ? {} : await body<Record<string, unknown>>(request)), challengeId: decodeURIComponent(challengeMatch[1]) };
+    } else if (ballotMatch) {
+      tool = "close_vote";
+      input = { ballotId: decodeURIComponent(ballotMatch[1]) };
+    } else if (path === "/api/v1/board/ballots") { tool = "open_vote"; input = await body(request); }
+    else if (path === "/api/v1/board/session/complete") tool = "complete_round";
+    else if (path === "/api/v1/board/session/cancel") tool = "cancel_round";
+    else if (path === "/api/v1/board/session/name/generate") tool = "generate_round_name";
+    else if (path === "/api/v1/board/sessions") tool = "start_next_round";
+    else if (namedTool && isBoardToolName(decodeURIComponent(namedTool))) { tool = decodeURIComponent(namedTool) as BoardToolName; input = await body(request); }
+  }
+  if (!tool) return json({ error: "Not found" }, 404);
+  const result = await execute(tool, input);
+  return result.mutated ? mutatedJson(result.data, tool === "create_challenge" || tool === "open_vote" || tool === "start_next_round" ? 201 : 200) : json(result.data);
+}
+
 async function publishLegacyState(request: Request, env: Env): Promise<void> {
   const scope = await resolveScope(request, env);
+  await publishLegacyScope(env, scope);
+}
+
+async function publishLegacyScope(env: Env, scope: ChannelScope): Promise<void> {
   const state = await loadState(env.DB, scope, env.APP_MODE ?? "demo");
   await liveSession(env, scope).fetch("https://coordinator/internal/legacy-state", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(state),
+  });
+}
+
+async function processTwitchFact(env: Env, channelId: string, fact: TwitchFact, messageId: string): Promise<void> {
+  const scope = await channelScope(env.DB, channelId);
+  if (fact.type === "challenge.submitted") {
+    await executeBoardTool("create_challenge", {
+      text: fact.text,
+      game: "Twitch chat",
+      authorDisplayName: fact.author.displayName,
+      authorId: fact.author.id,
+      authorLogin: fact.author.login,
+    }, env, scope, liveSession(env, scope));
+    await publishLegacyScope(env, scope);
+    return;
+  }
+  if (fact.type === "ballot.vote") {
+    const state = await loadState(env.DB, scope, env.APP_MODE ?? "demo");
+    const entry = state.ballot?.entries[fact.position - 1];
+    if (!state.ballot || !entry) return;
+    await castVote(env.DB, scope, state.ballot.id, fact.voterId, entry.challenge.id);
+    await publishLegacyScope(env, scope);
+    return;
+  }
+  await liveSession(env, scope).fetch("https://coordinator/internal/integration-moment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source: "twitch",
+      idempotencyKey: `twitch:${messageId}`,
+      moment: fact.moment,
+    }),
   });
 }
 
@@ -276,6 +420,14 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const token = await integrationStatus(env.DB, scope.channelId);
     return json({ token, environmentFallback: !token && scope.channelId === DEFAULT_CHANNEL_ID && Boolean(env.INTEGRATION_TOKEN) });
   }
+  if (method === "GET" && path === "/api/channel/api-tokens") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    return json({ tokens: await listApiTokens(env.DB, scope.channelId) });
+  }
+  if (method === "GET" && path === "/api/twitch/status") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    return json(await twitchStatus(request, env, scope.channelId));
+  }
 
   if (method === "GET" && path === "/api/auth/mods") {
     if (actor?.role !== "owner") return json({ error: "Owner access required" }, actor ? 403 : 401);
@@ -324,6 +476,21 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   const denied = requireSameOrigin(request);
   if (denied) return denied;
 
+  if (path === "/api/twitch/connect" && method === "POST") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    return json(await startTwitchOAuth(request, env, scope.channelId));
+  }
+  if (path === "/api/twitch/configuration" && method === "PUT") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    await saveTwitchConfiguration(env, await body(request));
+    return json(await twitchStatus(request, env, scope.channelId));
+  }
+  if (path === "/api/twitch/connection" && method === "DELETE") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    await disconnectTwitch(request, env, scope.channelId);
+    return json({ ok: true });
+  }
+
   if (path === "/api/channel" && method === "PATCH") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
     await updateChannel(env.DB, scope.channelId, await body(request));
@@ -359,8 +526,13 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     await setSubmissionsOpen(env.DB, scope, input.open);
     return json({ ok: true });
   }
+  if (path === "/api/inbox/seen" && method === "POST") {
+    await markInboxSeen(env.DB, scope);
+    return json({ ok: true });
+  }
   if (path === "/api/sessions" && method === "POST") {
-    return json({ id: await createNextSession(env.DB, scope) }, 201);
+    const result = await executeBoardTool("start_next_round", {}, env, scope, liveSession(env, scope));
+    return json(result.data, 201);
   }
   if (path === "/api/channel/mods" && method === "POST") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
@@ -370,6 +542,16 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (path === "/api/channel/integration" && method === "POST") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
     return json(await rotateIntegrationToken(env.DB, scope.channelId), 201);
+  }
+  if (path === "/api/channel/api-tokens" && method === "POST") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    return json(await createApiToken(env.DB, scope.channelId, await body(request)), 201);
+  }
+  const apiTokenMatch = path.match(/^\/api\/channel\/api-tokens\/([^/]+)$/);
+  if (apiTokenMatch && method === "DELETE") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    await revokeApiToken(env.DB, scope.channelId, decodeURIComponent(apiTokenMatch[1]));
+    return json({ ok: true });
   }
   if (method === "POST" && path === "/api/demo/reset") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
@@ -419,6 +601,14 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (method === "POST" && attemptId) {
     const input = await body<{ delta?: number }>(request);
     await incrementAttempt(env.DB, scope, attemptId, input.delta === -1 ? -1 : 1);
+    return json({ ok: true });
+  }
+
+  const pauseId = idFrom(path, "pause");
+  if (method === "POST" && pauseId) {
+    const input = await body<{ paused?: boolean }>(request);
+    if (typeof input.paused !== "boolean") throw new Error("paused is required");
+    await setChallengePaused(env.DB, scope, pauseId, input.paused);
     return json({ ok: true });
   }
 
@@ -478,12 +668,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
 
   if (method === "POST" && path === "/api/session/name/generate") {
-    const settings = await readSessionSettings(env.DB, scope);
-    const challenges = await selectedChallengeSummaries(env.DB, scope);
-    if (!challenges.length) throw new Error("Lock in the lineup before naming the round");
-    const generated = await generateRoundName(challenges, settings.aiRoundNameTone, env);
-    await updateSessionName(env.DB, scope, generated.name);
-    return json(generated);
+    const result = await executeBoardTool("generate_round_name", {}, env, scope);
+    return json(result.data);
   }
 
   if (method === "PATCH" && path === "/api/theme") {
@@ -512,10 +698,22 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
     try {
+      const url = new URL(request.url);
+      if (request.method === "GET" && url.pathname === "/api/twitch/oauth/callback") {
+        return await finishTwitchOAuth(request, env);
+      }
+      if (request.method === "POST" && url.pathname === "/api/twitch/eventsub") {
+        return await handleTwitchWebhook(request, env, context, (channelId, fact, messageId) => processTwitchFact(env, channelId, fact, messageId));
+      }
+      const boardResponse = await handleBoardApi(request, env);
+      if (boardResponse) {
+        if (boardResponse.headers.get("X-Challenge-Mutated") === "1") context.waitUntil(publishLegacyState(request, env));
+        return boardResponse;
+      }
       const frameworkResponse = await handleFrameworkApi(request, env);
       if (frameworkResponse) return frameworkResponse;
       const response = await handleApi(request, env);
-      if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !new URL(request.url).pathname.startsWith("/api/auth/")) {
+      if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !url.pathname.startsWith("/api/auth/") && !url.pathname.startsWith("/api/twitch/")) {
         const path = new URL(request.url).pathname;
         if (path !== "/api/channels" && !(request.method === "DELETE" && path === "/api/channel")) context.waitUntil(publishLegacyState(request, env));
       }

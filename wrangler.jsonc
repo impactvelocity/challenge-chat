@@ -6,7 +6,7 @@
   "upload_source_maps": true,
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/mcp"]
   },
   "d1_databases": [
     {
@@ -43,5 +43,32 @@
     "APP_MODE": "demo",
     "AI_GATEWAY_ID": "default",
     "AI_MODEL": "openai/gpt-4.1-mini"
+  },
+  "env": {
+    "production": {
+      "name": "challenge-chat",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "challenge-chat",
+          "database_id": "a9fc9e61-50a4-4c26-b6ac-702307c68f97",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "ASSETS_BUCKET", "bucket_name": "challenge-chat-assets" }
+      ],
+      "ai": { "binding": "AI", "remote": true },
+      "durable_objects": {
+        "bindings": [
+          { "name": "LIVE_SESSIONS", "class_name": "LiveSessionCoordinator" }
+        ]
+      },
+      "vars": {
+        "APP_MODE": "live",
+        "AI_GATEWAY_ID": "default",
+        "AI_MODEL": "openai/gpt-4.1-mini"
+      }
+    }
   }
 }

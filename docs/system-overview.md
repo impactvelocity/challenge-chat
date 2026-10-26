@@ -156,6 +156,7 @@ One Challenge.chat deployment can host multiple channels. Each channel has its o
 - Branding
 - Moderators
 - Integration token
+- Named board API/MCP tokens
 - Challenger leaderboard
 - OBS links
 
@@ -186,12 +187,15 @@ Moderators can review suggestions, manage ballots, run challenges, and resolve o
 - Moderator membership
 - Branding and themes
 - Integration tokens
+- Board API/MCP tokens
 - Challenger award configuration
 - Other deployment-level settings
 
 Authorization is enforced inside the Worker. Hiding an owner-only button in React is never treated as a security boundary.
 
 The public overlays do not require authentication, but they receive only a restricted projection of the state. Passwords, session data, invite tokens, integration credentials, and administrative fields are never included.
+
+The owner creates and revokes named board tokens from Settings. Each token is scoped to one Channel and can operate only the bounded board API; it cannot manage owners, moderators, appearance, scoring, AI settings, or credentials. The same credential is accepted by the REST Board API and the remote MCP endpoint. WebMCP uses the signed-in owner's cookie-authenticated API path instead, so a bearer credential is never embedded in the browser bundle.
 
 ## Realtime architecture
 

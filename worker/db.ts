@@ -47,6 +47,7 @@ interface ChallengeRow {
   verification_mode: Challenge["verificationMode"];
   warnings_json: string;
   needs_review: number;
+  seen: number;
   status: Challenge["status"];
   round_value: number;
   parser_status: Challenge["parserStatus"];
@@ -87,6 +88,7 @@ interface RoundRow {
   status: "active" | "resolved";
   started_at: string;
   ends_at: string | null;
+  paused_at: string | null;
   attempts_used: number;
   result: "streamer_won" | "chat_won" | null;
 }
@@ -129,6 +131,7 @@ function rowToChallenge(row: ChallengeRow, voteCount = 0): Challenge {
     verificationMode: row.verification_mode,
     warnings: parseJson(row.warnings_json, []),
     needsReview: Boolean(row.needs_review),
+    seen: Boolean(row.seen),
     status: row.status,
     roundValue: row.round_value,
     parserStatus: row.parser_status,
@@ -149,6 +152,7 @@ function challengeInsertStatement(
     status: Challenge["status"];
     parserStatus: Challenge["parserStatus"];
     roundValue?: number;
+    seen?: boolean;
   },
 ) {
   return db
@@ -157,8 +161,8 @@ function challengeInsertStatement(
         id, channel_id, session_id, author_id, author_login, author_display_name,
         raw_text, title, objective, game, context_json, targets_json, constraints_json,
         time_limit_seconds, max_attempts, failure_conditions_json, difficulty,
-        verification_mode, warnings_json, needs_review, status, round_value, parser_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        verification_mode, warnings_json, needs_review, seen, status, round_value, parser_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       options.id,
@@ -181,6 +185,7 @@ function challengeInsertStatement(
       draft.verificationMode,
       JSON.stringify(draft.warnings),
       draft.needsReview ? 1 : 0,
+      options.seen === false ? 0 : 1,
       options.status,
       options.roundValue ?? 1,
       options.parserStatus,
@@ -225,6 +230,7 @@ export async function insertChallenge(
     authorDisplayName: author.displayName,
     status: goesToInbox ? "inbox" : "pending_review",
     parserStatus,
+    seen: !goesToInbox,
   }).run();
   return id;
 }
@@ -237,7 +243,8 @@ export async function updateChallengeDraft(db: D1Database, scope: ChannelScope, 
         raw_text = ?, title = ?, objective = ?, game = ?, context_json = ?, targets_json = ?,
         constraints_json = ?, time_limit_seconds = ?, max_attempts = ?, failure_conditions_json = ?,
         difficulty = ?, verification_mode = ?, warnings_json = ?, needs_review = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND session_id = ? AND status = 'pending_review'`,
+       WHERE id = ? AND session_id = ? AND status IN ('pending_review', 'approved')
+       AND EXISTS (SELECT 1 FROM sessions WHERE id = challenges.session_id AND status = 'live' AND phase = 'collecting')`,
     )
     .bind(
       parsed.rawText,
@@ -279,7 +286,7 @@ export async function setChallengeStatus(
   const belongsToCurrentSession = challenge.session_id === scope.sessionId;
   const isRoundCandidate = ["pending_review", "approved", "queued"].includes(challenge.status);
   const allowed =
-    (status === "pending_review" && challenge.status === "inbox" && isCollecting)
+    (status === "pending_review" && isCollecting && (challenge.status === "inbox" || (belongsToCurrentSession && isRoundCandidate)))
     || (status === "inbox" && ((belongsToCurrentSession && isRoundCandidate && isCollecting) || challenge.status === "rejected"))
     || (status === "rejected" && (challenge.status === "inbox" || (belongsToCurrentSession && isRoundCandidate && isCollecting)))
     || ((status === "approved" || status === "queued") && belongsToCurrentSession && isRoundCandidate && isCollecting);
@@ -289,14 +296,16 @@ export async function setChallengeStatus(
     db
       .prepare(
         `UPDATE challenges SET session_id = CASE WHEN ? = 'pending_review' THEN ? ELSE session_id END,
-          status = ?, needs_review = ?, updated_at = CURRENT_TIMESTAMP
+          status = ?, needs_review = ?, seen = CASE WHEN ? = 'inbox' THEN 1 ELSE seen END,
+          updated_at = CURRENT_TIMESTAMP
          WHERE id = ? AND channel_id = ?`,
       )
       .bind(
         status,
         scope.sessionId,
-        status === "pending_review" ? (challenge.needs_review ? "pending_review" : "approved") : status,
+        status === "pending_review" && challenge.status === "inbox" && !challenge.needs_review ? "approved" : status,
         status === "approved" || status === "queued" ? 0 : challenge.needs_review,
+        status,
         id,
         scope.channelId,
       ),
@@ -330,6 +339,13 @@ export async function setSubmissionsOpen(db: D1Database, scope: ChannelScope, op
     .bind(open ? 1 : 0, scope.sessionId, scope.channelId)
     .run();
   if (!changed.meta.changes) throw new Error("Submissions can only be changed while collecting ideas");
+}
+
+export async function markInboxSeen(db: D1Database, scope: ChannelScope): Promise<void> {
+  await db
+    .prepare("UPDATE challenges SET seen = 1, updated_at = CURRENT_TIMESTAMP WHERE channel_id = ? AND status = 'inbox' AND seen = 0")
+    .bind(scope.channelId)
+    .run();
 }
 
 export async function createBallot(
@@ -366,6 +382,7 @@ export async function createBallot(
     db.prepare("UPDATE sessions SET phase = 'voting', submissions_open = 0 WHERE id = ?").bind(scope.sessionId),
     db.prepare(
       `UPDATE challenges SET status = 'inbox', needs_review = CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END,
+        seen = 1,
         updated_at = CURRENT_TIMESTAMP
        WHERE session_id = ? AND status IN ('pending_review', 'approved', 'queued') AND id NOT IN (${placeholders})`,
     ).bind(scope.sessionId, ...uniqueIds),
@@ -447,10 +464,11 @@ export async function closeBallot(db: D1Database, scope: ChannelScope, ballotId:
       .bind(winnerIds[0], ballotId),
     db
       .prepare(
-        `UPDATE challenges SET status = CASE WHEN id IN (${placeholders}) THEN 'queued' ELSE 'inbox' END
+        `UPDATE challenges SET status = CASE WHEN id IN (${placeholders}) THEN 'queued' ELSE 'inbox' END,
+          seen = CASE WHEN id IN (${placeholders}) THEN seen ELSE 1 END, round_value = ?
          WHERE id IN (SELECT challenge_id FROM ballot_entries WHERE ballot_id = ?)`,
       )
-      .bind(...winnerIds, ballotId),
+      .bind(...winnerIds, ...winnerIds, rules.team.challengeWinPoints, ballotId),
     db.prepare("UPDATE sessions SET phase = 'ready', selected_challenge_count = ? WHERE id = ?")
       .bind(winnerIds.length, scope.sessionId),
   ];
@@ -463,6 +481,26 @@ export async function closeBallot(db: D1Database, scope: ChannelScope, ballotId:
   }
   await db.batch(statements);
   return winnerIds;
+}
+
+export async function reopenVoting(db: D1Database, scope: ChannelScope, durationSeconds: number): Promise<string> {
+  const session = await db.prepare("SELECT phase FROM sessions WHERE id = ? AND channel_id = ? AND status = 'live'")
+    .bind(scope.sessionId, scope.channelId).first<{ phase: string }>();
+  if (session?.phase !== 'ready') throw new AuthError("Only a locked lineup can reopen voting", 409);
+  const ballot = await db.prepare("SELECT id FROM ballots WHERE session_id = ? AND status = 'closed' ORDER BY created_at DESC, rowid DESC LIMIT 1")
+    .bind(scope.sessionId).first<{ id: string }>();
+  if (!ballot) throw new AuthError("Vote not found in this round", 404);
+  const endsAt = new Date(Date.now() + durationSeconds * 1000).toISOString();
+  await db.batch([
+    db.prepare("UPDATE ballots SET status = 'open', ends_at = ?, closed_at = NULL, winner_challenge_id = NULL WHERE id = ? AND session_id = ?")
+      .bind(endsAt, ballot.id, scope.sessionId),
+    db.prepare("UPDATE challenges SET status = 'voting', updated_at = CURRENT_TIMESTAMP WHERE session_id = ? AND id IN (SELECT challenge_id FROM ballot_entries WHERE ballot_id = ?)")
+      .bind(scope.sessionId, ballot.id),
+    db.prepare("DELETE FROM points_ledger WHERE session_id = ? AND reason = 'selected'").bind(scope.sessionId),
+    db.prepare("UPDATE sessions SET phase = 'voting', selected_challenge_count = 0 WHERE id = ? AND channel_id = ?")
+      .bind(scope.sessionId, scope.channelId),
+  ]);
+  return ballot.id;
 }
 
 export async function startChallenge(db: D1Database, scope: ChannelScope, challengeId: string): Promise<string> {
@@ -527,6 +565,27 @@ export async function incrementAttempt(db: D1Database, scope: ChannelScope, chal
     .bind(delta > 0 ? 1 : -1, challengeId, scope.sessionId)
     .run();
   if (!changed.meta.changes) throw new AuthError("Active challenge not found in this channel", 404);
+}
+
+/** Persist the creator timer before broadcasting its public projection. */
+export async function setChallengePaused(db: D1Database, scope: ChannelScope, challengeId: string, paused: boolean, now = new Date()): Promise<void> {
+  const round = await db.prepare(
+    "SELECT * FROM rounds WHERE challenge_id = ? AND session_id = ? AND status = 'active'",
+  ).bind(challengeId, scope.sessionId).first<RoundRow>();
+  if (!round) throw new AuthError("Active challenge not found in this channel", 404);
+  if (Boolean(round.paused_at) === paused) return;
+  const timestamp = now.toISOString();
+  if (paused) {
+    if (now.getTime() < new Date(round.started_at).getTime()) throw new AuthError("Wait for the countdown to finish before pausing", 409);
+    if (round.ends_at && now.getTime() >= new Date(round.ends_at).getTime()) throw new AuthError("The challenge timer has expired", 409);
+    await db.prepare("UPDATE rounds SET paused_at = ? WHERE id = ? AND session_id = ? AND status = 'active' AND paused_at IS NULL")
+      .bind(timestamp, round.id, scope.sessionId).run();
+  } else {
+    const duration = Math.max(0, now.getTime() - new Date(round.paused_at!).getTime());
+    const shift = (value: string) => new Date(new Date(value).getTime() + duration).toISOString();
+    await db.prepare("UPDATE rounds SET paused_at = NULL, started_at = ?, ends_at = ? WHERE id = ? AND session_id = ? AND status = 'active' AND paused_at = ?")
+      .bind(shift(round.started_at), round.ends_at ? shift(round.ends_at) : null, round.id, scope.sessionId, round.paused_at).run();
+  }
 }
 
 export async function resolveChallenge(
@@ -668,7 +727,8 @@ export async function cancelSession(db: D1Database, scope: ChannelScope): Promis
     db.prepare("INSERT INTO sessions (id, channel_id, status, mode, phase, scoring_rules_json) VALUES (?, ?, 'live', 'open_queue', 'collecting', ?)")
       .bind(id, scope.channelId, JSON.stringify(rules)),
     db.prepare(
-      `UPDATE challenges SET session_id = ?, status = 'inbox', updated_at = CURRENT_TIMESTAMP
+      `UPDATE challenges SET session_id = ?, status = 'inbox',
+        seen = CASE WHEN status = 'inbox' THEN seen ELSE 1 END, updated_at = CURRENT_TIMESTAMP
        WHERE session_id = ? AND status IN (${portable.map(() => "?").join(",")})`,
     ).bind(id, scope.sessionId, ...portable),
     db.prepare("UPDATE channels SET active_session_id = ? WHERE id = ?").bind(id, scope.channelId),
@@ -726,10 +786,21 @@ export async function selectedChallengeSummaries(
 }
 
 export async function updateSessionName(db: D1Database, scope: ChannelScope, name: string | null): Promise<void> {
+  const next = name?.trim().slice(0, 60) || null;
+  const history = await readRoundNameHistory(db, scope);
+  if (next && !history.includes(next)) history.push(next);
   const changed = await db.prepare(
-    "UPDATE sessions SET name = ? WHERE id = ? AND channel_id = ? AND status = 'live'",
-  ).bind(name?.trim().slice(0, 60) || null, scope.sessionId, scope.channelId).run();
+    "UPDATE sessions SET name = ?, name_history_json = ? WHERE id = ? AND channel_id = ? AND status = 'live'",
+  ).bind(next, JSON.stringify(history.slice(-32)), scope.sessionId, scope.channelId).run();
   if (!changed.meta.changes) throw new AuthError("Active round not found", 404);
+}
+
+export async function readRoundNameHistory(db: D1Database, scope: ChannelScope): Promise<string[]> {
+  const row = await db.prepare("SELECT name, name_history_json FROM sessions WHERE id = ? AND channel_id = ? AND status = 'live'")
+    .bind(scope.sessionId, scope.channelId).first<{ name: string | null; name_history_json: string }>();
+  if (!row) throw new AuthError("Active round not found", 404);
+  const history = parseJson<unknown>(row.name_history_json, []);
+  return [...new Set([...(Array.isArray(history) ? history.filter((item): item is string => typeof item === 'string') : []), ...(row.name ? [row.name] : [])])].slice(-32);
 }
 
 export async function resetDemo(db: D1Database, scope: ChannelScope): Promise<void> {
@@ -859,7 +930,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
            WHERE v.challenge_id = c.id AND b.session_id = ?) AS vote_count
          FROM challenges c
          WHERE c.session_id = ? OR (c.channel_id = ? AND c.status = 'inbox')
-         ORDER BY c.created_at ASC`,
+         ORDER BY c.created_at ASC, c.rowid ASC`,
       )
       .bind(scope.sessionId, scope.sessionId, scope.channelId)
       .all<ChallengeRow>(),
@@ -981,6 +1052,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
           status: round.status,
           startedAt: round.started_at,
           endsAt: round.ends_at,
+          pausedAt: round.paused_at ?? null,
           attemptsUsed: round.attempts_used,
           result: round.result,
         }

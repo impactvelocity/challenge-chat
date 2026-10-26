@@ -267,6 +267,7 @@
   .btn {
     --btn-h: 45px;
     --btn-lip: 2px;
+    flex-shrink: 0;
     position: relative;
     border: 0;
     border-radius: 14px;
@@ -1466,7 +1467,7 @@
     gap: 5px;
   }
   .stepper-num input {
-    width: 3.2ch;
+    width: 5ch;
     border: 0;
     background: transparent;
     outline: none;

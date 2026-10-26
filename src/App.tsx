@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { Logo } from '@/components/Logo';
 import { Button, Panel, TextField, ToastProvider, Toasts } from '@/components/ui';
 import { api, type AuthSession } from '@/api';
 import { selectedChannelId, channelPath } from '@/framework/channel';
+import { creatorEntry } from '@/framework/creator-entry';
+import { BoardWebMcp } from '@/framework/webmcp';
 import { hydrateOverlayConfig } from '@/data/overlayConfig';
 import { hydrateSessionSettings } from '@/data/sessionSettings';
 import { OverlayProvider, OverlayRenderer } from '@/overlay/sdk';
@@ -73,9 +75,14 @@ function AuthenticatedLayout() {
     const next = await api.authSession();
     setAuth(next);
     if (!next.authenticated) return;
-    const [{ channels: available }, state] = await Promise.all([api.channels(), api.state()]);
-    const selected = available.find((channel) => channel.id === selectedChannelId()) ?? available[0];
-    setBoardSetupRequired(Boolean(selected && !selected.setupComplete));
+    const { channels: available } = await api.channels();
+    const entry = creatorEntry(available, window.location);
+    if (entry.redirectTo) {
+      window.location.replace(entry.redirectTo);
+      return;
+    }
+    const state = await api.state();
+    setBoardSetupRequired(entry.setupRequired);
     hydrateOverlayConfig(state.overlayConfig);
     hydrateSessionSettings(state.sessionSettings);
     setChannels(available.filter((channel) => channel.setupComplete).map((channel) => ({
@@ -100,11 +107,15 @@ function AuthenticatedLayout() {
   if (!auth.authenticated) return <AuthEntry auth={auth} onAuthenticated={refresh} />;
   if (boardSetupRequired === null) return <StatusPage title="Loading your boards">Connecting…</StatusPage>;
   if (boardSetupRequired && location.pathname !== '/setup') return <Navigate to={channelPath('/setup', selectedChannelId())} replace />;
-  return <AppShellContext channels={channels} role={auth.role ?? 'mod'} displayName={auth.displayName}><Outlet /></AppShellContext>;
+  return (
+    <AppShellContext channels={channels} role={auth.role ?? 'mod'} displayName={auth.displayName}>
+      <BoardWebMcp enabled={auth.role === 'owner'} channelId={selectedChannelId()} />
+      <Outlet />
+    </AppShellContext>
+  );
 }
 
 function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticated: () => Promise<void> }) {
-  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [controlRoomName, setControlRoomName] = useState('');
@@ -120,7 +131,6 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
       if (firstRun) await api.setupOwner(password, controlRoomName);
       else await api.login(password);
       await onAuthenticated();
-      if (firstRun) navigate(channelPath('/setup', selectedChannelId()), { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not sign in');
     } finally {

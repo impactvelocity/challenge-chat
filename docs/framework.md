@@ -33,6 +33,20 @@ POST /api/v1/runs
 GET  /api/v1/runs/live
 POST /api/v1/runs/:runId/events
 GET  /api/v1/live/socket?scope=overlay|admin  (WebSocket upgrade)
+GET  /api/v1/board                 (board state; board token or signed-in operator)
+PATCH /api/v1/board/submissions
+POST /api/v1/board/challenges
+PATCH /api/v1/board/challenges/:id
+POST /api/v1/board/challenges/:id/status|start|attempt|resolve
+POST /api/v1/board/ballots
+POST /api/v1/board/ballots/:id/close
+POST /api/v1/board/session/complete|cancel
+PATCH /api/v1/board/session/name
+POST /api/v1/board/session/name/generate
+POST /api/v1/board/sessions
+POST /api/v1/board/tools/:toolName (shared REST/MCP/WebMCP tool contract)
+GET  /api/v1/board/openapi.json
+POST /mcp                         (stateless Streamable HTTP MCP)
 GET  /api/public/state
 GET  /api/auth/session
 POST /api/auth/setup           (one-time owner password setup)
@@ -55,6 +69,15 @@ PATCH /api/session/submissions (owner/mod opens or pauses challenge intake)
 POST /api/channel/mods         (owner grants existing mod access)
 GET  /api/channel/integration  (owner reads token metadata only)
 POST /api/channel/integration  (owner generates/replaces token, shown once)
+GET  /api/channel/api-tokens   (owner lists board-token metadata)
+POST /api/channel/api-tokens   (owner creates a named board token, shown once)
+DELETE /api/channel/api-tokens/:id (owner revokes one board token)
+GET  /api/twitch/status          (owner reads configuration + connection state)
+PUT  /api/twitch/configuration   (owner saves deployment Twitch app credentials)
+POST /api/twitch/connect         (owner starts Twitch OAuth)
+GET  /api/twitch/oauth/callback  (one-time OAuth state callback)
+DELETE /api/twitch/connection    (owner disconnects the selected Channel)
+POST /api/twitch/eventsub        (public URL; Twitch HMAC required)
 GET  /api/public/leaderboard   (single public Challenger ranking)
 PATCH /api/overlay-config      (owner-only theme/settings/elements)
 PATCH /api/session-settings    (owner-only channel UI/session preferences)
@@ -62,9 +85,13 @@ PATCH /api/session-settings    (owner-only channel UI/session preferences)
 
 Channel-specific endpoints use `?channel=ID`; omission selects the original `demo-channel`. New Channels receive an opaque eight-character lowercase alphanumeric ID; existing UUID IDs remain valid. `/api/channels` and deployment login/logout are global. `GET /api/auth/mods?all=1&channel=ID` lists deployment moderator identities with Channel assignments so the owner can grant an existing identity access. All challenge, ballot, leaderboard, and live-run mutations resolve IDs within the selected Channel's active session. Channel creation atomically stores the board identity, Twitch login, initial colours, and a new collecting session, so a newly created board is immediately usable without a second setup route. Completed sessions can be rotated from the control panel and remain visible in history.
 
+Named board API tokens are separate from integration tokens. A board token authenticates the REST board-control surface and `/mcp` for exactly one Channel; it cannot call owner configuration or credential-management routes. MCP exposes the same bounded operations as `/api/v1/board/tools/:toolName`, supports the 2025 initialization era and the stateless 2026 discovery era, and returns tool failures as MCP tool errors. The creator page registers that shared catalog with WebMCP only for an authenticated owner. Browser tools use the same-origin session cookie and never receive a bearer token.
+
 The reference lifecycle is `collecting → voting → ready → live → complete`. Challenge intake has a separate D1-backed open/paused flag: suggestions received while intake is paused or the session is in another phase are stored with `inbox` status instead of being rejected. Opening a ballot moves unshortlisted ideas to that Channel's Inbox, and closing it moves non-winning finalists there too. Inbox ideas remain Channel-scoped across session rotation and can be reassigned to a later collecting session. A ballot gives each viewer the same number of distinct votes as the number of challenges being selected (Top 3 means three votes), treats a repeated vote for the same challenge as an idempotent retry, never removes a cast vote, rejects late or over-limit votes, and advances the top N with shortlist order as the deterministic tie-break. Selected authors receive the session's Challenger award. A Chat challenge win creates a separate defeated-streamer award. Completion requires every selected challenge to resolve, decides the session from challenge wins, recognizes a strict sweep only when every selected challenge has a scored result for one side, applies configured bonuses, and freezes the result.
 
 Creator/mod control-panel votes use the authenticated control route. A trusted chat bot or extension backend can call `POST /api/ballots/:id/vote` with the Channel integration bearer token and a Twitch-verified viewer ID; the token must remain server-side. The core deliberately does not trust a browser-supplied identity. A direct video-player extension should verify its Twitch authorization token in its own adapter/backend and forward only the normalized viewer ID through this route.
+
+The built-in Twitch adapter uses the stronger same-Worker path and never receives a board or integration token. An owner completes OAuth for one Channel; D1 binds the returned broadcaster identity and each EventSub subscription ID to that Channel. The public webhook verifies Twitch's HMAC and timestamp before normalization. `channel.chat.message` becomes a bounded submission or vote fact, while follow/cheer/chat-notification payloads become public transient moments. The Worker applies board facts through the same authoritative operations as the control panel and asks the Channel coordinator to project moments to overlay sockets.
 
 Scoring rules are validated declarative data rather than executable code. Classic, Arcade, and Custom use one schema. Channel defaults update a safely collecting session before its first ballot or round; otherwise they are copied into the next session. Challenge, session, and consecutive-sweep streaks are derived from authoritative round and session history and expose current, best, and sweep-total projections to both reference surfaces.
 
@@ -94,7 +121,9 @@ Auth has one deployment owner and channel-assigned moderators. On first visit, t
 
 The owner creates named mod accounts and receives a one-use link with a random token in the URL fragment, so the token is not sent in the initial HTTP request. The link expires in 15 minutes; D1 stores only its SHA-256 hash. Redemption atomically marks it used and issues a random 12-hour session token. D1 also stores only session-token hashes. Cookies are HTTP-only, SameSite=Strict, and Secure on HTTPS; unsafe cookie-authenticated writes require a same-origin request. Login failures are rate-limited per Cloudflare client IP. Removing access deletes that Channel membership and its outstanding invitations and closes the moderator’s sockets in that Channel. Other Channel memberships and the shared sign-in session remain valid; every subsequent control request rechecks membership. Signing out closes the session’s sockets in every accessible Channel.
 
-Both roles can review challenges, run rounds, manage votes, and use the generic live-run controls. Only the owner can manage mods, change the theme or assets, and reset demo data. Channel integration tokens are random bearer credentials stored as hashes and accepted only by the normalized metric event endpoint. The optional `INTEGRATION_TOKEN` environment secret is a compatibility fallback for the default Channel only, overridden when a Channel token is generated. It must stay in a server or local helper, not a browser bundle. The optional OpenAI key also stays in the Worker.
+Both roles can review challenges, run rounds, manage votes, and use the generic live-run controls. Only the owner can manage mods, change the theme or assets, create or revoke API credentials, and reset demo data. Channel integration tokens are random bearer credentials stored as hashes and accepted only by the normalized metric event endpoint. Named board API tokens are also hash-only but authorize the bounded board-control API and MCP tool catalog. The optional `INTEGRATION_TOKEN` environment secret is a compatibility fallback for the default Channel only, overridden when a Channel token is generated. It must stay in a server or local helper, not a browser bundle. The optional OpenAI key also stays in the Worker.
+
+For the hackathon deployment, the owner can save the global Twitch Client ID and Client Secret from **Settings → Twitch**. D1 stores those values in the singleton `twitch_app_configuration` row and the Worker generates the EventSub signing secret; neither secret is returned by the API. Existing `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_EVENTSUB_SECRET` Worker secrets remain a fallback when no D1 configuration exists. This intentionally favors self-hosting simplicity over encrypted-at-rest application credentials and should be revisited before a higher-security rollout. OAuth state is random, hash-only, one-use, Channel-bound, and expires after ten minutes. EventSub message IDs provide retry idempotency and are retained briefly for replay protection.
 
 ## Example game adapter
 

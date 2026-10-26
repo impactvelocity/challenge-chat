@@ -15,7 +15,7 @@ export interface PublicOverlayState {
   channel: Pick<AppState["channel"], "id" | "displayName" | "broadcasterLogin">;
   session: Pick<AppState["session"], "id" | "name" | "streamerScore" | "chatScore" | "phase" | "submissionsOpen" | "winner" | "sweepWinner" | "sweepLabel" | "scoringRules">;
   submissions: PublicSubmission[];
-  activeRound: Pick<ActiveRound, "challengeId" | "startedAt" | "endsAt" | "attemptsUsed"> | null;
+  activeRound: Pick<ActiveRound, "challengeId" | "startedAt" | "endsAt" | "pausedAt" | "attemptsUsed"> | null;
   activeChallenge: PublicChallenge | null;
   ballot: { endsAt: string; winnersCount: number; votesPerViewer: number; entries: { challenge: PublicChallenge; votes: number }[] } | null;
   recentResult: PublicChallenge | null;
@@ -72,6 +72,7 @@ export function projectOverlayState(state: AppState): PublicOverlayState {
           challengeId: state.activeRound.challengeId,
           startedAt: state.activeRound.startedAt,
           endsAt: state.activeRound.endsAt,
+          pausedAt: state.activeRound.pausedAt ?? null,
           attemptsUsed: state.activeRound.attemptsUsed,
         }
       : null,

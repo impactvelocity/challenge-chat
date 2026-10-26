@@ -171,6 +171,8 @@ export type OverlaySnapshot = {
   history: SessionRecord[];
   /** Season standings before tonight. */
   challengers: ChallengerStanding[];
+  /** Live server standings already contain this session's awards; mock sources usually do not. */
+  challengerPointsIncludeCurrentSession?: boolean;
   scoring: Scoring;
   metrics: Metric[];
   sponsors: Sponsor[];

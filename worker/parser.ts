@@ -230,20 +230,30 @@ export async function generateRoundName(
   challenges: { title: string; objective: string; game: string | null }[],
   tone: RoundNameTone,
   env: ParserEnv,
+  previousNames: string[] = [],
 ): Promise<GeneratedRoundName> {
+  const normalize = (value: string) => value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const excluded = new Set(previousNames.map(normalize));
   if (env.AI) {
     try {
       const result = await gatewayJson(
         env,
         "round_name",
         `Name a livestream challenge round in a ${tone} tone. Return a memorable title only, 2–7 words, maximum 60 characters. Do not include quotes, a colon suffix, or claims not supported by the lineup.`,
-        { challenges },
+        { challenges, avoidNames: previousNames, instruction: "Choose a fresh name, different in wording from every avoidNames entry." },
         z.object({ name: z.string().trim().min(2).max(60) }),
       );
-      return { name: result.name, generatorStatus: "ai" };
+      if (!excluded.has(normalize(result.name))) return { name: result.name, generatorStatus: "ai" };
     } catch (error) {
       console.warn("Falling back to deterministic round naming after AI Gateway failure", error);
     }
   }
-  return { name: fallbackRoundName(challenges, tone), generatorStatus: "fallback" };
+  const base = fallbackRoundName(challenges, tone);
+  if (!excluded.has(normalize(base))) return { name: base, generatorStatus: "fallback" };
+  // A repeated response must not spend another call or return a duplicate.
+  for (let variant = 1; ; variant++) {
+    const suffix = variant === 1 ? " Remix" : ` Remix ${variant}`;
+    const name = base.slice(0, 60 - suffix.length).trimEnd() + suffix;
+    if (!excluded.has(normalize(name))) return { name, generatorStatus: "fallback" };
+  }
 }

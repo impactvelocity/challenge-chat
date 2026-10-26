@@ -13,8 +13,10 @@ const LABEL: Record<SettingsTab, string> = {
   theme: 'Theme',
   mods: 'Moderators',
   obs: 'OBS',
+  twitch: 'Twitch',
   ai: 'AI',
   dev: 'Dev',
+  api: 'API',
 };
 
 /** Channel settings inside the main (/) shell: a row of text tabs over one section at a time. */

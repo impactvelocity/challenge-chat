@@ -8,9 +8,9 @@ import { EDGE_TABLE, EmptyTableState } from './Boards';
 
 /**
  * A challenge chat suggested with !challenge. Viewers can send these any time, not just while submissions are open.
- * `seen`: someone already looked at it in a session (e.g. it wasn't picked for a vote), so it isn't counted as new.
+ * `seen`: the inbox has been opened since this idea arrived, or it already appeared in an open submission round.
  */
-export type InboxIdea = { c: Challenge; at: string; seen?: boolean };
+export type InboxIdea = { c: Challenge; at: string; seen: boolean };
 
 type Props = {
   items: InboxIdea[];

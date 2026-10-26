@@ -738,6 +738,7 @@ function ChallengerSheet({ open, sessions, onClose }: { open: { c: Challenger; r
   const shown = last.current;
   const c = shown?.c;
   const lost = c ? c.played - c.won : 0;
+  const challenges = c && shown ? challengesBy(c, shown.rank, sessions) : [];
   return (
     <Sheet
       open={!!open}
@@ -789,7 +790,16 @@ function ChallengerSheet({ open, sessions, onClose }: { open: { c: Challenger; r
               </tr>
             </thead>
             <tbody>
-              {challengesBy(c, shown.rank, sessions).map((p, i) => (
+              {challenges.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="!px-5 !pt-14 !pb-12 sm:!pt-16 sm:!pb-14">
+                    <EmptyTableState side="chat" icon={<BoltIcon size={20} />} eyebrow="Challenge history" title="No challenge details recorded">
+                      Their overall points and win record are still counted above. Individual challenge details are not available for this challenger yet.
+                    </EmptyTableState>
+                  </td>
+                </tr>
+              )}
+              {challenges.map((p, i) => (
                 // Hover only for now — clicking will open the session this was played in.
                 <tr key={i} className="cursor-pointer transition-colors hover:[&>td]:bg-white/[.045]">
                   <td>

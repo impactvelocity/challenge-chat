@@ -187,6 +187,13 @@ export const MonitorIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const TwitchIcon = ({ size = 18, ...p }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...p}>
+    <path d="M4 2h18v13l-5 5h-4l-2.5 2.5V20H6V17H2V6zm2 3v9h4v3l3-3h5l1-1V5z" />
+    <path d="M10 7h2v5h-2zm5 0h2v5h-2z" />
+  </svg>
+);
+
 export const PaletteIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5c0-4.2-4-7.6-9-7.6z" />

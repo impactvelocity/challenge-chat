@@ -7,6 +7,7 @@ import {
 } from "../shared/framework";
 import type { AppState } from "../shared/contracts";
 import { projectOverlayState, type PublicOverlayState } from "../shared/public-state";
+import { TwitchMomentSchema, type TwitchMoment } from "../shared/twitch";
 
 interface StoredLiveRun {
   definition: ChallengeDefinition;
@@ -30,7 +31,13 @@ interface FrameworkRunMessage {
   projection: ReturnType<typeof projectLiveRun>;
 }
 
-type LiveMessage = LegacyStateMessage | OverlayStateMessage | FrameworkRunMessage;
+interface IntegrationMomentMessage {
+  type: "integration.moment";
+  source: "twitch";
+  moment: TwitchMoment;
+}
+
+type LiveMessage = LegacyStateMessage | OverlayStateMessage | FrameworkRunMessage | IntegrationMomentMessage;
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 
@@ -52,6 +59,7 @@ export class LiveSessionCoordinator {
       }
       if (message.type === "state.changed" && role !== "admin") continue;
       if (message.type === "overlay.changed" && role !== "overlay") continue;
+      if (message.type === "integration.moment" && role !== "overlay") continue;
       try {
         socket.send(serialized);
       } catch {
@@ -132,8 +140,16 @@ export class LiveSessionCoordinator {
   }
 
   private async replaceSession(): Promise<Response> {
-    for (const socket of this.state.getWebSockets()) socket.close(1012, "Round cancelled");
+    for (const socket of this.state.getWebSockets()) socket.close(1012, "Round replaced");
     await this.state.storage.deleteAll();
+    return json({ ok: true });
+  }
+
+  private async publishIntegrationMoment(request: Request): Promise<Response> {
+    const input = await request.json() as { source?: unknown; moment?: unknown };
+    if (input.source !== "twitch") return json({ error: "Unknown integration source" }, 400);
+    const moment = TwitchMomentSchema.parse(input.moment);
+    this.broadcast({ type: "integration.moment", source: "twitch", moment });
     return json({ ok: true });
   }
 
@@ -203,6 +219,7 @@ export class LiveSessionCoordinator {
     if (request.method === "POST" && url.pathname === "/internal/revoke-session") return this.revokeSession(request);
     if (request.method === "POST" && url.pathname === "/internal/delete-channel") return this.deleteChannel();
     if (request.method === "POST" && url.pathname === "/internal/session-replaced") return this.replaceSession();
+    if (request.method === "POST" && url.pathname === "/internal/integration-moment") return this.publishIntegrationMoment(request);
     if (request.method === "POST" && url.pathname === "/framework/runs") return this.createRun(request);
     if (request.method === "GET" && url.pathname === "/framework/runs/live") return this.readRun();
 

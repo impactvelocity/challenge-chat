@@ -117,3 +117,51 @@ export async function rotateIntegrationToken(db: D1Database, channelId: string) 
     .bind(channelId, await sha256(token), token.slice(-4), Date.now()).run();
   return { token };
 }
+
+export interface ApiTokenSummary {
+  id: string;
+  name: string;
+  lastFour: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+}
+
+function randomApiToken(): string {
+  const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `ccat_${secret}`;
+}
+
+export async function listApiTokens(db: D1Database, channelId: string): Promise<ApiTokenSummary[]> {
+  const result = await db.prepare(
+    "SELECT id, name, last_four AS lastFour, created_at AS createdAt, last_used_at AS lastUsedAt FROM channel_api_tokens WHERE channel_id = ? ORDER BY created_at DESC, id",
+  ).bind(channelId).all<ApiTokenSummary>();
+  return result.results;
+}
+
+export async function createApiToken(db: D1Database, channelId: string, input: unknown): Promise<ApiTokenSummary & { token: string }> {
+  const name = typeof (input as { name?: unknown } | null)?.name === "string" ? (input as { name: string }).name.trim() : "";
+  if (name.length < 1 || name.length > 60) throw new AuthError("Token name must be 1–60 characters", 400);
+  const id = crypto.randomUUID();
+  const token = randomApiToken();
+  const now = Date.now();
+  const lastFour = token.slice(-4);
+  await db.prepare("INSERT INTO channel_api_tokens (id, channel_id, name, token_hash, last_four, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, channelId, name, await sha256(token), lastFour, now).run();
+  return { id, name, token, lastFour, createdAt: now, lastUsedAt: null };
+}
+
+export async function revokeApiToken(db: D1Database, channelId: string, tokenId: string): Promise<void> {
+  const result = await db.prepare("DELETE FROM channel_api_tokens WHERE id = ? AND channel_id = ?").bind(tokenId, channelId).run();
+  if (!result.meta.changes) throw new AuthError("API token not found", 404);
+}
+
+export async function hasBoardApiToken(request: Request, db: D1Database, channelId: string): Promise<boolean> {
+  const bearer = request.headers.get("Authorization")?.match(/^Bearer (ccat_[a-f0-9]{64})$/i)?.[1];
+  if (!bearer) return false;
+  const tokenHash = await sha256(bearer);
+  const token = await db.prepare("SELECT id FROM channel_api_tokens WHERE channel_id = ? AND token_hash = ?")
+    .bind(channelId, tokenHash).first<{ id: string }>();
+  if (!token) return false;
+  await db.prepare("UPDATE channel_api_tokens SET last_used_at = ? WHERE id = ?").bind(Date.now(), token.id).run();
+  return true;
+}

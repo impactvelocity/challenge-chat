@@ -20,6 +20,7 @@ The project is evolving into a self-hosted framework: game and service adapters 
 - A public, read-only overlay projection separate from the creator control-plane state
 - Independent overlay and control-panel theme tokens, plus replaceable React surface composition
 - Owner password sign-in, owner-managed moderators, one-time moderator links, and role-checked sessions
+- Twitch OAuth/EventSub connection for `!challenge`, `!vote`, follows, subscriptions, gifts, raids, and cheers
 
 ## Run locally
 
@@ -77,7 +78,7 @@ npm run deploy
 
 After deployment, visit `/`, name the control room, and choose a password of at least 6 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
 
-The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. There is no Twitch OAuth or email provider. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
+The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. Twitch authorization is Channel-specific and owner-only. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
 
 ## Channels and leaderboard
 
@@ -90,6 +91,18 @@ Each Channel has one all-time Challenger leaderboard. A viewer earns the award c
 Each Channel also owns versioned session rules. Classic awards 1 point per challenge, Arcade awards 100, and Custom exposes integer team and Challenger values, shortlist size, final challenge count, voting duration, session-win bonus, and an optional clean-sweep multiplier. Each viewer gets one distinct, non-removable vote per final challenge slot. The clean-sweep broadcast label is creator-defined. Rules are copied onto a session before its first ballot or challenge, so later changes cannot rewrite an active or historical contest. Completed sessions preserve exact scores, winners, sweep results, and history while Channel totals, the Challenger leaderboard, and streaks continue across sessions.
 
 Generate a Channel's integration token in **Channel settings** and give it only to the server/local helper reporting events. It is shown once; replacing it immediately invalidates the old token. In the reporter SDK, pass `channelId` together with `integrationToken`. The legacy `INTEGRATION_TOKEN` Worker secret applies only to the default Channel until it has a generated Channel token. Framework run access remains limited to metric events; the ballot endpoint additionally accepts a Twitch-verified viewer ID from a trusted chat or extension backend.
+
+## Twitch connection
+
+Open **Settings → Twitch** after deployment. The tab shows the exact self-hosted application URL and OAuth Redirect URL for the current Worker origin. Register a confidential Twitch application, create its client secret, then paste the Client ID and Client Secret into the owner-only form. Challenge.chat saves the global application configuration in D1 and generates the EventSub signing secret automatically. Secret values are never returned by the API, though this hackathon-friendly setup stores them unencrypted in D1 and should be hardened before a higher-security rollout. Worker secrets named `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and `TWITCH_EVENTSUB_SECRET` remain an optional fallback.
+
+After saving, choose **Connect broadcaster**. The broadcaster grants read-only chat/bot, follower, and Bits scopes; Challenge.chat does not request permission to send chat messages.
+
+The Worker creates signed EventSub webhook subscriptions for chat messages, chat notifications, follows, and cheers. It validates Twitch's HMAC over the raw request, rejects stale or replayed messages, binds every subscription to one D1 Channel, and keeps credentials out of browser and OBS bundles. `!challenge …` enters the authoritative submission/inbox flow, `!vote N` resolves against the active ballot using the viewer's stable Twitch ID, and community moments travel through the Channel's Durable Object as public transient overlay projections.
+
+For board automation, open **Settings → API** and create a named board token. The same channel-scoped `ccat_…` bearer token works with the REST endpoint at `/api/v1/board?channel=CHANNEL_ID` and the stateless Streamable HTTP MCP endpoint at `/mcp?channel=CHANNEL_ID`. Tokens are shown once, stored only as hashes, listed by name and last four characters, and can be revoked independently. They can operate the live board but cannot change branding, settings, moderators, credentials, or another Channel. The API tab also links to the deployment's OpenAPI document.
+
+Signed-in owner pages register the same tool catalog through WebMCP when `document.modelContext` is available. This browser path uses the owner's HTTP-only session rather than placing a board token in client code, and it is not registered for moderators.
 
 ## Architecture
 

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowRightIcon,
   BoltIcon,
+  CheckIcon,
   ExternalIcon,
   ListIcon,
   MonitorIcon,
@@ -12,6 +13,8 @@ import {
   TrophyIcon,
   UsersIcon,
   KeyIcon,
+  LockIcon,
+  TwitchIcon,
 } from '@/components/icons';
 import {
   Button,
@@ -45,12 +48,15 @@ import { OverlayPreview } from '@/overlay/controls/OverlayCanvas';
 import { getTheme, resolveSettings, useThemes, type SettingDef } from '@/overlay/sdk';
 import { complement, lighten } from '@/theme/accent';
 import { useTheme } from '@/theme/ThemeProvider';
-import { api, type ModSummary } from '@/api';
+import { api, type ApiTokenSummary, type ModSummary } from '@/api';
 import { channelPath } from '@/framework/channel';
+import { frameworkClient } from '@/framework/client';
 import { mockViewerId, parseMockChatMessage } from '@/dev/mock-chat';
+import { KILL_CHALLENGE_EXAMPLE } from '@/examples/kill-challenge';
 import { AppPage, TopBar, useChannel, useRole } from './shell-context';
 import { Avatar, CopyField, Led, OwnerOnly, PageTitle, Section } from './parts';
 import { DEFAULT_THEME, type AppState } from '../../../shared/contracts';
+import type { LiveRunProjection } from '../../../shared/framework';
 
 export const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: SettingsIcon },
@@ -59,7 +65,9 @@ export const SETTINGS_TABS = [
   { value: 'theme', label: 'Theme', icon: SparkleIcon },
   { value: 'mods', label: 'Moderators', icon: UsersIcon },
   { value: 'obs', label: 'OBS', icon: MonitorIcon },
+  { value: 'twitch', label: 'Twitch', icon: TwitchIcon },
   { value: 'ai', label: 'AI', icon: BoltIcon },
+  { value: 'api', label: 'API', icon: KeyIcon },
   { value: 'dev', label: 'Dev', icon: KeyIcon },
 ] as const;
 
@@ -117,7 +125,9 @@ export function SettingsBody({ tab, channel, onSaved }: { tab: SettingsTab; chan
       {tab === 'theme' && <OverlayTheme channelName={channel.displayName} onSaved={onSaved} />}
       {tab === 'mods' && <Moderators channel={channel} />}
       {tab === 'obs' && <Overlays channel={channel} />}
+      {tab === 'twitch' && <TwitchSettings channel={channel} />}
       {tab === 'ai' && <AiSettings />}
+      {tab === 'api' && <Connections channel={channel} />}
       {tab === 'dev' && <DevTools channel={channel} onSaved={onSaved} />}
     </>
   );
@@ -787,7 +797,7 @@ function Moderators({ channel }: { channel: Channel }) {
         </Well>
         <Well className="flex flex-col gap-3 p-5">
           <Label>Only you can</Label>
-          {['Create boards and change settings', 'Invite or remove moderators', 'Change branding and themes', 'Change scoring and AI settings'].map((t) => (
+          {['Create boards and change settings', 'Invite or remove moderators', 'Change branding and themes', 'Change scoring and AI settings', 'Create API and game tokens'].map((t) => (
             <span key={t} className="flex items-center gap-2.5 text-[13px] text-ink-sub">
               <Led />
               {t}
@@ -860,6 +870,489 @@ function useNow(interval = 1000) {
     return () => clearInterval(id);
   }, [interval]);
   return now;
+}
+
+/* ───────── Twitch ───────── */
+
+function TwitchSettings({ channel }: { channel: Channel }) {
+  const role = useRole();
+  const toast = useToasts();
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof api.twitchStatus>> | null>(null);
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const [editingConfiguration, setEditingConfiguration] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setError(null);
+    const next = await api.twitchStatus();
+    setStatus(next);
+    setClientId(next.configuration.clientId);
+    setEditingConfiguration(!next.configuration.ready);
+  };
+
+  useEffect(() => {
+    if (role !== 'owner') return;
+    setStatus(null);
+    setClientId('');
+    setClientSecret('');
+    setEditingConfiguration(true);
+    void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not load Twitch connection'));
+  }, [channel.id, role]);
+
+  const connectionStatus = status?.connection?.status;
+  useEffect(() => {
+    if (connectionStatus !== 'connecting') return;
+    let cancelled = false;
+    let requestPending = false;
+    const poll = async () => {
+      if (requestPending) return;
+      requestPending = true;
+      try {
+        const next = await api.twitchStatus();
+        if (!cancelled) {
+          setStatus(next);
+          setClientId(next.configuration.clientId);
+        }
+      } catch {
+        // EventSub confirmation can be briefly unavailable; the next bounded poll retries.
+      } finally {
+        requestPending = false;
+      }
+    };
+    void poll();
+    const interval = window.setInterval(() => void poll(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [channel.id, connectionStatus]);
+
+  if (role !== 'owner') return <OwnerOnly what="Twitch connection" />;
+
+  const connect = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { authorizationUrl } = await api.connectTwitch();
+      window.location.assign(authorizationUrl);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start Twitch authorization');
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    if (!window.confirm(`Disconnect @${status?.connection?.broadcasterLogin ?? 'this Twitch account'} from ${channel.displayName}?`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.disconnectTwitch();
+      await refresh();
+      toast.add({ title: 'Twitch disconnected', description: 'Chat commands and live moments are off' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not disconnect Twitch');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveConfiguration = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.saveTwitchConfiguration(clientId, clientSecret);
+      setStatus(next);
+      setClientSecret('');
+      setEditingConfiguration(false);
+      toast.add({ title: 'Twitch app saved', description: 'The credentials and generated webhook secret are stored in D1' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not save the Twitch application');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const config = status?.configuration;
+  const connection = status?.connection;
+  const ready = Boolean(config?.ready);
+  const enabled = connection?.subscriptions.filter((subscription) => subscription.status === 'enabled').length ?? 0;
+  const maskedClientId = clientId ? `${'•'.repeat(Math.min(12, Math.max(6, clientId.length - 6)))}${clientId.slice(-6)}` : 'Not available';
+
+  const cancelConfigurationEdit = () => {
+    setClientId(config?.clientId ?? '');
+    setClientSecret('');
+    setEditingConfiguration(false);
+    setError(null);
+  };
+
+  return (
+    <>
+      <Section
+        title="Twitch connection"
+        sub="One verified connection turns Twitch chat into submissions and votes, and sends live community moments to OBS."
+        actions={
+          <Button size="sm" variant="ghost" nativeButton={false} render={<a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer" />}>
+            Developer Console <ExternalIcon size={14} />
+          </Button>
+        }
+      >
+        <Screen className="relative overflow-hidden p-0">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(145,70,255,.22),transparent_38%),linear-gradient(135deg,rgba(145,70,255,.08),transparent_55%)]" aria-hidden="true" />
+          <div className="relative flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start gap-4">
+              <span className="grid size-12 flex-none place-items-center rounded-[15px] bg-[#9146ff] text-white shadow-[0_10px_30px_rgba(145,70,255,.28)]">
+                <TwitchIcon size={24} />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink-strong">
+                  {connection ? `@${connection.broadcasterLogin}` : 'Not connected'}
+                  <span
+                    className={cn('status inline-flex items-center gap-1.5 whitespace-nowrap', connection?.status === 'connected' && 'text-emerald-300')}
+                    aria-live="polite"
+                  >
+                    {connection?.status === 'connecting' && <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden="true" />}
+                    {connection?.status ?? (ready ? 'READY' : 'SETUP')}
+                  </span>
+                </span>
+                <span className="max-w-[62ch] text-sm leading-relaxed text-ink-sub">
+                  {connection
+                    ? connection.status === 'connecting'
+                      ? `${enabled}/${connection.subscriptions.length} EventSub listeners enabled. Twitch is confirming the rest—this updates automatically.`
+                      : `${enabled}/${connection.subscriptions.length} EventSub listeners enabled for ${channel.displayName}.`
+                    : ready
+                      ? 'The Twitch application is ready. Authorize the broadcaster account to finish.'
+                      : 'Create the Twitch application, save its credentials below, then connect your broadcaster.'}
+                </span>
+              </span>
+              {connection ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={busy || !ready} onClick={() => void connect()}>Reconnect</Button>
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => void disconnect()}>Disconnect</Button>
+                </div>
+              ) : (
+                <Button variant="accent" disabled={busy || !ready} onClick={() => void connect()}>
+                  {busy ? 'Opening Twitch…' : 'Connect broadcaster'}
+                </Button>
+              )}
+            </div>
+
+            {connection?.lastError && <span className="rounded-xl border border-red-400/20 bg-red-400/[.07] px-4 py-3 text-sm text-red-200" role="alert">{connection.lastError}</span>}
+            {connection && (
+              <div className="grid grid-cols-1 gap-3 border-t border-white/[.07] pt-4 sm:grid-cols-3">
+                <KeyValue label="Twitch user">{connection.broadcasterDisplayName}</KeyValue>
+                <KeyValue label="Last event">{connection.lastEventAt ? new Date(connection.lastEventAt).toLocaleString() : 'Waiting for activity'}</KeyValue>
+                <KeyValue label="Authorized">{new Date(connection.connectedAt).toLocaleDateString()}</KeyValue>
+              </div>
+            )}
+          </div>
+        </Screen>
+        {error && <span className="text-sm text-red-300" role="alert">{error}</span>}
+      </Section>
+
+      <Divider />
+
+      <Section title="1 · Register the application" sub="Use these exact values in the Twitch Developer Console. The Worker URL is the correct self-hosted application URL.">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Well className="flex min-w-0 flex-col gap-3 p-5">
+            <Label>Worker / application URL</Label>
+            <CopyField value={config?.applicationUrl ?? window.location.origin} label="Twitch application URL" />
+            <span className="hint">Your deployed Worker. Use this if Twitch asks for a website/application URL; otherwise keep it as your reference.</span>
+          </Well>
+          <Well className="flex min-w-0 flex-col gap-3 p-5">
+            <Label>OAuth Redirect URL</Label>
+            <CopyField value={config?.callbackUrl ?? `${window.location.origin}/api/twitch/oauth/callback`} label="Twitch OAuth redirect URL" />
+            <span className="hint">Add this exact URL under OAuth Redirect URLs. Do not use only the Worker homepage.</span>
+          </Well>
+        </div>
+        <Well className="px-5 py-2">
+          <KeyValue label="Name">Challenge.chat plus your name, if Twitch says the name is taken</KeyValue>
+          <KeyValue label="Category">Chat Bot; use Website Integration if Chat Bot is unavailable</KeyValue>
+          <KeyValue label="Client secret">After creation, open Manage and choose New Secret</KeyValue>
+        </Well>
+        <span className="hint">After registration, open <b className="text-ink-soft">Manage</b>, copy the Client ID, and create one Client Secret. The EventSub callback is installed automatically after authorization.</span>
+      </Section>
+
+      <Divider />
+
+      <Section title="2 · Application credentials" sub="One Twitch application powers every channel in this Challenge.chat deployment.">
+        {ready && !editingConfiguration ? (
+          <Screen className="relative overflow-hidden p-0">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_20%,rgba(145,70,255,.18),transparent_35%),linear-gradient(110deg,rgba(255,255,255,.025),transparent_60%)]" aria-hidden="true" />
+            <div className="relative flex flex-col gap-5 p-5 sm:p-6">
+              <div className="flex flex-wrap items-start gap-4">
+                <span className="grid size-11 flex-none place-items-center rounded-[14px] border border-emerald-300/20 bg-emerald-300/[.08] text-emerald-300 shadow-[0_10px_30px_rgba(16,185,129,.08)]">
+                  <LockIcon size={20} />
+                </span>
+                <span className="flex min-w-[220px] flex-1 flex-col gap-1">
+                  <span className="flex flex-wrap items-center gap-2 text-base font-semibold text-ink-strong">
+                    Application locked in
+                    <span className="status inline-flex items-center gap-1 whitespace-nowrap text-emerald-300"><CheckIcon size={12} /> READY</span>
+                  </span>
+                  <span className="text-sm leading-relaxed text-ink-sub">Your credentials are stored server-side and ready for Twitch authorization.</span>
+                </span>
+                <Button size="sm" variant="ghost" disabled={busy || Boolean(connection)} onClick={() => setEditingConfiguration(true)}>
+                  <LockIcon size={14} /> {connection ? 'Disconnect to unlock' : 'Unlock to edit'}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 border-t border-white/[.07] pt-4 sm:grid-cols-3">
+                <KeyValue label="Client ID"><span className="mono text-xs tracking-[.08em]">{maskedClientId}</span></KeyValue>
+                <KeyValue label="Client Secret"><span className="flex items-center gap-2"><LockIcon size={13} /> Stored</span></KeyValue>
+                <KeyValue label="EventSub signing"><span className="flex items-center gap-2"><LockIcon size={13} /> Generated</span></KeyValue>
+              </div>
+              <span className="text-xs text-ink-faint">{config?.source === 'database' ? 'Saved in D1' : 'Loaded from Worker secrets'} · Secret values are never returned to this page</span>
+            </div>
+          </Screen>
+        ) : (
+          <Screen className="relative overflow-hidden p-0">
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[#9146ff]" aria-hidden="true" />
+            <div className="flex flex-col gap-5 p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <span className="flex flex-col gap-1">
+                  <span className="font-semibold text-ink-strong">{ready ? 'Credentials unlocked' : 'Add your Twitch application'}</span>
+                  <span className="text-sm text-ink-sub">Paste both values from Twitch Manage. Saving locks them into this deployment.</span>
+                </span>
+                {ready && <Button size="sm" variant="ghost" disabled={busy} onClick={cancelConfigurationEdit}>Cancel</Button>}
+              </div>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <TextField
+                  label="Client ID"
+                  value={clientId}
+                  onChange={(event) => setClientId(event.target.value)}
+                  placeholder="Paste the Client ID"
+                  autoComplete="off"
+                  disabled={busy || Boolean(connection)}
+                />
+                <TextField
+                  label="Client Secret"
+                  type="password"
+                  value={clientSecret}
+                  onChange={(event) => setClientSecret(event.target.value)}
+                  placeholder={ready ? 'Paste the new Client Secret' : 'Paste the Client Secret'}
+                  autoComplete="new-password"
+                  disabled={busy || Boolean(connection)}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-3 border-t border-white/[.07] pt-4">
+                <Button
+                  variant="accent"
+                  disabled={busy || Boolean(connection) || clientId.trim().length < 5 || clientSecret.trim().length < 10}
+                  onClick={() => void saveConfiguration()}
+                >
+                  <LockIcon size={14} /> {busy ? 'Saving…' : 'Save & lock'}
+                </Button>
+                <span className="text-xs leading-relaxed text-ink-sub">A fresh EventSub signing secret is generated automatically.</span>
+              </div>
+            </div>
+          </Screen>
+        )}
+        {!ready && <span className="flex items-center gap-2 text-sm text-amber-200"><Led tone="warn" /> Client ID and Client Secret required</span>}
+        {connection && <span className="hint">Disconnect the broadcaster before changing the global Twitch application credentials.</span>}
+      </Section>
+
+      <Divider />
+
+      <Section title="3 · What viewers can do" sub="Commands are case-insensitive and use Twitch's stable viewer ID for authorship and vote limits.">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Well className="flex flex-col gap-2 p-5">
+            <span className="mono text-sm font-semibold text-[#b99cff]">!challenge Win without healing</span>
+            <span className="text-sm leading-relaxed text-ink-sub">Creates a real suggestion. If submissions are paused, the server safely places it in Inbox.</span>
+          </Well>
+          <Well className="flex flex-col gap-2 p-5">
+            <span className="mono text-sm font-semibold text-[#b99cff]">!vote 2</span>
+            <span className="text-sm leading-relaxed text-ink-sub">Votes for the numbered entry in the active ballot. Repeated votes remain idempotent.</span>
+          </Well>
+        </div>
+        <Well className="flex flex-wrap items-center gap-3 px-5 py-4">
+          {['Follows', 'Subscriptions', 'Gift subs', 'Raids', 'Cheers'].map((event) => <span key={event} className="rounded-full bg-white/[.05] px-3 py-1.5 text-xs font-medium text-ink-soft shadow-[inset_0_0_0_1px_rgba(255,255,255,.07)]">{event}</span>)}
+          <span className="min-w-[220px] flex-1 text-sm text-ink-sub">These become transient overlay alerts and are never allowed to change a challenge result.</span>
+          <Button size="sm" variant="ghost" nativeButton={false} render={<Link to={channelPath('/settings/theme')} />}>Configure alerts <ArrowRightIcon size={14} /></Button>
+        </Well>
+      </Section>
+
+      {connection && (
+        <>
+          <Divider />
+          <Section title="EventSub listeners" sub="Twitch verifies each webhook independently. Reconnect if any listener needs attention.">
+            <Well className="overflow-hidden p-0">
+              <div className="divide-y divide-white/[.07]">
+                {connection.subscriptions.map((subscription) => (
+                  <div key={subscription.id} className="flex items-center gap-3 px-5 py-3.5">
+                    <Led tone={subscription.status === 'enabled' ? 'ok' : 'warn'} />
+                    <span className="mono min-w-0 flex-1 truncate text-xs text-ink-soft">{subscription.type}</span>
+                    <span className="status">{subscription.status}</span>
+                  </div>
+                ))}
+              </div>
+            </Well>
+          </Section>
+        </>
+      )}
+    </>
+  );
+}
+
+/* ───────── API & MCP ───────── */
+
+function Connections({ channel }: { channel: Channel }) {
+  const toast = useToasts();
+  const [tokens, setTokens] = useState<ApiTokenSummary[]>([]);
+  const [name, setName] = useState('');
+  const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [integration, setIntegration] = useState<Awaited<ReturnType<typeof api.integrationStatus>> | null>(null);
+  const [freshIntegration, setFreshIntegration] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const base = window.location.origin;
+  const restUrl = `${base}/api/v1/board?channel=${encodeURIComponent(channel.id)}`;
+  const mcpUrl = `${base}/mcp?channel=${encodeURIComponent(channel.id)}`;
+  const openApiUrl = `${base}/api/v1/board/openapi.json?channel=${encodeURIComponent(channel.id)}`;
+
+  const refresh = async () => {
+    const [{ tokens: next }, integrationStatus] = await Promise.all([api.apiTokens(), api.integrationStatus()]);
+    setTokens(next);
+    setIntegration(integrationStatus);
+  };
+
+  useEffect(() => {
+    setFreshToken(null);
+    setFreshIntegration(null);
+    void refresh().catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not load API access'));
+  }, [channel.id]);
+
+  const create = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { token, ...created } = await api.createApiToken(name.trim());
+      setFreshToken(token);
+      setName('');
+      setTokens((current) => [created, ...current]);
+      toast.add({ title: 'Board token created', description: 'Copy it now — it is shown once' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not create the token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async (token: ApiTokenSummary) => {
+    if (!window.confirm(`Revoke “${token.name}”? Anything using it will lose access immediately.`)) return;
+    setBusy(true);
+    try {
+      await api.revokeApiToken(token.id);
+      setTokens((current) => current.filter((item) => item.id !== token.id));
+      toast.add({ title: 'Board token revoked', description: token.name });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not revoke the token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rotateIntegration = async () => {
+    if ((integration?.token || integration?.environmentFallback) && !window.confirm('Replace the game integration token? Existing adapters will stop working immediately.')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await api.rotateIntegrationToken();
+      setFreshIntegration(created.token);
+      setIntegration(await api.integrationStatus());
+      toast.add({ title: 'Game token ready', description: 'Copy it now — it is shown once' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not create the game token');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Section
+        title="Board API & MCP"
+        sub="Named tokens can read and operate this board through REST or MCP. They cannot manage moderators, branding, settings or other boards."
+        actions={<Button size="sm" variant="ghost" nativeButton={false} render={<a href={openApiUrl} target="_blank" rel="noopener noreferrer" />}>OpenAPI <ExternalIcon size={14} /></Button>}
+      >
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Well className="flex min-w-0 flex-col gap-3 p-5">
+            <Label>REST endpoint</Label>
+            <CopyField value={restUrl} label="Board REST endpoint" />
+            <span className="hint">Send <b className="mono text-ink-soft">Authorization: Bearer ccat_…</b> and keep the channel query parameter.</span>
+          </Well>
+          <Well className="flex min-w-0 flex-col gap-3 p-5">
+            <Label>Remote MCP endpoint</Label>
+            <CopyField value={mcpUrl} label="Board MCP endpoint" />
+            <span className="hint">Stateless Streamable HTTP with the same board token. Supports MCP 2025 and 2026 clients.</span>
+          </Well>
+        </div>
+
+        {freshToken && (
+          <Screen className="flex flex-col gap-3 px-5 py-4">
+            <span className="status">New token · shown once</span>
+            <CopyField value={freshToken} label="New board API token" />
+            <span className="hint">Challenge.chat stores only its SHA-256 hash. Save it in your MCP client or server secret store before leaving this page.</span>
+          </Screen>
+        )}
+
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <TextField label="Token name" placeholder="Stream Deck" value={name} maxLength={60} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void create(); }} />
+          <Button variant="accent" disabled={busy || !name.trim()} onClick={() => void create()}>Create token</Button>
+        </div>
+
+        {tokens.length > 0 && (
+          <Well className="overflow-hidden p-0">
+            <div className="divide-y divide-white/[.07]">
+              {tokens.map((token) => (
+                <div key={token.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm font-semibold text-ink-strong">{token.name}</span>
+                    <span className="mono text-[11px] text-ink-muted">ccat_…{token.lastFour} · created {new Date(token.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <span className="text-xs text-ink-muted">{token.lastUsedAt ? `Used ${new Date(token.lastUsedAt).toLocaleString()}` : 'Never used'}</span>
+                  <Button size="xs" variant="ghost" disabled={busy} onClick={() => void revoke(token)}>Revoke</Button>
+                </div>
+              ))}
+            </div>
+          </Well>
+        )}
+        {error && <span className="text-sm text-red-300" role="alert">{error}</span>}
+      </Section>
+
+      <Divider />
+
+      <Section title="Browser WebMCP" sub="When the owner opens the control room in a supported browser, the same board tools are registered directly on the page.">
+        <Well className="flex flex-wrap items-center gap-3 px-5 py-4">
+          <Led tone="ok" />
+          <span className="text-sm font-semibold text-ink-strong">Owner session only</span>
+          <span className="text-sm text-ink-sub">No API token is copied into the page, and moderators do not receive these tools.</span>
+        </Well>
+      </Section>
+
+      <Divider />
+
+      <Section title="Game event token" sub="A narrower credential for game adapters and verified chat backends. It can report metrics and trusted votes, but cannot operate the board.">
+        {freshIntegration && (
+          <Screen className="flex flex-col gap-3 px-5 py-4">
+            <span className="status">New game token · shown once</span>
+            <CopyField value={freshIntegration} label="New game integration token" />
+          </Screen>
+        )}
+        <Well className="flex flex-wrap items-center gap-4 px-5 py-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="text-sm font-semibold text-ink-strong">
+              {integration?.token ? `Token ending in ${integration.token.lastFour}` : integration?.environmentFallback ? 'Using the deployment environment token' : 'No game token yet'}
+            </span>
+            <span className="hint">Board ID: <b className="mono text-ink-soft">{channel.id}</b></span>
+          </div>
+          <Button size="sm" disabled={busy || !integration} onClick={() => void rotateIntegration()}>
+            {integration?.token || integration?.environmentFallback ? 'Replace token' : 'Create token'}
+          </Button>
+        </Well>
+      </Section>
+    </>
+  );
 }
 
 /* ───────── OBS ───────── */
@@ -992,14 +1485,20 @@ type MockChatLine = {
 
 function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Promise<void> }) {
   const [state, setState] = useState<AppState | null>(null);
+  const overlayConfig = useOverlayConfig();
   const [viewer, setViewer] = useState('TestViewer');
   const [message, setMessage] = useState('');
   const [lines, setLines] = useState<MockChatLine[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gameRun, setGameRun] = useState<LiveRunProjection | null>(null);
+  const [gameBusy, setGameBusy] = useState(false);
+  const [gameError, setGameError] = useState<string | null>(null);
+  const [gameEvents, setGameEvents] = useState<string[]>([]);
 
   useEffect(() => {
     void api.state().then(setState).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not load the board'));
+    void frameworkClient.liveRun().then(({ projection }) => setGameRun(projection)).catch(() => undefined);
   }, [channel.id]);
 
   const append = (line: Omit<MockChatLine, 'id'>) => {
@@ -1053,6 +1552,63 @@ function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Prom
 
   const phase = state?.session.phase ?? 'loading';
   const challengeDestination = state?.session.phase === 'collecting' && state.session.submissionsOpen ? 'Submissions' : 'Inbox';
+  const kills = gameRun?.metrics.find((metric) => metric.id === 'kills');
+  const gameActive = gameRun && ['countdown', 'active', 'paused'].includes(gameRun.status);
+
+  const ensureKillCounter = async () => {
+    if (overlayConfig.elements.kills) return;
+    const { config } = await api.updateOverlayConfig({
+      ...overlayConfig,
+      elements: { ...overlayConfig.elements, kills: true },
+    });
+    hydrateOverlayConfig(config);
+    await onSaved?.();
+  };
+
+  const startGameRun = async () => {
+    setGameBusy(true);
+    setGameError(null);
+    try {
+      const current = await frameworkClient.liveRun();
+      let projection = current.projection;
+      if (projection && ['countdown', 'active', 'paused'].includes(projection.status)) {
+        if (!projection.metrics.some((metric) => metric.id === 'kills')) {
+          throw new Error('Another custom game run is active. Finish it before starting the kill tracker.');
+        }
+      } else {
+        projection = (await frameworkClient.createRun({ ...KILL_CHALLENGE_EXAMPLE, countdownSeconds: 0 })).projection;
+        setGameEvents([]);
+      }
+      await ensureKillCounter();
+      setGameRun(projection);
+      setGameEvents((events) => [...events, 'Kill tracker connected — OBS counter enabled'].slice(-12));
+    } catch (caught) {
+      setGameError(caught instanceof Error ? caught.message : 'Could not start the game event test');
+    } finally {
+      setGameBusy(false);
+    }
+  };
+
+  const sendKill = async () => {
+    if (!gameRun || !gameActive) return;
+    setGameBusy(true);
+    setGameError(null);
+    try {
+      const { projection } = await frameworkClient.publishEvent(gameRun.runId, {
+        source: 'dev-custom-game',
+        idempotencyKey: `dev-custom-game:${crypto.randomUUID()}`,
+        occurredAt: new Date().toISOString(),
+        event: { type: 'metric.incremented', metric: 'kills', by: 1 },
+      });
+      setGameRun(projection);
+      const value = projection.metrics.find((metric) => metric.id === 'kills')?.value ?? 0;
+      setGameEvents((events) => [...events, `enemy_defeated → kills ${value}`].slice(-12));
+    } catch (caught) {
+      setGameError(caught instanceof Error ? caught.message : 'Could not send the game event');
+    } finally {
+      setGameBusy(false);
+    }
+  };
 
   return (
     <>
@@ -1151,6 +1707,51 @@ function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Prom
               <span className="hint">Open a vote in the control room to enable <b className="mono text-ink-soft">!vote</b> events.</span>
             )}
           </form>
+        </div>
+      </Section>
+
+      <Divider />
+
+      <Section title="Custom Game API" sub="Exercise the real framework event path: a game adapter reports an enemy defeat, Cloudflare updates the run, and the React overlay SDK renders the kill counter.">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
+          <Screen className="flex min-h-[240px] flex-col overflow-hidden p-0">
+            <div className="flex items-center justify-between gap-4 border-b border-white/[.07] px-5 py-3.5">
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink-strong">
+                <Led tone={gameActive ? 'ok' : undefined} />
+                Game event stream
+              </span>
+              <span className="mono text-[11px] tracking-[.1em] text-ink-muted">{gameRun?.status.toUpperCase() ?? 'OFFLINE'}</span>
+            </div>
+            <div className="flex flex-1 flex-col justify-end gap-2 overflow-y-auto px-5 py-5" aria-live="polite">
+              {gameEvents.length ? gameEvents.map((event, index) => (
+                <div key={`${event}-${index}`} className="mono text-xs text-ink-sub">
+                  <span className="mr-3 text-accent-text">{String(index + 1).padStart(2, '0')}</span>{event}
+                </div>
+              )) : (
+                <div className="m-auto flex max-w-[360px] flex-col items-center gap-2 text-center">
+                  <span className="mono text-5xl font-bold text-ink-strong">{typeof kills?.value === 'number' ? String(kills.value).padStart(2, '0') : '00'}</span>
+                  <strong className="text-lg text-ink-strong">Kill counter ready to test</strong>
+                  <span className="text-sm leading-relaxed text-pretty text-ink-sub">Start a tracked run, then send the same normalized event a game integration would report.</span>
+                </div>
+              )}
+            </div>
+          </Screen>
+
+          <div className="flex flex-col gap-4">
+            <Well className="flex flex-col gap-3 p-5">
+              <KeyValue label="Metric">kills</KeyValue>
+              <KeyValue label="Current">{typeof kills?.value === 'number' ? `${kills.value} / ${typeof kills.target === 'number' ? kills.target : '—'}` : 'Not running'}</KeyValue>
+              <KeyValue label="OBS element">{overlayConfig.elements.kills ? 'Enabled' : 'Off'}</KeyValue>
+            </Well>
+            <Button variant="accent" disabled={gameBusy} onClick={() => void (gameActive ? sendKill() : startGameRun())}>
+              {gameActive ? 'Send enemy defeated' : 'Start kill tracker'}
+            </Button>
+            {gameActive && !overlayConfig.elements.kills && (
+              <Button disabled={gameBusy} onClick={() => void ensureKillCounter()}>Enable kill counter</Button>
+            )}
+            {gameError && <span className="text-sm text-red-300">{gameError}</span>}
+            <span className="hint">The adapter sends <b className="mono text-ink-soft">metric.incremented</b>; it never writes to OBS directly.</span>
+          </div>
         </div>
       </Section>
 

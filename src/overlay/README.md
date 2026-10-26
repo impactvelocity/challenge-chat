@@ -23,7 +23,7 @@ import '@/overlay/themes'; // registers the built-in themes
 </OverlayProvider>;
 ```
 
-`/overlay` runs this against `createMockSource()`; its panel presses the control room's buttons and edits the theme's settings. `<OverlayPreview display scene />` (in `controls/`) is the same overlay held at one scene, for settings pages.
+`/overlay` runs against `createLiveSource()`: it bootstraps from the Worker's public D1 projection, then receives board and framework-run updates over the channel-scoped Durable Object socket. `/overlay/studio` uses `createMockSource()` for local scene and theme work. `<OverlayPreview display scene />` (in `controls/`) is the same overlay held at one scene for settings pages.
 
 ## Hooks
 
@@ -40,7 +40,7 @@ import '@/overlay/themes'; // registers the built-in themes
 | `useOverlaySelector(fn, { time })` | Anything else, re-rendering only when your selection changes | optional |
 | `useOverlayEvent(type, fn)` | Moments to animate: `round.call`, `round.attempt`, `lead`, `streak`, `idea`, `votes`, `goal`, `session.end`… (or `'*'`) | — |
 
-Twitch moments travel as `custom` events named `follow`, `sub`, `gift`, `raid` or `cheer`, with `{ user, amount }`; Broadcast's Alerts element plays them one at a time.
+Source-specific transient moments travel through `sink.event({ type: 'custom', ... })`; Broadcast's Alerts element understands `follow`, `sub`, `gift`, `raid`, and `cheer`. The production Twitch adapter validates and normalizes EventSub payloads in the Worker, then the Channel coordinator sends a bounded `integration.moment` projection to overlay sockets. Game integrations should normally report normalized framework facts such as `metric.incremented`. Those are validated and stored by the Worker, projected over the socket, exposed by `useMetric()`, and rendered by elements such as the kill counter.
 
 Clock hooks re-render once a second at most, whatever the tick rate. Events are derived by diffing snapshots, so a source only has to send state; nothing fires for the first snapshot.
 
@@ -91,4 +91,8 @@ A source is `{ connect(sink) => stop }`. It calls `sink.snapshot()` with full st
 
 The snapshot (`sdk/types.ts`) uses server epoch milliseconds throughout. Clocks are `{ startsAt, endsAt, pausedAt }`; resuming shifts both ends by the pause, so every client derives the same time with no ticking from the server. A future `startsAt` is a pre-start countdown.
 
-Mapping the Worker's `PublicOverlayState` onto it is the remaining step: ISO strings to ms, `phase` to `stage` (collecting → open, voting → vote, ready → lock, live → live, complete → done), `activeRound` to `session.round`, and the framework run's metrics to `metrics`.
+`sources/live.ts` maps the Worker's `PublicOverlayState` into the SDK contract: ISO strings to milliseconds, `phase` to `stage` (collecting → open, voting → vote, ready → lock, live → live, complete → done), `activeRound` to `session.round`, and the live framework run's public metrics to `metrics`.
+
+Settings → Dev includes a Custom Game API harness. Starting the kill tracker creates the example framework run, enables the `kills` element, and sending an enemy defeat publishes the same idempotent `metric.incremented` event a server-side game adapter would send. The open OBS page updates without a reload.
+
+The SDK contract test renders every public data hook, theme/scene/element hooks, custom events, and the real kill-counter component. The live-session test covers the Cloudflare Durable Object broadcast and duplicate-event protection; the adapter and live-source tests cover normalization and public projection mapping.

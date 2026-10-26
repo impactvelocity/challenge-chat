@@ -63,6 +63,10 @@ describe("creator and moderator access", () => {
     expect(session.status).toBe(403);
     const reset = await worker.fetch(new Request("https://creator.example/api/demo/reset", { method: "POST", headers }), env as never, context);
     expect(reset.status).toBe(403);
+    const tokens = await worker.fetch(new Request("https://creator.example/api/channel/api-tokens", { headers }), env as never, context);
+    expect(tokens.status).toBe(403);
+    const createToken = await worker.fetch(new Request("https://creator.example/api/channel/api-tokens", { method: "POST", headers }), env as never, context);
+    expect(createToken.status).toBe(403);
   });
 
   it("limits integration credentials to metric events", async () => {

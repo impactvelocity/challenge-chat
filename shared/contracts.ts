@@ -110,6 +110,7 @@ export interface Challenge extends ChallengeDraft {
   authorId: string;
   authorLogin: string;
   authorDisplayName: string;
+  seen: boolean;
   status: ChallengeStatus;
   roundValue: number;
   parserStatus: "ai" | "fallback";
@@ -123,6 +124,7 @@ export interface ActiveRound {
   status: "active" | "resolved";
   startedAt: string;
   endsAt: string | null;
+  pausedAt?: string | null;
   attemptsUsed: number;
   result: "streamer_won" | "chat_won" | null;
 }

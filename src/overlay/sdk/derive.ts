@@ -234,7 +234,7 @@ export function deriveRound(snap: OverlaySnapshot): RoundModel {
 
   const finalLead = score.streamer.points - score.chat.points;
   const winner = stage === 'done' ? leaderOf(score.streamer.points, score.chat.points) : null;
-  const sweepSide = list.length && list.every((d) => d.winner === list[0].winner) ? list[0].winner : null;
+  const sweepSide = total > 0 && list.length === total && list.every((d) => d.winner === list[0].winner) ? list[0].winner : null;
   const mvp = [...earnings(snap).values()].sort((a, b) => b.points - a.points)[0] ?? null;
 
   return {
@@ -295,7 +295,7 @@ export function deriveBoard(snap: OverlaySnapshot, round: RoundModel): BoardMode
           wins: { streamer: round.score.streamer.wins, chat: round.score.chat.wins },
         }
       : null;
-  const history = [...(tonight ? [tonight] : []), ...snap.history].map(summarize);
+  const history = [...(tonight && !snap.history.some((item) => item.id === tonight.id) ? [tonight] : []), ...snap.history].map(summarize);
   const live = tonight ? null : round.score;
 
   const totals = Object.fromEntries(
@@ -332,9 +332,13 @@ export function deriveBoard(snap: OverlaySnapshot, round: RoundModel): BoardMode
   const before = [...snap.challengers].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   const earned = earnings(snap);
   const rows = new Map(before.map((c) => [c.name.toLowerCase(), { ...c, tonight: 0 }]));
-  for (const [k, e] of earned) {
-    const row = rows.get(k) ?? { id: `u_${k}`, name: e.name, points: 0, played: 0, won: 0, tonight: 0 };
-    rows.set(k, { ...row, points: row.points + e.points, tonight: e.points });
+  if (snap.challengerPointsIncludeCurrentSession) {
+    for (const [key, row] of rows) rows.set(key, { ...row, tonight: earned.get(key)?.points ?? 0 });
+  } else {
+    for (const [k, e] of earned) {
+      const row = rows.get(k) ?? { id: `u_${k}`, name: e.name, points: 0, played: 0, won: 0, tonight: 0 };
+      rows.set(k, { ...row, points: row.points + e.points, tonight: e.points });
+    }
   }
   const leaderboard = [...rows.values()]
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))

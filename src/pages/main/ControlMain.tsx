@@ -3,6 +3,7 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react
 import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 import {
   ArrowRightIcon,
+  EditIcon,
   CheckIcon,
   ChevronDownIcon,
   MegaphoneIcon,
@@ -58,6 +59,7 @@ import { ChannelsSheet } from './ChannelsSheet';
 import { OverlayElementsSheet } from './OverlayElementsSheet';
 import { Inbox, type InboxIdea } from './Inbox';
 import { SessionTitleSheet, StreamedTitle, useStreamedTitle } from './SessionTitle';
+import { ChallengeEditorSheet } from './ChallengeEditorSheet';
 import { ChallengeResults, ChallengerRecap, challengerRecap } from './Recap';
 import { Settings } from './Settings';
 import { VotersSheet, type Voter } from './VotersSheet';
@@ -126,7 +128,7 @@ const freshRound = (): Round => ({
   paused: false,
   result: null,
 });
-const elapsedSince = (startedAt: string) => Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+const elapsedSince = (startedAt: string, pausedAt?: string | null) => Math.max(0, Math.floor(((pausedAt ? new Date(pausedAt).getTime() : Date.now()) - new Date(startedAt).getTime()) / 1000));
 const byVotes = (a: Entry, b: Entry) => b.votes - a.votes;
 
 export function ControlMain() {
@@ -139,11 +141,13 @@ export function ControlMain() {
   if (!controller.state) {
     return <main className="page-bg grid min-h-screen place-items-center text-ink-sub">{controller.error ?? 'Loading control room…'}</main>;
   }
-  return <ControlRoom controller={controller as typeof controller & { state: AppState }} />;
+  return <ControlRoom key={controller.state.session.id} controller={controller as typeof controller & { state: AppState }} />;
 }
 
 function ControlRoom({ controller }: { controller: ReturnType<typeof useChallengeChatController> & { state: AppState } }) {
   const state = controller.state;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editingChallenge = state.session.phase === 'collecting' ? state.challenges.find((item) => item.id === editingId) : null;
   const channel = channelFromState(state);
   const theme = useTheme();
   const role = useRole();
@@ -180,11 +184,13 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     .map((item) => ({
       c: challengeFromState(item),
       at: new Date(item.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
-      seen: !item.needsReview,
+      seen: item.seen,
     }));
   const [queued, setQueued] = useState<string[]>([]);
+  const markingInboxSeen = useRef(false);
   /** The top-bar badge counts only ideas nobody has looked at yet. */
-  const newInInbox = inbox.filter((i) => !i.seen && !queued.includes(i.c.id)).length;
+  const unseenInInbox = inbox.filter((i) => !i.seen).length;
+  const newInInbox = onInbox ? 0 : unseenInInbox;
   const initialChallenges = state.challenges.filter((item) => !['rejected', 'inbox'].includes(item.status)).map(challengeFromState);
   const initialPlayed: Played[] = state.challenges
     .filter((item) => ['streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status))
@@ -205,9 +211,9 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const [lineup, setLineup] = useState<Challenge[]>(state.challenges.filter((item) => ['queued', 'active', 'streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status)).map(challengeFromState));
   const [played, setPlayed] = useState<Played[]>(initialPlayed);
   const [round, setRound] = useState<Round>(() => ({
-    elapsed: state.activeRound ? elapsedSince(state.activeRound.startedAt) : 0,
+    elapsed: state.activeRound ? elapsedSince(state.activeRound.startedAt, state.activeRound.pausedAt) : 0,
     attempts: (state.activeRound?.attemptsUsed ?? 0) + 1,
-    paused: false,
+    paused: !!state.activeRound?.pausedAt,
     result: !state.activeRound && state.session.phase === 'live' ? initialPlayed.at(-1)?.winner ?? null : null,
   }));
   const historyFromState = (value: AppState): Session[] => value.sessionHistory.map((entry) => ({
@@ -219,6 +225,14 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     bouts: [entry.streamerChallengeWins, entry.chatChallengeWins],
   }));
   const [history, setHistory] = useState<Session[]>(() => historyFromState(state));
+
+  useEffect(() => {
+    if (!onInbox || unseenInInbox === 0 || markingInboxSeen.current) return;
+    markingInboxSeen.current = true;
+    void controller.mutate(() => controller.actions.markInboxSeen()).finally(() => {
+      markingInboxSeen.current = false;
+    });
+  }, [controller.actions, controller.mutate, onInbox, unseenInInbox]);
   const challengers: Challenger[] = state.leaderboard.map((entry) => ({
     name: entry.displayName,
     points: entry.points,
@@ -300,7 +314,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     setAccepting(state.session.submissionsOpen);
     setQueued((current) => current.filter((id) => state.challenges.some((item) => item.id === id && item.status === 'inbox')));
     if (state.activeRound) {
-      setRound({ elapsed: elapsedSince(state.activeRound.startedAt), attempts: state.activeRound.attemptsUsed + 1, paused: false, result: null });
+      setRound({ elapsed: elapsedSince(state.activeRound.startedAt, state.activeRound.pausedAt), attempts: state.activeRound.attemptsUsed + 1, paused: !!state.activeRound.pausedAt, result: null });
     } else if (state.session.phase === 'live') {
       setRound((currentRound) => ({ ...currentRound, result: resolved.at(-1)?.winner ?? null }));
     }
@@ -319,11 +333,12 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
       }, 1000);
       return () => clearInterval(id);
     }
-    if (stage === 'live' && !round.paused && !round.result && !timeUp) {
-      const id = setInterval(() => setRound((r) => ({ ...r, elapsed: r.elapsed + 1 })), 1000);
+    if (stage === 'live' && state.activeRound && !round.paused && !round.result && !timeUp) {
+      const active = state.activeRound;
+      const id = setInterval(() => setRound((r) => ({ ...r, elapsed: elapsedSince(active.startedAt, active.pausedAt) })), 1000);
       return () => clearInterval(id);
     }
-  }, [stage, accepting, round.paused, round.result, timeUp]);
+  }, [stage, accepting, round.paused, round.result, timeUp, state.activeRound]);
 
   useEffect(() => {
     if (stage === 'vote' && voteLeft === 0 && entries.length) closeVoting();
@@ -814,8 +829,8 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       <thead>
                         <tr>
                           <th>Challenge</th>
-                          <th className="w-[160px] max-sm:hidden">From</th>
-                          <th className="w-[110px] text-right sm:w-[120px]">
+                          <th className="w-[160px] max-md:hidden">From</th>
+                          <th className="w-[132px] text-right sm:w-[140px]">
                             {!accepting && ideas.length > 0 && (
                               <button
                                 type="button"
@@ -849,11 +864,14 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                                   <span className="truncate text-[15px] font-semibold text-ink-strong">{c.title}</span>
                                 </span>
                                 <ChallengeMeta c={c} className="pt-1.5" />
-                                <span className="mono block truncate pt-0.5 text-[11px] text-ink-muted sm:hidden">@{c.by}</span>
+                                <span className="mono block truncate pt-0.5 text-[11px] text-ink-muted md:hidden">@{c.by}</span>
                               </td>
-                              <td className="mono truncate text-[14px] text-ink-soft max-sm:hidden">@{c.by}</td>
+                              <td className="mono truncate text-[14px] text-ink-soft max-md:hidden">@{c.by}</td>
                               <td>
-                                <span className="flex items-center justify-end gap-2">
+                                <span className="flex shrink-0 items-center justify-end gap-2">
+                                  <Button size="xs" icon variant="ghost" aria-label={`Edit ${c.title}`} onClick={() => setEditingId(c.id)}>
+                                    <EditIcon size={14} />
+                                  </Button>
                                   {/* Picking is only possible once the stream is paused */}
                                   <Button
                                     size="xs"
@@ -1044,7 +1062,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       <Button variant="ghost" onClick={() => setCancelOpen(true)}>
                         Cancel round
                       </Button>
-                      <Button variant="ghost" onClick={() => (setVoteLeft(30), go('vote'))}>
+                      <Button variant="ghost" disabled={controller.busy} onClick={() => void controller.mutate(() => controller.actions.reopenVoting(voteSecs))}>
                         Reopen voting
                       </Button>
                       <Button variant="accent" onClick={startSession} disabled={!lockList.length}>
@@ -1212,7 +1230,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                     <>
                       <WinButtons onWin={finish} />
                       <div className="grid grid-cols-3 gap-3">
-                        <Button size="sm" onClick={() => setRound((r) => ({ ...r, paused: !r.paused }))} disabled={timeUp}>
+                        <Button size="sm" onClick={() => current && void controller.mutate(() => controller.actions.setChallengePaused(current.id, !round.paused))} disabled={controller.busy || timeUp || !state.activeRound || new Date(state.activeRound.startedAt).getTime() > Date.now()}>
                           {round.paused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
                           {round.paused ? 'Resume' : 'Pause'}
                         </Button>
@@ -1366,7 +1384,11 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
       />
 
       <OverlayElementsSheet open={elementsOpen} onOpenChange={setElementsOpen} />
-      <SessionTitleSheet open={titleOpen} onOpenChange={setTitleOpen} title={sessionTitle} />
+      <SessionTitleSheet open={titleOpen} onOpenChange={setTitleOpen} title={sessionTitle} aiNamingEnabled={state.sessionSettings.aiTitles} />
+      {editingChallenge ? <ChallengeEditorSheet key={editingChallenge.id} challenge={editingChallenge} onClose={() => setEditingId(null)} onSave={async (draft) => {
+        await controller.actions.updateChallenge(editingChallenge.id, draft);
+        await controller.refresh();
+      }} /> : null}
       <VotersSheet
         open={
           votersEntry

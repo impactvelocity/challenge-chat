@@ -50,6 +50,7 @@ export function useChallengeChatState(scope: "admin" | "overlay" = "admin") {
       socket.addEventListener("open", () => {
         retryRef.current = 0;
         setConnection((current) => ({ ...current, status: "live" }));
+        void refresh();
       });
       socket.addEventListener("message", (message) => {
         if (message.data === "pong") return;
@@ -72,6 +73,7 @@ export function useChallengeChatState(scope: "admin" | "overlay" = "admin") {
       socket.addEventListener("close", () => {
         if (disposed) return;
         retryRef.current += 1;
+        setLiveRun(null);
         setConnection((current) => ({ ...current, status: "reconnecting" }));
         reconnectTimer = window.setTimeout(connect, Math.min(1_000 * 2 ** retryRef.current, 15_000));
       });

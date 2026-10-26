@@ -64,10 +64,11 @@ type SheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReturnType<typeof useStreamedTitle>;
+  aiNamingEnabled: boolean;
 };
 
 /** Rewrite the session title by hand, or ask for another suggestion. */
-export function SessionTitleSheet({ open, onOpenChange, title }: SheetProps) {
+export function SessionTitleSheet({ open, onOpenChange, title, aiNamingEnabled }: SheetProps) {
   const [draft, setDraft] = useState(title.text);
   const [wasOpen, setWasOpen] = useState(open);
   // Start from the current title each time the drawer opens.
@@ -120,11 +121,13 @@ export function SessionTitleSheet({ open, onOpenChange, title }: SheetProps) {
           variant="ghost"
           size="sm"
           className="self-start"
+          disabled={busy || !aiNamingEnabled}
           onClick={() => void title.regenerate().then((generated) => setDraft(generated.name))}
         >
           <RefreshIcon size={14} />
           Generate another
         </Button>
+        {!aiNamingEnabled ? <span className="hint">AI round naming is off. Enable it in Settings to generate a title, or enter your own above.</span> : null}
         <span className="hint">Round titles are saved to this board and update the OBS overlay.</span>
       </div>
     </Sheet>

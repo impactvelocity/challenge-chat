@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createHmac } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../worker/index";
 import { LiveSessionCoordinator } from "../worker/live-session";
 
@@ -8,7 +9,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql", "0009_challenge_inbox.sql", "0010_session_names.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql", "0009_challenge_inbox.sql", "0010_session_names.sql", "0011_board_api_tokens.sql", "0012_round_controls.sql", "0013_twitch_integration.sql", "0014_twitch_app_configuration.sql", "0015_challenge_seen.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -62,12 +63,12 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
   let env: any;
   const pending: Promise<unknown>[] = [];
   const context = { waitUntil: (promise: Promise<unknown>) => pending.push(promise) };
-  const call = async (path: string, options: { method?: string; data?: unknown; cookie?: string; channel?: string; bearer?: string } = {}) => {
+  const call = async (path: string, options: { method?: string; data?: unknown; cookie?: string; channel?: string; bearer?: string; headers?: Record<string, string> } = {}) => {
     const url = new URL(path, base);
     if (options.channel) url.searchParams.set("channel", options.channel);
     const response = await worker.fetch(new Request(url, {
       method: options.method ?? "GET",
-      headers: { "Content-Type": "application/json", Origin: base, ...(options.cookie ? { Cookie: options.cookie } : {}), ...(options.bearer ? { Authorization: `Bearer ${options.bearer}` } : {}) },
+      headers: { "Content-Type": "application/json", Origin: base, ...(options.cookie ? { Cookie: options.cookie } : {}), ...(options.bearer ? { Authorization: `Bearer ${options.bearer}` } : {}), ...options.headers },
       ...(options.data !== undefined ? { body: JSON.stringify(options.data) } : {}),
     }), env, context as never);
     await Promise.all(pending.splice(0));
@@ -112,6 +113,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0008_channel_setup.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0009_challenge_inbox.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0010_session_names.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0011_board_api_tokens.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
@@ -298,7 +300,10 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     });
     expect(closedSuggestion.status).toBe(201);
     const closedId = (await closedSuggestion.json() as any).id as string;
-    expect((await state(channel)).challenges.find((item: any) => item.id === closedId)).toMatchObject({ status: "inbox", needsReview: true });
+    expect((await state(channel)).challenges.find((item: any) => item.id === closedId)).toMatchObject({ status: "inbox", needsReview: true, seen: false });
+
+    expect((await call("/api/inbox/seen", { method: "POST", channel, cookie: ownerCookie, data: {} })).status).toBe(200);
+    expect((await state(channel)).challenges.find((item: any) => item.id === closedId)?.seen).toBe(true);
 
     expect((await call("/api/session/submissions", {
       method: "PATCH", channel, cookie: ownerCookie, data: { open: true },
@@ -310,6 +315,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
 
     const second = await suggestion(channel, "Action", "Bob");
     const third = await suggestion(channel, "Action", "Carol");
+    expect((await state(channel)).challenges.find((item: any) => item.id === second)?.seen).toBe(true);
     for (const id of [closedId, second, third]) expect((await approve(channel, id)).status).toBe(200);
 
     const opened = await call("/api/ballots", {
@@ -318,7 +324,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(opened.status).toBe(201);
     let current = await state(channel);
     expect(current.session.submissionsOpen).toBe(false);
-    expect(current.challenges.find((item: any) => item.id === third)?.status).toBe("inbox");
+    expect(current.challenges.find((item: any) => item.id === third)).toMatchObject({ status: "inbox", seen: true });
 
     const duringVote = await call("/api/challenges", {
       method: "POST",
@@ -327,7 +333,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
       data: { text: "Finish the level backwards", game: "Action", author: { id: "dana", displayName: "Dana" } },
     });
     const duringVoteId = (await duringVote.json() as any).id as string;
-    expect((await state(channel)).challenges.find((item: any) => item.id === duringVoteId)?.status).toBe("inbox");
+    expect((await state(channel)).challenges.find((item: any) => item.id === duringVoteId)).toMatchObject({ status: "inbox", seen: false });
 
     const { id: ballotId } = await opened.json() as any;
     expect((await call(`/api/ballots/${ballotId}/close`, { method: "POST", channel, cookie: ownerCookie })).status).toBe(200);
@@ -583,5 +589,328 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     const publicState = JSON.stringify(await (await call("/api/public/state", { channel: a })).json());
     expect(publicState).not.toContain(token);
     expect(publicState).not.toContain("pending_review");
+  });
+
+  it("guides the owner through a self-hosted Twitch application and creates Channel-bound OAuth state", async () => {
+    const channel = await create("twitch-setup");
+    const before = await (await call("/api/twitch/status", { channel, cookie: ownerCookie })).json() as any;
+    expect(before.configuration).toMatchObject({
+      ready: false,
+      applicationUrl: base,
+      callbackUrl: `${base}/api/twitch/oauth/callback`,
+      eventsubUrl: `${base}/api/twitch/eventsub`,
+    });
+    expect(before.configuration.missing).toEqual(expect.arrayContaining(["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_EVENTSUB_SECRET"]));
+    expect((await call("/api/twitch/connect", { method: "POST", channel, cookie: ownerCookie, data: {} })).status).toBe(503);
+
+    expect((await call("/api/twitch/configuration", {
+      method: "PUT", channel, data: { clientId: "client-id", clientSecret: "client-secret" },
+    })).status).toBe(401);
+    const saved = await call("/api/twitch/configuration", {
+      method: "PUT", channel, cookie: ownerCookie, data: { clientId: "client-id", clientSecret: "client-secret" },
+    });
+    expect(saved.status).toBe(200);
+    const savedBody = await saved.json() as any;
+    expect(savedBody.configuration).toMatchObject({ ready: true, source: "database", clientId: "client-id" });
+    expect(JSON.stringify(savedBody)).not.toContain("client-secret");
+    const stored = db.sql.prepare("SELECT client_id, client_secret, eventsub_secret FROM twitch_app_configuration WHERE id = 1").get() as any;
+    expect(stored).toMatchObject({ client_id: "client-id", client_secret: "client-secret" });
+    expect(stored.eventsub_secret).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(savedBody)).not.toContain(stored.eventsub_secret);
+
+    const connected = await call("/api/twitch/connect", { method: "POST", channel, cookie: ownerCookie, data: {} });
+    expect(connected.status).toBe(200);
+    const authorization = new URL((await connected.json() as any).authorizationUrl);
+    expect(authorization.origin).toBe("https://id.twitch.tv");
+    expect(authorization.searchParams.get("redirect_uri")).toBe(`${base}/api/twitch/oauth/callback`);
+    expect(authorization.searchParams.get("scope")).toContain("user:read:chat");
+    expect(db.sql.prepare("SELECT channel_id FROM twitch_oauth_states").get()?.channel_id).toBe(channel);
+  });
+
+  it("ingests signed Twitch commands once, ignores malformed or inactive commands, and projects moments", async () => {
+    const channel = await create("twitch-live");
+    env.TWITCH_CLIENT_ID = "client-id";
+    env.TWITCH_CLIENT_SECRET = "client-secret";
+    env.TWITCH_EVENTSUB_SECRET = "eventsub-secret-long-enough";
+    const now = Date.now();
+    db.sql.prepare(
+      `INSERT INTO twitch_connections
+        (channel_id, broadcaster_user_id, broadcaster_login, broadcaster_display_name, scopes_json, status, connected_at, updated_at)
+       VALUES (?, 'broadcaster-1', 'streamer', 'Streamer', '[]', 'connected', ?, ?)`,
+    ).run(channel, now, now);
+    for (const [id, type] of [["chat-sub", "channel.chat.message"], ["follow-sub", "channel.follow"]]) {
+      db.sql.prepare(
+        "INSERT INTO twitch_eventsub_subscriptions (id, channel_id, type, status, created_at, updated_at) VALUES (?, ?, ?, 'enabled', ?, ?)",
+      ).run(id, channel, type, now, now);
+    }
+
+    const eventsub = async (id: string, subscriptionId: string, type: string, event: unknown, signatureSecret = env.TWITCH_EVENTSUB_SECRET) => {
+      const timestamp = new Date().toISOString();
+      const data = {
+        subscription: { id: subscriptionId, type, status: "enabled", condition: { broadcaster_user_id: "broadcaster-1" } },
+        event,
+      };
+      const serialized = JSON.stringify(data);
+      const signature = `sha256=${createHmac("sha256", signatureSecret).update(`${id}${timestamp}${serialized}`).digest("hex")}`;
+      return call("/api/twitch/eventsub", {
+        method: "POST",
+        data,
+        headers: {
+          "Twitch-Eventsub-Message-Id": id,
+          "Twitch-Eventsub-Message-Timestamp": timestamp,
+          "Twitch-Eventsub-Message-Signature": signature,
+          "Twitch-Eventsub-Message-Type": "notification",
+        },
+      });
+    };
+    const chatEvent = (text: string) => ({
+      broadcaster_user_id: "broadcaster-1",
+      chatter_user_id: "viewer-1",
+      chatter_user_login: "alice",
+      chatter_user_name: "Alice",
+      message_id: crypto.randomUUID(),
+      message: { text },
+    });
+
+    expect((await eventsub("bad-signature", "chat-sub", "channel.chat.message", chatEvent("!challenge forged"), "wrong-secret")).status).toBe(403);
+    expect((await eventsub("challenge-1", "chat-sub", "channel.chat.message", chatEvent("!challenge Win without healing"))).status).toBe(204);
+    expect((await state(channel)).challenges).toEqual([expect.objectContaining({ rawText: "Win without healing", authorId: "twitch:viewer-1", authorLogin: "alice" })]);
+    expect((await eventsub("challenge-1", "chat-sub", "channel.chat.message", chatEvent("!challenge duplicate"))).status).toBe(204);
+    expect((await state(channel)).challenges).toHaveLength(1);
+
+    expect((await eventsub("malformed-1", "chat-sub", "channel.chat.message", chatEvent("!vote nope"))).status).toBe(204);
+    expect((await eventsub("inactive-vote-1", "chat-sub", "channel.chat.message", chatEvent("!vote 1"))).status).toBe(204);
+    expect(db.sql.prepare("SELECT status FROM twitch_event_messages WHERE message_id = 'malformed-1'").get()?.status).toBe("ignored");
+    expect(db.sql.prepare("SELECT status FROM twitch_event_messages WHERE message_id = 'inactive-vote-1'").get()?.status).toBe("processed");
+
+    const session = (await state(channel)).session.id;
+    live.getByName(session);
+    const sent: string[] = [];
+    live.instances.get(session)!.sockets.push({
+      deserializeAttachment: () => ({ role: "overlay" }),
+      send: (message: string) => sent.push(message),
+      close: () => undefined,
+    });
+    expect((await eventsub("follow-1", "follow-sub", "channel.follow", { user_name: "Bob", followed_at: new Date().toISOString() })).status).toBe(204);
+    expect(sent.map((message) => JSON.parse(message))).toContainEqual(expect.objectContaining({
+      type: "integration.moment",
+      source: "twitch",
+      moment: expect.objectContaining({ kind: "follow", user: "Bob", providerEventId: "follow-1" }),
+    }));
+  });
+
+  it("enforces the board's AI round naming opt-out across creator, REST, WebMCP, and MCP calls", async () => {
+    const channel = await create("ai-cost-control");
+    const challengeId = await suggestion(channel);
+    db.sql.prepare("UPDATE challenges SET status = 'queued' WHERE id = ?").run(challengeId);
+    const settings = { ...(await state(channel)).sessionSettings, aiTitles: false };
+    expect((await call("/api/session-settings", { method: "PATCH", channel, cookie: ownerCookie, data: { settings } })).status).toBe(200);
+    expect((await call("/api/session/name", { method: "PATCH", channel, cookie: ownerCookie, data: { name: "My manual round" } })).status).toBe(200);
+    const { token } = await (await call("/api/channel/api-tokens", { method: "POST", channel, cookie: ownerCookie, data: { name: "AI test" } })).json() as any;
+    let generatedNames = 0;
+    const run = vi.fn(async () => ({ choices: [{ message: { content: JSON.stringify({ name: `AI Generated Round ${++generatedNames}` }) } }] }));
+    env.AI = { run };
+    const requests = [
+      () => call("/api/session/name/generate", { method: "POST", channel, cookie: ownerCookie }),
+      () => call("/api/v1/board/session/name/generate", { method: "POST", channel, bearer: token }),
+      // WebMCP uses the named-tool route with the creator's authenticated session.
+      () => call("/api/v1/board/tools/generate_round_name", { method: "POST", channel, cookie: ownerCookie, data: {} }),
+    ];
+    const mcpRequest = () => call("/mcp", {
+      method: "POST", channel, bearer: token,
+      data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "generate_round_name", arguments: {} } },
+    });
+    // Repeated attempts must not call the provider or overwrite a manual title.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      for (const request of requests) {
+        const response = await request();
+        expect(response.status).toBe(403);
+        expect(await response.json()).toMatchObject({ error: expect.stringContaining("AI round naming is disabled") });
+      }
+      const mcp = await (await mcpRequest()).json() as any;
+      expect(mcp.result).toMatchObject({ isError: true, content: [{ type: "text", text: expect.stringContaining("AI round naming is disabled") }] });
+    }
+    expect(run).not.toHaveBeenCalled();
+    expect((await state(channel)).session.name).toBe("My manual round");
+
+    // Enabling the feature restores generation and persistence through every entry point.
+    expect((await call("/api/session-settings", { method: "PATCH", channel, cookie: ownerCookie, data: { settings: { ...settings, aiTitles: true } } })).status).toBe(200);
+    for (const request of requests) {
+      const response = await request();
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ name: `AI Generated Round ${generatedNames}`, generatorStatus: "ai" });
+    }
+    const mcp = await (await mcpRequest()).json() as any;
+    expect(mcp.result).toMatchObject({ isError: false, structuredContent: { name: "AI Generated Round 4", generatorStatus: "ai" } });
+    expect(run).toHaveBeenCalledTimes(4);
+    expect((await state(channel)).session.name).toBe("AI Generated Round 4");
+  });
+
+  it("edits and deselects approved ideas only while collecting and within their board", async () => {
+    const channel = await create("editable-ideas"), other = await create("other-ideas");
+    const id = await suggestion(channel);
+    await approve(channel, id);
+    const original = (await state(channel)).challenges.find((item: any) => item.id === id);
+    const challenge = { ...original, objective: "Land seven tricks", timeLimitSeconds: 120, maxAttempts: 4, targets: [{ ...original.targets[0], value: 7 }] };
+    expect((await call(`/api/challenges/${id}`, { method: "PATCH", channel, cookie: ownerCookie, data: { challenge } })).status).toBe(200);
+    expect((await state(channel)).challenges[0]).toMatchObject({ status: "approved", objective: "Land seven tricks", timeLimitSeconds: 120, maxAttempts: 4 });
+    expect((await call(`/api/challenges/${id}`, { method: "PATCH", channel: other, cookie: ownerCookie, data: { challenge } })).status).toBe(404);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect((await call(`/api/challenges/${id}/status`, { method: "POST", channel, cookie: ownerCookie, data: { status: "pending_review" } })).status).toBe(200);
+      expect((await state(channel)).challenges[0].status).toBe("pending_review");
+      await approve(channel, id);
+    }
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM points_ledger WHERE challenge_id = ? AND reason = 'approved'").get(id)?.total).toBe(1);
+    const second = await suggestion(channel, "Skate", "Bob");
+    expect((await call("/api/ballots", { method: "POST", channel, cookie: ownerCookie, data: { challengeIds: [id, second], durationSeconds: 60, winnersCount: 1 } })).status).toBe(201);
+    expect((await call(`/api/challenges/${id}`, { method: "PATCH", channel, cookie: ownerCookie, data: { challenge } })).status).toBe(404);
+    expect((await call(`/api/challenges/${id}/status`, { method: "POST", channel, cookie: ownerCookie, data: { status: "pending_review" } })).status).toBe(400);
+  });
+
+  it("reopens a locked vote, preserves votes, and does not double-award selected challengers", async () => {
+    const channel = await create("reopen-voting"), other = await create("other-vote");
+    const ids = [await suggestion(channel), await suggestion(channel, "Skate", "Bob")];
+    const vote = await (await call("/api/ballots", { method: "POST", channel, cookie: ownerCookie, data: { challengeIds: ids, durationSeconds: 60, winnersCount: 1 } })).json() as any;
+    await call(`/api/ballots/${vote.id}/vote`, { method: "POST", channel, cookie: ownerCookie, data: { challengeId: ids[0], voterId: "viewer" } });
+    await call(`/api/ballots/${vote.id}/close`, { method: "POST", channel, cookie: ownerCookie });
+    expect((await state(channel)).challenges.find((item: any) => item.id === ids[0]).roundValue).toBe((await state(channel)).session.scoringRules.team.challengeWinPoints);
+    const reopen = (scope = channel) => call("/api/v1/board/tools/reopen_vote", { method: "POST", channel: scope, cookie: ownerCookie, data: { durationSeconds: 30 } });
+    expect((await reopen(other)).status).toBe(409);
+    expect((await reopen()).status).toBe(200);
+    expect((await state(channel)).ballot).toMatchObject({ id: vote.id, status: "open", entries: [expect.objectContaining({ votes: 1 }), expect.objectContaining({ votes: 0 })] });
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM points_ledger WHERE session_id = ? AND reason = 'selected'").get((await state(channel)).session.id)?.total).toBe(0);
+    expect((await reopen()).status).toBe(409);
+    await call(`/api/ballots/${vote.id}/close`, { method: "POST", channel, cookie: ownerCookie });
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM points_ledger WHERE session_id = ? AND reason = 'selected'").get((await state(channel)).session.id)?.total).toBe(1);
+    await call(`/api/challenges/${ids[0]}/start`, { method: "POST", channel, cookie: ownerCookie });
+    expect((await reopen()).status).toBe(409);
+  });
+
+  it("keeps the lineup order stable when several ideas share a submission timestamp", async () => {
+    const channel = await create("stable-lineup");
+    const ids = [await suggestion(channel), await suggestion(channel, "Skate", "Bob"), await suggestion(channel, "Skate", "Charlie")];
+    db.sql.prepare("UPDATE challenges SET created_at = '2026-10-26 00:00:00', status = 'queued' WHERE channel_id = ?").run(channel);
+    const order = () => db.sql.prepare("SELECT id FROM challenges WHERE channel_id = ? ORDER BY rowid").all(channel).map((item) => item.id);
+    expect(order()).toEqual(ids);
+    for (const id of ids) {
+      expect((await state(channel)).challenges.map((item: any) => item.id)).toEqual(ids);
+      await call(`/api/challenges/${id}/start`, { method: "POST", channel, cookie: ownerCookie });
+      expect((await state(channel)).challenges.map((item: any) => item.id)).toEqual(ids);
+      await call(`/api/challenges/${id}/resolve`, { method: "POST", channel, cookie: ownerCookie, data: { result: "chat_won" } });
+    }
+  });
+
+  it("persists pause across reloads and public projections, resumes without losing time, and enforces scope", async () => {
+    const channel = await create("pause-timer"), other = await create("other-timer");
+    const id = await suggestion(channel); await approve(channel, id);
+    await call(`/api/challenges/${id}/start`, { method: "POST", channel, cookie: ownerCookie });
+    const pause = (paused: boolean, scope = channel) => call(`/api/challenges/${id}/pause`, { method: "POST", channel: scope, cookie: ownerCookie, data: { paused } });
+    expect((await pause(true)).status).toBe(409); // Countdown cannot be paused.
+    const startedAt = new Date(Date.now() - 10_000).toISOString(), endsAt = new Date(Date.now() + 80_000).toISOString();
+    db.sql.prepare("UPDATE rounds SET started_at = ?, ends_at = ? WHERE challenge_id = ?").run(startedAt, endsAt, id);
+    expect((await pause(true, other)).status).toBe(404);
+    expect((await pause(true)).status).toBe(200);
+    const paused = (await state(channel)).activeRound;
+    expect(paused.pausedAt).toBeTruthy();
+    expect((await (await call("/api/public/state", { channel })).json() as any).activeRound.pausedAt).toBe(paused.pausedAt);
+    expect((await pause(true)).status).toBe(200);
+    expect((await state(channel)).activeRound.pausedAt).toBe(paused.pausedAt);
+    db.sql.prepare("UPDATE rounds SET paused_at = ? WHERE challenge_id = ?").run(new Date(Date.now() - 5000).toISOString(), id);
+    expect((await pause(false)).status).toBe(200);
+    const resumed = (await state(channel)).activeRound;
+    expect(resumed.pausedAt).toBeNull();
+    expect(new Date(resumed.endsAt).getTime() - new Date(endsAt).getTime()).toBeGreaterThanOrEqual(5000);
+    expect(new Date(resumed.endsAt).getTime() - new Date(endsAt).getTime()).toBeLessThan(5500);
+    expect(new Date(resumed.endsAt).getTime() - new Date(resumed.startedAt).getTime()).toBe(new Date(endsAt).getTime() - new Date(startedAt).getTime());
+    expect((await pause(false)).status).toBe(200);
+    expect((await state(channel)).activeRound.endsAt).toBe(resumed.endsAt);
+    db.sql.prepare("UPDATE rounds SET ends_at = ? WHERE challenge_id = ?").run(new Date(Date.now() - 1).toISOString(), id);
+    expect((await pause(true)).status).toBe(409);
+  });
+
+  it.each(["/api/sessions", "/api/v1/board/sessions"])("reconnects old-session overlay clients on %s", async (path) => {
+    const channel = await create("rotate-sockets"), session = (await state(channel)).session.id;
+    db.sql.prepare("UPDATE sessions SET phase = 'complete' WHERE id = ?").run(session);
+    live.getByName(session);
+    const close = vi.fn();
+    live.instances.get(session)!.sockets.push({ close, send: vi.fn(), deserializeAttachment: () => ({ role: "overlay" }) });
+    expect((await call(path, { method: "POST", channel, cookie: ownerCookie })).status).toBe(201);
+    expect(close).toHaveBeenCalledWith(1012, "Round replaced");
+    expect((await state(channel)).session.id).not.toBe(session);
+  });
+
+  it("does not repeat a round name or spend extra calls when the provider returns duplicates", async () => {
+    const channel = await create("fresh-round-names"), id = await suggestion(channel);
+    db.sql.prepare("UPDATE challenges SET status = 'queued' WHERE id = ?").run(id);
+    const run = vi.fn(async () => ({ choices: [{ message: { content: JSON.stringify({ name: "Same Old Name" }) } }] }));
+    env.AI = { run };
+    const names = [];
+    for (let i = 0; i < 4; i++) {
+      const response = await call("/api/session/name/generate", { method: "POST", channel, cookie: ownerCookie });
+      expect(response.status).toBe(200);
+      names.push((await response.json() as any).name);
+    }
+    expect(new Set(names).size).toBe(4);
+    expect(run).toHaveBeenCalledTimes(4);
+    expect((await state(channel)).session.name).toBe(names.at(-1));
+    expect(JSON.parse(db.sql.prepare("SELECT name_history_json FROM sessions WHERE id = ?").get((await state(channel)).session.id)?.name_history_json as string)).toEqual(names);
+  });
+
+  it("creates revocable board tokens for REST and both MCP protocol eras", async () => {
+    const a = await create("api-a"); const b = await create("api-b");
+    const createdResponse = await call("/api/channel/api-tokens", { method: "POST", channel: a, cookie: ownerCookie, data: { name: "Agent control" } });
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json() as any;
+    expect(created.token).toMatch(/^ccat_[a-f0-9]{64}$/);
+    expect(db.sql.prepare("SELECT token_hash FROM channel_api_tokens WHERE id = ?").get(created.id)?.token_hash).not.toBe(created.token);
+
+    const listed = await (await call("/api/channel/api-tokens", { channel: a, cookie: ownerCookie })).json() as any;
+    expect(listed.tokens).toEqual([expect.objectContaining({ id: created.id, name: "Agent control", lastFour: created.token.slice(-4), lastUsedAt: null })]);
+    expect(JSON.stringify(listed)).not.toContain(created.token);
+
+    expect((await call("/api/v1/board/submissions", { method: "PATCH", channel: a, bearer: created.token, data: { open: true } })).status).toBe(200);
+    const submitted = await call("/api/v1/board/challenges", {
+      method: "POST",
+      channel: a,
+      bearer: created.token,
+      data: { text: "Win without healing", game: "Fortnite", authorDisplayName: "AgentViewer", authorId: "viewer-1" },
+    });
+    expect(submitted.status).toBe(201);
+    const submittedBody = await submitted.json() as any;
+    expect((await call(`/api/v1/board/challenges/${submittedBody.id}`, { method: "PATCH", channel: a, bearer: created.token, data: { title: "No heals" } })).status).toBe(200);
+    expect((await call("/api/v1/board/session/name", { method: "PATCH", channel: a, bearer: created.token, data: { name: "API Night" } })).status).toBe(200);
+    const board = await (await call("/api/v1/board", { channel: a, bearer: created.token })).json() as any;
+    expect(board.session.name).toBe("API Night");
+    expect(board.challenges).toEqual([expect.objectContaining({ authorDisplayName: "AgentViewer", title: "No heals" })]);
+    expect((await call("/api/v1/board", { channel: b, bearer: created.token })).status).toBe(401);
+    expect((await call("/api/v1/board", { channel: a, bearer: env.INTEGRATION_TOKEN })).status).toBe(401);
+
+    const initialized = await (await call("/mcp", {
+      method: "POST", channel: a, bearer: created.token,
+      data: { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } } },
+    })).json() as any;
+    expect(initialized.result).toMatchObject({ protocolVersion: "2025-11-25", capabilities: { tools: { listChanged: false } } });
+
+    const listedTools = await (await call("/mcp", {
+      method: "POST", channel: a, bearer: created.token,
+      data: { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+    })).json() as any;
+    expect(listedTools.result.tools.map((tool: any) => tool.name)).toContain("get_board");
+
+    const toolCall = await (await call("/mcp", {
+      method: "POST", channel: a, bearer: created.token,
+      data: { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_board", arguments: {} } },
+    })).json() as any;
+    expect(toolCall.result.structuredContent.channel.id).toBe(a);
+
+    const discovered = await (await call("/mcp", {
+      method: "POST", channel: a, bearer: created.token,
+      headers: { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "server/discover" },
+      data: { jsonrpc: "2.0", id: 4, method: "server/discover", params: { _meta: { "io.modelcontextprotocol/clientInfo": { name: "test", version: "1" } } } },
+    })).json() as any;
+    expect(discovered.result).toMatchObject({ supportedVersions: ["2026-07-28"], resultType: "complete" });
+
+    expect((await call(`/api/channel/api-tokens/${created.id}`, { method: "DELETE", channel: a, cookie: ownerCookie })).status).toBe(200);
+    expect((await call("/api/v1/board", { channel: a, bearer: created.token })).status).toBe(401);
   });
 });
