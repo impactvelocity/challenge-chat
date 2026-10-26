@@ -4,6 +4,7 @@ import { FRAMEWORK_API_VERSION } from "../shared/framework";
 import { projectOverlayState } from "../shared/public-state";
 import {
   castVote,
+  cancelSession,
   ensureDemoData,
   closeBallot,
   completeSession,
@@ -330,6 +331,12 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
   if (path === "/api/session/complete" && method === "POST") {
     return json(await completeSession(env.DB, scope));
+  }
+  if (path === "/api/session/cancel" && method === "POST") {
+    const result = await cancelSession(env.DB, scope);
+    await liveSession(env, scope).fetch("https://coordinator/internal/session-replaced", { method: "POST" })
+      .catch((error) => console.error("Could not reconnect clients after cancelling the round", error));
+    return json(result);
   }
   if (path === "/api/session/submissions" && method === "PATCH") {
     const input = await body<{ open?: boolean }>(request);

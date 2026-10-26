@@ -47,6 +47,7 @@ export const api = {
   updateOverlayConfig: (config: OverlayConfig) => request<{ config: OverlayConfig }>("/api/overlay-config", { method: "PATCH", body: JSON.stringify({ config }) }),
   updateSessionSettings: (settings: SessionSettings) => request<{ settings: SessionSettings }>("/api/session-settings", { method: "PATCH", body: JSON.stringify({ settings }) }),
   completeSession: () => request<{ winner: "streamer" | "chat" | null; sweepWinner: "streamer" | "chat" | null }>("/api/session/complete", { method: "POST", body: "{}" }),
+  cancelSession: () => request<{ id: string; inboxCount: number }>("/api/session/cancel", { method: "POST", body: "{}" }),
   createSession: () => request<{ id: string }>("/api/sessions", { method: "POST", body: "{}" }),
   setSubmissionsOpen: (open: boolean) => request("/api/session/submissions", { method: "PATCH", body: JSON.stringify({ open }) }),
   integrationStatus: () => request<{ token: { lastFour: string; createdAt: number } | null; environmentFallback: boolean }>("/api/channel/integration"),

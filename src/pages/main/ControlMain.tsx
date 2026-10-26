@@ -23,6 +23,7 @@ import {
 } from '@/components/icons';
 import {
   Button,
+  ConfirmDialog,
   CountBadge,
   Label,
   Menu,
@@ -65,7 +66,7 @@ import { useChallengeChatController } from '@/framework/use-challenge-chat';
 import { channelPath } from '@/framework/channel';
 import { api } from '@/api';
 import type { AppState } from '../../../shared/contracts';
-import { useRole } from '@/pages/app/shell-context';
+import { useDisplayName, useRole } from '@/pages/app/shell-context';
 import '@/pages/app/app.css';
 import '@/scoreboard/scoreboard.css';
 
@@ -145,6 +146,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const channel = channelFromState(state);
   const theme = useTheme();
   const role = useRole();
+  const displayName = useDisplayName();
   const navigate = useNavigate();
   const toast = useToasts();
   const location = useLocation();
@@ -210,6 +212,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   /** When the running session was opened, e.g. "7:42pm". */
   const [startedAt, setStartedAt] = useState(clockTime);
   const [channelsOpen, setChannelsOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   /** Overlay elements switched on from the header's layout button: the active theme's, shared with /overlay. */
   const [elementsOpen, setElementsOpen] = useState(false);
   const elementsOn = Object.values(useOverlayDisplay().elements).filter(Boolean).length;
@@ -217,11 +220,15 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     theme.applyBoard(state.theme.primary, state.theme.accent);
   }, [state.channel.id, state.theme.accent, state.theme.primary, theme.applyBoard]);
   useEffect(() => {
+    if (role !== 'owner') {
+      setChannels([channel]);
+      return;
+    }
     void api.channels().then(({ channels: available }) => setChannels(available.filter((item) => item.setupComplete).map((item) => item.id === channel.id ? channel : {
       id: item.id, displayName: item.displayName, slug: item.slug, broadcasterLogin: item.slug, setupComplete: item.setupComplete, live: false,
       review: 0, ready: 0, mods: 0, score: { streamer: 0, chat: 0 }, lastActive: 'Available', assignedToMod: true,
     }))).catch(() => undefined);
-  }, [channel.id, channel.displayName, channel.score.chat, channel.score.streamer]);
+  }, [channel.id, channel.displayName, channel.score.chat, channel.score.streamer, role]);
 
   useChatVars();
 
@@ -408,6 +415,26 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
+  const cancelRound = () => {
+    void controller.mutate(async () => {
+      try {
+        const result = await controller.actions.cancelSession();
+        sessionTitle.set('');
+        setRound(freshRound());
+        setOpened(false);
+        setAccepting(false);
+        setCancelOpen(false);
+        toast.add({
+          title: 'Round cancelled',
+          description: result.inboxCount ? `${result.inboxCount} unfinished idea${result.inboxCount === 1 ? '' : 's'} moved to Inbox` : 'The board is ready for a new round',
+        });
+      } catch (caught) {
+        toast.add({ title: 'Could not cancel round', description: caught instanceof Error ? caught.message : 'Try again' });
+        throw caught;
+      }
+    });
+  };
+
   /** Lock in and Start are one step: starting locks the lineup and goes live with challenge 1. */
   const startSession = () => {
     const first = lockList[0];
@@ -489,31 +516,44 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
               <Logo size={24} />
             </Link>
             <VLine />
-            <button
-              type="button"
-              onClick={() => setChannelsOpen(true)}
-              aria-haspopup="dialog"
-              aria-label={`Board: ${channel.displayName}, switch board`}
-              className="group -mx-2 flex min-w-0 cursor-pointer items-center gap-1.5 rounded-[10px] border-0 bg-transparent px-2 py-1.5 text-ink-soft transition-colors hover:bg-white/[.06] hover:text-ink-strong"
-            >
-              <span className="truncate text-[15px] leading-none font-semibold sm:text-[17px]">{channel.displayName}</span>
-              <ChevronDownIcon size={15} className="flex-none opacity-60 transition-opacity group-hover:opacity-100" />
-            </button>
+            {role === 'owner' ? (
+              <button
+                type="button"
+                onClick={() => setChannelsOpen(true)}
+                aria-haspopup="dialog"
+                aria-label={`Board: ${channel.displayName}, switch board`}
+                className="group -mx-2 flex min-w-0 cursor-pointer items-center gap-1.5 rounded-[10px] border-0 bg-transparent px-2 py-1.5 text-ink-soft transition-colors hover:bg-white/[.06] hover:text-ink-strong"
+              >
+                <span className="truncate text-[15px] leading-none font-semibold sm:text-[17px]">{channel.displayName}</span>
+                <ChevronDownIcon size={15} className="flex-none opacity-60 transition-opacity group-hover:opacity-100" />
+              </button>
+            ) : (
+              <span className="min-w-0 truncate text-[15px] leading-none font-semibold text-ink-soft sm:text-[17px]" title={channel.displayName}>
+                {channel.displayName}
+              </span>
+            )}
           </div>
           <div className="flex-1" />
+          {role === 'mod' && displayName && (
+            <span className="flex min-w-0 items-center gap-2 rounded-[10px] border border-white/[.07] bg-white/[.035] px-2.5 py-2 text-[13px] text-ink-soft" title={`Signed in as ${displayName}`}>
+              <span className="grid size-5 flex-none place-items-center rounded-full bg-accent/15 text-[11px] font-bold text-accent-text" aria-hidden="true">
+                {displayName.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="max-w-[120px] truncate font-semibold">{displayName}</span>
+              <span className="text-ink-muted max-md:hidden">Moderator</span>
+            </span>
+          )}
           <div className="flex gap-2">
             {/* Only while a session is running — from the Set up screen there's nothing to restart. */}
             {stage !== 'new' && (
-              <Tooltip content="New Round">
+              <Tooltip content={stage === 'done' ? 'New Round' : 'Cancel Round'}>
                 <Button
                   variant="quiet"
                   icon
-                  onClick={onNewSession}
-                  aria-label="New round"
-                  disabled={stage !== 'done'}
-                  title={stage === 'done' ? 'Start a new round' : 'Complete this round before starting another'}
+                  onClick={stage === 'done' ? onNewSession : () => setCancelOpen(true)}
+                  aria-label={stage === 'done' ? 'New round' : 'Cancel round'}
                 >
-                  <PlusIcon size={17} />
+                  {stage === 'done' ? <PlusIcon size={17} /> : <StopIcon size={15} />}
                 </Button>
               </Tooltip>
             )}
@@ -694,7 +734,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
                       {accepting ? (
                         <>
-                          <Button variant="ghost" disabled title="An active round cannot be abandoned yet">
+                          <Button variant="ghost" onClick={() => setCancelOpen(true)}>
                             Cancel
                           </Button>
                           <Button variant="accent" onClick={closeSubmissions} disabled={!ideas.length}>
@@ -863,7 +903,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       </span>
                     </Well>
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                      <Button variant="ghost" disabled title="An open ballot cannot be abandoned yet">
+                      <Button variant="ghost" onClick={() => setCancelOpen(true)}>
                         Cancel
                       </Button>
                       <Button variant="accent" onClick={closeVoting}>
@@ -967,6 +1007,9 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                       </span>
                     </Well>
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                      <Button variant="ghost" onClick={() => setCancelOpen(true)}>
+                        Cancel round
+                      </Button>
                       <Button variant="ghost" onClick={() => (setVoteLeft(30), go('vote'))}>
                         Reopen voting
                       </Button>
@@ -1251,25 +1294,38 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
 
       {SHOW_STAGE_SWITCHER && !offMain && <StageSwitcher stage={stage} go={go} />}
 
-      <ChannelsSheet
-        open={channelsOpen}
-        onOpenChange={setChannelsOpen}
-        channels={channels}
-        currentId={channel.id}
-        defaultTwitchChannel={channel.broadcasterLogin}
-        onPick={(c) => {
-          setChannelsOpen(false);
-          window.location.assign(channelPath('/', c.id));
-        }}
-        onCreate={async (name, slug, twitchChannel, colorPreset) => {
-          const accent = ACCENT_PRESETS[colorPreset] ?? ACCENT_PRESETS[0];
-          const { channel: created } = await api.createChannel(name, slug, {
-            twitchLogin: twitchChannel,
-            primary: accent.hex,
-            accent: complement(accent.hex),
-          });
-          window.location.assign(channelPath('/', created.id));
-        }}
+      {role === 'owner' && (
+        <ChannelsSheet
+          open={channelsOpen}
+          onOpenChange={setChannelsOpen}
+          channels={channels}
+          currentId={channel.id}
+          defaultTwitchChannel={channel.broadcasterLogin}
+          onPick={(c) => {
+            setChannelsOpen(false);
+            window.location.assign(channelPath('/', c.id));
+          }}
+          onCreate={async (name, slug, twitchChannel, colorPreset) => {
+            const accent = ACCENT_PRESETS[colorPreset] ?? ACCENT_PRESETS[0];
+            const { channel: created } = await api.createChannel(name, slug, {
+              twitchLogin: twitchChannel,
+              primary: accent.hex,
+              accent: complement(accent.hex),
+            });
+            window.location.assign(channelPath('/', created.id));
+          }}
+        />
+      )}
+
+      <ConfirmDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="Cancel this round?"
+        description="Unfinished ideas move to Inbox so you can use them later. Votes, scores, and completed challenges from this round are discarded."
+        confirmLabel="Cancel round"
+        cancelLabel="Keep round"
+        confirmVariant="danger"
+        onConfirm={cancelRound}
       />
 
       <OverlayElementsSheet open={elementsOpen} onOpenChange={setElementsOpen} />

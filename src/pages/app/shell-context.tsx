@@ -1,10 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { Channel, Role } from '@/model';
 
-const Context = createContext<{ channels: Channel[]; role: Role }>({ channels: [], role: 'mod' });
+const Context = createContext<{ channels: Channel[]; role: Role; displayName: string | null }>({ channels: [], role: 'mod', displayName: null });
 
-export function AppShellContext({ channels, role, children }: { channels: Channel[]; role: Role; children: ReactNode }) {
-  return <Context.Provider value={{ channels, role }}>{children}</Context.Provider>;
+export function AppShellContext({ channels, role, displayName, children }: { channels: Channel[]; role: Role; displayName: string | null; children: ReactNode }) {
+  return <Context.Provider value={{ channels, role, displayName }}>{children}</Context.Provider>;
 }
 
 export function useChannel(id?: string) {
@@ -13,6 +13,10 @@ export function useChannel(id?: string) {
 
 export function useRole() {
   return useContext(Context).role;
+}
+
+export function useDisplayName() {
+  return useContext(Context).displayName;
 }
 
 export function AppPage({ children }: { children: ReactNode }) {

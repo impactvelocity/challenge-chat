@@ -100,7 +100,7 @@ function AuthenticatedLayout() {
   if (!auth.authenticated) return <AuthEntry auth={auth} onAuthenticated={refresh} />;
   if (boardSetupRequired === null) return <StatusPage title="Loading your boards">Connecting…</StatusPage>;
   if (boardSetupRequired && location.pathname !== '/setup') return <Navigate to={channelPath('/setup', selectedChannelId())} replace />;
-  return <AppShellContext channels={channels} role={auth.role ?? 'mod'}><Outlet /></AppShellContext>;
+  return <AppShellContext channels={channels} role={auth.role ?? 'mod'} displayName={auth.displayName}><Outlet /></AppShellContext>;
 }
 
 function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticated: () => Promise<void> }) {

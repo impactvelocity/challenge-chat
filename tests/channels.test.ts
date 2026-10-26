@@ -316,6 +316,50 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(current.challenges.filter((item: any) => item.status === "inbox")).toHaveLength(3);
   });
 
+  it("lets a moderator cancel a round without keeping its scores, votes, or completed challenges", async () => {
+    const channel = await create("cancel-round");
+    const alice = await suggestion(channel, "Action", "Alice");
+    const bob = await suggestion(channel, "Action", "Bob");
+    for (const id of [alice, bob]) expect((await approve(channel, id)).status).toBe(200);
+    const opened = await call("/api/ballots", {
+      method: "POST", channel, cookie: ownerCookie, data: { challengeIds: [alice, bob], durationSeconds: 60, winnersCount: 2 },
+    });
+    const { id: ballotId } = await opened.json() as any;
+    expect((await call(`/api/ballots/${ballotId}/close`, { method: "POST", channel, cookie: ownerCookie })).status).toBe(200);
+    expect((await call(`/api/challenges/${alice}/start`, { method: "POST", channel, cookie: ownerCookie })).status).toBe(201);
+    expect((await call(`/api/challenges/${alice}/resolve`, {
+      method: "POST", channel, cookie: ownerCookie, data: { result: "chat_won" },
+    })).status).toBe(200);
+
+    const inviteResponse = await call("/api/auth/mods", { method: "POST", channel, cookie: ownerCookie, data: { displayName: "Round Helper" } });
+    const invite = await inviteResponse.json() as any;
+    const token = new URLSearchParams(new URL(invite.link).hash.slice(1)).get("token");
+    const consumed = await call("/api/auth/invites/consume", { method: "POST", data: { token } });
+    const modCookie = consumed.headers.get("set-cookie")!.split(";")[0];
+    expect(await (await call("/api/auth/session", { cookie: modCookie })).json()).toMatchObject({
+      authenticated: true, role: "mod", displayName: "Round Helper",
+    });
+
+    const before = await state(channel);
+    const oldSession = before.session.id;
+    let reconnected = false;
+    live.getByName(oldSession);
+    live.instances.get(oldSession)!.sockets.push({ close: () => { reconnected = true; } });
+    const cancelled = await call("/api/session/cancel", { method: "POST", channel, cookie: modCookie, data: {} });
+    expect(cancelled.status).toBe(200);
+    expect(await cancelled.json()).toMatchObject({ inboxCount: 1 });
+    expect(reconnected).toBe(true);
+
+    const current = await state(channel);
+    expect(current.session).toMatchObject({ phase: "collecting", streamerScore: 0, chatScore: 0, submissionsOpen: false });
+    expect(current.session.id).not.toBe(oldSession);
+    expect(current.challenges).toEqual([expect.objectContaining({ id: bob, status: "inbox" })]);
+    expect(current.leaderboard).toEqual([]);
+    expect(current.sessionHistory).toEqual([]);
+    expect(current.overallScore).toMatchObject({ streamer: 0, chat: 0, streamerSessionWins: 0, chatSessionWins: 0 });
+    expect((await call("/api/session/cancel", { method: "POST", channel, cookie: modCookie, data: {} })).status).toBe(400);
+  });
+
   it("exposes one channel-scoped Challenger leaderboard and no multi-board API", async () => {
     const a = await create("leaderboard-a"); const b = await create("leaderboard-b");
     expect((await state(a)).leaderboard).toEqual([]);

@@ -640,6 +640,46 @@ export async function createNextSession(db: D1Database, scope: ChannelScope): Pr
   return id;
 }
 
+export async function cancelSession(db: D1Database, scope: ChannelScope): Promise<{ id: string; inboxCount: number }> {
+  const current = await db.prepare(
+    `SELECT phase, submissions_open AS submissionsOpen,
+      (SELECT COUNT(*) FROM challenges WHERE session_id = ? AND status NOT IN ('inbox', 'rejected')) AS challengeCount
+     FROM sessions WHERE id = ? AND channel_id = ? AND status = 'live'`,
+  ).bind(scope.sessionId, scope.sessionId, scope.channelId).first<{ phase: string; submissionsOpen: number; challengeCount: number }>();
+  if (!current) throw new AuthError("Active round not found", 404);
+  if (current.phase === "complete") throw new Error("A finished round cannot be cancelled");
+  if (current.phase === "collecting" && !current.submissionsOpen && !Number(current.challengeCount)) {
+    throw new Error("There is no round to cancel");
+  }
+
+  const channel = await db.prepare("SELECT scoring_rules_json FROM channels WHERE id = ?")
+    .bind(scope.channelId).first<{ scoring_rules_json: string }>();
+  if (!channel) throw new AuthError("Channel not found", 404);
+  const rules = parseScoringRules(parseJson(channel.scoring_rules_json, null));
+  const portable = ["inbox", "pending_review", "approved", "voting", "queued", "active"];
+  const kept = await db.prepare(
+    `SELECT COUNT(*) AS count FROM challenges WHERE session_id = ? AND status IN (${portable.map(() => "?").join(",")})`,
+  ).bind(scope.sessionId, ...portable).first<{ count: number }>();
+  const id = crypto.randomUUID();
+
+  await db.batch([
+    db.prepare("UPDATE sessions SET status = 'ended', submissions_open = 0, ended_at = CURRENT_TIMESTAMP WHERE id = ? AND channel_id = ?")
+      .bind(scope.sessionId, scope.channelId),
+    db.prepare("INSERT INTO sessions (id, channel_id, status, mode, phase, scoring_rules_json) VALUES (?, ?, 'live', 'open_queue', 'collecting', ?)")
+      .bind(id, scope.channelId, JSON.stringify(rules)),
+    db.prepare(
+      `UPDATE challenges SET session_id = ?, status = 'inbox', updated_at = CURRENT_TIMESTAMP
+       WHERE session_id = ? AND status IN (${portable.map(() => "?").join(",")})`,
+    ).bind(id, scope.sessionId, ...portable),
+    db.prepare("UPDATE channels SET active_session_id = ? WHERE id = ?").bind(id, scope.channelId),
+    // Removing the abandoned session also removes its ballots, rounds, and point ledger.
+    // Challenges worth keeping were moved to the new session above; terminal and rejected
+    // challenges disappear with the abandoned round so they cannot affect history or streaks.
+    db.prepare("DELETE FROM sessions WHERE id = ? AND channel_id = ?").bind(scope.sessionId, scope.channelId),
+  ]);
+  return { id, inboxCount: Number(kept?.count ?? 0) };
+}
+
 export async function updateTheme(db: D1Database, scope: ChannelScope, theme: Theme): Promise<void> {
   const parsed = ThemeSchema.parse(theme);
   await db
