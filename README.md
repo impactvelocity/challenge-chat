@@ -1,5 +1,7 @@
 # Challenge.chat
 
+[![Challenge.chat: streamers already take challenges from chat. Challenge.chat keeps score.](https://www.challenge.chat/readme/01-cover.webp)](https://www.challenge.chat)
+
 Run streamer-versus-chat challenges during a live broadcast. Viewers suggest ideas, the creator or moderators prepare a shortlist, chat votes, and an OBS overlay follows the attempts and results.
 
 Challenge.chat is also an API-first framework: a headless engine accepts normalized game events, applies rules, and publishes live state. The included React control panel and overlays are replaceable clients. Everything deploys as **one Cloudflare Worker**, with D1, Durable Objects, R2, and optional AI through Cloudflare AI Gateway.
@@ -60,6 +62,8 @@ npm run build
 
 ## How the show works
 
+![A round: chat suggests, you pick, chat votes, you play](https://www.challenge.chat/readme/02-round.webp)
+
 ```mermaid
 stateDiagram-v2
     [*] --> Collecting
@@ -78,11 +82,23 @@ stateDiagram-v2
 4. **Play.** Start a challenge, show the pre-start countdown, then switch to a smaller active overlay. Track attempts and pause/resume the timer when needed. The creator or moderator awards the outcome; the app cannot judge arbitrary gameplay from video.
 5. **Finish.** Resolve the selected lineup and complete the round. Scores, bonuses, sweep results, and history are preserved. Starting the next round keeps the same board and OBS URL.
 
+<p>
+  <img src="https://www.challenge.chat/readme/03-cleanup.webp" width="49%" alt="AI turns a messy !challenge into one clear goal for the creator to approve">
+  <img src="https://www.challenge.chat/readme/04-control.webp" width="49%" alt="The control panel during a vote, with a countdown and live tallies">
+</p>
+
 Scoring defaults are versioned per board and snapshotted for each round. Classic, Arcade, and Custom modes configure team points, Challenger awards, and optional round bonuses. Changing defaults does not rewrite historical results.
 
 The **Challenger leaderboard** is separate from Streamer-versus-Chat scores. An author earns the configured award when their challenge is selected and another if it defeats the streamer. Approval, votes, and generic telemetry do not themselves award leaderboard points.
 
+<p>
+  <img src="https://www.challenge.chat/readme/05-credit.webp" width="49%" alt="The challenger's name on the overlay and the Top Challengers leaderboard">
+  <img src="https://www.challenge.chat/readme/06-record.webp" width="49%" alt="A board's public page with round history, and several boards with their own scores">
+</p>
+
 ## Architecture and storage
+
+![Twitch, the control panel, and API/MCP clients feed one Worker with Durable Objects, D1, and AI Gateway, which drive the OBS overlay, control panel, and public page](https://www.challenge.chat/readme/08-stack.webp)
 
 ```mermaid
 flowchart LR
@@ -177,6 +193,8 @@ Choose a theme, then enable the elements you want: optional widgets start off. U
 | `/invite` | One-use moderator link redemption | Link holder |
 
 ## React overlay SDK
+
+![Ask Codex for a theme and it writes one with the overlay SDK](https://www.challenge.chat/readme/09-codex.webp)
 
 The SDK is repository-local TypeScript/React code, **not a published npm package**. The `@/` alias below points to `src/` in this Vite project.
 
