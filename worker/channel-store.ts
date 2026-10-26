@@ -1,6 +1,7 @@
 import { DEFAULT_THEME } from "../shared/contracts";
 import { ARCADE_SCORING_RULES, ScoringRulesSchema, type ScoringRules } from "../shared/scoring";
-import { ChannelInputSchema, type ChannelScope, type ChannelSummary } from "../shared/channels";
+import { ChannelCreateInputSchema, ChannelInputSchema, type ChannelScope, type ChannelSummary } from "../shared/channels";
+import { DEFAULT_SESSION_SETTINGS } from "../shared/surface-config";
 import { AuthError, sha256, type Actor } from "./auth";
 
 export async function channelScope(db: D1Database, channelId: string): Promise<ChannelScope> {
@@ -25,15 +26,25 @@ export async function listChannels(db: D1Database, actor: Actor): Promise<Channe
 }
 
 export async function createChannel(db: D1Database, input: unknown): Promise<ChannelSummary> {
-  const parsed = ChannelInputSchema.parse(input);
+  const parsed = ChannelCreateInputSchema.parse(input);
   const id = crypto.randomUUID();
   const sessionId = crypto.randomUUID();
   if (await db.prepare("SELECT 1 AS present FROM channels WHERE broadcaster_login = ?").bind(parsed.slug).first()) throw new AuthError("That channel slug is already in use", 409);
   await db.batch([
-    db.prepare("INSERT INTO channels (id, display_name, broadcaster_login, theme_json, active_session_id, scoring_rules_json) VALUES (?, ?, ?, ?, ?, ?)").bind(id, parsed.displayName, parsed.slug, JSON.stringify(DEFAULT_THEME), sessionId, JSON.stringify(ARCADE_SCORING_RULES)),
+    db.prepare(
+      "INSERT INTO channels (id, display_name, broadcaster_login, theme_json, active_session_id, scoring_rules_json, session_settings_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      id,
+      parsed.displayName,
+      parsed.slug,
+      JSON.stringify({ ...DEFAULT_THEME, primary: parsed.primary, accent: parsed.accent }),
+      sessionId,
+      JSON.stringify(ARCADE_SCORING_RULES),
+      JSON.stringify({ ...DEFAULT_SESSION_SETTINGS, twitchLogin: parsed.twitchLogin }),
+    ),
     db.prepare("INSERT INTO sessions (id, channel_id, status, mode, scoring_rules_json) VALUES (?, ?, 'live', 'open_queue', ?)").bind(sessionId, id, JSON.stringify(ARCADE_SCORING_RULES)),
   ]);
-  return { id, ...parsed, setupComplete: true };
+  return { id, displayName: parsed.displayName, slug: parsed.slug, setupComplete: true };
 }
 
 export async function updateScoringRules(db: D1Database, channelId: string, input: unknown): Promise<ScoringRules> {

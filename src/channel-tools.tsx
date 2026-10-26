@@ -28,7 +28,7 @@ export function ChannelSettings({ channel }: { channel: AppState["channel"] }) {
   };
   const create = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(null);
-    try { const { channel: created } = await api.createChannel(newName, newSlug); window.location.assign(channelPath("/", created.id)); }
+    try { const { channel: created } = await api.createChannel(newName, newSlug, { twitchLogin: newSlug.replace(/-/g, "_"), primary: "#EE6039", accent: "#39C7EE" }); window.location.assign(channelPath("/", created.id)); }
     catch (caught) { setError(message(caught)); setBusy(false); }
   };
   const rotate = async () => {

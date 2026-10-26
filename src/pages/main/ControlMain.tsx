@@ -47,6 +47,7 @@ import { cn } from '@/lib/cn';
 import { formatClock } from '@/lib/format';
 import { Logo } from '@/components/Logo';
 import { useChatVars } from '@/theme/useChatVars';
+import { ACCENT_PRESETS, complement } from '@/theme/accent';
 import { ChallengeMeta } from '@/pages/app/parts';
 import type { Side } from '@/scoreboard/model';
 import { fmt, LiveDot } from '@/scoreboard/parts';
@@ -1250,15 +1251,19 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
         onOpenChange={setChannelsOpen}
         channels={channels}
         currentId={channel.id}
+        defaultTwitchChannel={channel.broadcasterLogin}
         onPick={(c) => {
           setChannelsOpen(false);
           window.location.assign(channelPath('/', c.id));
         }}
-        onCreate={async (name, slug, colorPreset) => {
-          const { channel: created } = await api.createChannel(name, slug);
-          const target = new URL(channelPath('/setup', created.id), window.location.origin);
-          target.searchParams.set('accent', String(colorPreset));
-          window.location.assign(`${target.pathname}${target.search}`);
+        onCreate={async (name, slug, twitchChannel, colorPreset) => {
+          const accent = ACCENT_PRESETS[colorPreset] ?? ACCENT_PRESETS[0];
+          const { channel: created } = await api.createChannel(name, slug, {
+            twitchLogin: twitchChannel,
+            primary: accent.hex,
+            accent: complement(accent.hex),
+          });
+          window.location.assign(channelPath('/', created.id));
         }}
       />
 

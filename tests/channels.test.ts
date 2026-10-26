@@ -74,7 +74,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     return response;
   };
   const create = async (slug: string) => {
-    const response = await call("/api/channels", { method: "POST", cookie: ownerCookie, data: { displayName: slug, slug } });
+    const response = await call("/api/channels", { method: "POST", cookie: ownerCookie, data: { displayName: slug, slug, twitchLogin: slug.replace(/-/g, "_"), primary: "#EE6039", accent: "#39C7EE" } });
     expect(response.status).toBe(201);
     return (await response.json() as any).channel.id as string;
   };
@@ -173,7 +173,11 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
 
   it("creates independent channels and prevents cross-channel challenge and ballot mutations", async () => {
     const a = await create("horror"); const b = await create("racing");
-    expect((await state(a)).challenges).toEqual([]);
+    const createdState = await state(a);
+    expect(createdState.challenges).toEqual([]);
+    expect(createdState.channel.setupComplete).toBe(true);
+    expect(createdState.sessionSettings.twitchLogin).toBe("horror");
+    expect(createdState.theme).toMatchObject({ primary: "#EE6039", accent: "#39C7EE" });
     const first = await suggestion(a); const second = await suggestion(a, "Horror", "Bob");
     await approve(a, first); await approve(a, second);
     expect((await state(b)).challenges).toEqual([]);
@@ -185,7 +189,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect((await call(`/api/ballots/${ballotId}/vote`, { method: "POST", channel: b, cookie: ownerCookie, data: { challengeId: first, voterId: "viewer" } })).status).toBe(404);
     expect((await call(`/api/ballots/${ballotId}/close`, { method: "POST", channel: b, cookie: ownerCookie })).status).toBe(404);
     expect((await state(a)).ballot.status).toBe("open");
-    expect((await call("/api/channels", { method: "POST", cookie: ownerCookie, data: { displayName: "Duplicate", slug: "horror" } })).status).toBe(409);
+    expect((await call("/api/channels", { method: "POST", cookie: ownerCookie, data: { displayName: "Duplicate", slug: "horror", twitchLogin: "horror", primary: "#EE6039", accent: "#39C7EE" } })).status).toBe(409);
     const original = (await state(b)).theme.primary;
     const theme = { ...(await state(a)).theme, primary: "#123456" };
     expect((await call("/api/theme", { method: "PATCH", channel: a, cookie: ownerCookie, data: { theme } })).status).toBe(200);
@@ -365,7 +369,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(modChannels.channels.map((channel: any) => channel.id)).toEqual([a]);
     expect((await call("/api/state", { channel: b, cookie: modCookie })).status).toBe(403);
     expect((await call("/api/v1/live/socket?scope=admin", { channel: b, cookie: modCookie })).status).toBe(403);
-    expect((await call("/api/channels", { method: "POST", cookie: modCookie, data: { displayName: "Bad", slug: "bad" } })).status).toBe(403);
+    expect((await call("/api/channels", { method: "POST", cookie: modCookie, data: { displayName: "Bad", slug: "bad", twitchLogin: "bad", primary: "#EE6039", accent: "#39C7EE" } })).status).toBe(403);
     const grant = await call("/api/channel/mods", { method: "POST", channel: b, cookie: ownerCookie, data: { modId: invite.mod.id } });
     const secondInvite = await grant.json() as any;
     expect((await call("/api/state", { channel: b, cookie: modCookie })).status).toBe(200);

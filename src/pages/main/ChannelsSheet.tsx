@@ -12,12 +12,13 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   channels: Channel[];
   currentId: string;
+  defaultTwitchChannel: string;
   onPick: (c: Channel) => void;
-  onCreate: (name: string, slug: string, colorPreset: number) => Promise<void>;
+  onCreate: (name: string, slug: string, twitchChannel: string, colorPreset: number) => Promise<void>;
 };
 
 /** Channel switcher, with an "Add channel" form as a second view in the same drawer. */
-export function ChannelsSheet({ open, onOpenChange, channels, currentId, onPick, onCreate }: Props) {
+export function ChannelsSheet({ open, onOpenChange, channels, currentId, defaultTwitchChannel, onPick, onCreate }: Props) {
   const toast = useToasts();
   const [view, setView] = useState<'list' | 'add'>('list');
 
@@ -86,9 +87,10 @@ export function ChannelsSheet({ open, onOpenChange, channels, currentId, onPick,
       ) : (
         <AddChannel
           existing={channels}
+          defaultTwitchChannel={defaultTwitchChannel}
           onCancel={() => setView('list')}
-          onCreate={async (name, slug, colorPreset) => {
-            await onCreate(name, slug, colorPreset);
+          onCreate={async (name, slug, twitchChannel, colorPreset) => {
+            await onCreate(name, slug, twitchChannel, colorPreset);
             setView('list');
             toast.add({ title: 'Board created', description: name });
           }}
@@ -98,19 +100,43 @@ export function ChannelsSheet({ open, onOpenChange, channels, currentId, onPick,
   );
 }
 
-function AddChannel({ existing, onCancel, onCreate }: { existing: Channel[]; onCancel: () => void; onCreate: (name: string, slug: string, colorPreset: number) => Promise<void> }) {
+function cleanTwitchChannel(value: string) {
+  return value.replace(/^\s*(https?:\/\/)?(www\.)?twitch\.tv\//i, '').replace(/[^a-zA-Z0-9_]/g, '');
+}
+
+function AddChannel({
+  existing,
+  defaultTwitchChannel,
+  onCancel,
+  onCreate,
+}: {
+  existing: Channel[];
+  defaultTwitchChannel: string;
+  onCancel: () => void;
+  onCreate: (name: string, slug: string, twitchChannel: string, colorPreset: number) => Promise<void>;
+}) {
   const [name, setName] = useState('');
+  const [twitchChannel, setTwitchChannel] = useState(() => cleanTwitchChannel(defaultTwitchChannel));
   const [color, setColor] = useState(0);
   const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const create = () => {
+  const create = async () => {
     setTried(true);
-    if (!name.trim()) return;
+    if (!name.trim() || !twitchChannel) return;
     // Slug comes from the name; add a number if another channel already has it.
     const base = slugify(name) || 'channel';
     let slug = base;
     for (let n = 2; existing.some((c) => c.slug === slug); n++) slug = `${base}-${n}`;
-    void onCreate(name.trim(), slug, color);
+    setBusy(true);
+    setError(null);
+    try {
+      await onCreate(name.trim(), slug, twitchChannel, color);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not create this board');
+      setBusy(false);
+    }
   };
 
   return (
@@ -122,10 +148,21 @@ function AddChannel({ existing, onCancel, onCreate }: { existing: Channel[]; onC
           value={name}
           autoFocus
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && create()}
+          onKeyDown={(e) => e.key === 'Enter' && void create()}
           error={tried && !name.trim() ? 'Give the board a name' : undefined}
         />
       </div>
+
+      <TextField
+        label="Twitch channel"
+        prefix={<span className="mono text-[13px] text-ink-faint">twitch.tv/</span>}
+        placeholder="your_channel"
+        value={twitchChannel}
+        maxLength={25}
+        spellCheck={false}
+        onChange={(event) => setTwitchChannel(cleanTwitchChannel(event.target.value))}
+        error={tried && !twitchChannel ? 'Add the channel chat plays from' : undefined}
+      />
 
       <div className="flex flex-col gap-3.5">
         <span className="lbl">Colour</span>
@@ -146,13 +183,15 @@ function AddChannel({ existing, onCancel, onCreate }: { existing: Channel[]; onC
         </div>
       </div>
 
+      {error && <p className="m-0 text-sm text-red-300" role="alert">{error}</p>}
+
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
-        <Button variant="accent" onClick={create}>
+        <Button variant="accent" onClick={() => void create()} disabled={busy}>
           <PlusIcon size={15} />
-          Create board
+          {busy ? 'Creating…' : 'Create board'}
         </Button>
       </div>
     </div>

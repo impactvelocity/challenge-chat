@@ -39,7 +39,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   channels: () => request<{ channels: ChannelSummary[] }>("/api/channels"),
-  createChannel: (displayName: string, slug: string) => request<{ channel: ChannelSummary }>("/api/channels", { method: "POST", body: JSON.stringify({ displayName, slug }) }),
+  createChannel: (displayName: string, slug: string, setup: { twitchLogin: string; primary: string; accent: string }) =>
+    request<{ channel: ChannelSummary }>("/api/channels", { method: "POST", body: JSON.stringify({ displayName, slug, ...setup }) }),
   updateChannel: (displayName: string, slug: string) => request("/api/channel", { method: "PATCH", body: JSON.stringify({ displayName, slug }) }),
   updateScoringRules: (rules: ScoringRules) => request<{ rules: ScoringRules }>("/api/scoring-rules", { method: "PATCH", body: JSON.stringify({ rules }) }),
   updateOverlayConfig: (config: OverlayConfig) => request<{ config: OverlayConfig }>("/api/overlay-config", { method: "PATCH", body: JSON.stringify({ config }) }),
