@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { ACCENT_PRESETS, accentVars, complement } from './accent';
 
 /** `chat` is a picked chat colour; null follows the primary (its opposite hue). */
@@ -11,6 +11,7 @@ type ThemeContextValue = ThemeState & {
   setPreset: (index: number) => void;
   setCustom: (hex: string) => void;
   setChat: (hex: string | null) => void;
+  applyBoard: (primary: string, accent: string) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -33,12 +34,39 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
     for (const [key, value] of Object.entries(accentVars(hex))) root.style.setProperty(key, value);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignore
-    }
-  }, [hex, state]);
+  }, [hex]);
+
+  // Colour dragging should update the UI immediately without writing localStorage for every pointer move.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // ignore
+      }
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [state]);
+
+  const setPreset = useCallback((preset: number) => setState((current) => (
+    current.preset === preset && current.custom === null ? current : { ...current, preset, custom: null }
+  )), []);
+  const setCustom = useCallback((custom: string) => setState((current) => (
+    current.custom === custom ? current : { ...current, custom }
+  )), []);
+  const setChat = useCallback((chat: string | null) => setState((current) => (
+    current.chat === chat ? current : { ...current, chat }
+  )), []);
+  const applyBoard = useCallback((primary: string, accent: string) => {
+    const preset = ACCENT_PRESETS.findIndex((entry) => entry.hex.toLowerCase() === primary.toLowerCase());
+    const chat = accent.toLowerCase() === complement(primary).toLowerCase() ? null : accent;
+    setState((current) => {
+      const next = preset >= 0
+        ? { preset, custom: null, chat }
+        : { preset: current.preset, custom: primary, chat };
+      return current.preset === next.preset && current.custom === next.custom && current.chat === next.chat ? current : next;
+    });
+  }, []);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -46,11 +74,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       hex,
       name: state.custom ? 'Custom' : ACCENT_PRESETS[state.preset].name,
       chatHex: state.chat ?? complement(hex),
-      setPreset: (preset) => setState((s) => ({ ...s, preset, custom: null })),
-      setCustom: (custom) => setState((s) => ({ ...s, custom })),
-      setChat: (chat) => setState((s) => ({ ...s, chat })),
+      setPreset,
+      setCustom,
+      setChat,
+      applyBoard,
     }),
-    [state, hex],
+    [applyBoard, hex, setChat, setCustom, setPreset, state],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

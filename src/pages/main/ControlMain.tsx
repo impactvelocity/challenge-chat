@@ -47,6 +47,7 @@ import { cn } from '@/lib/cn';
 import { formatClock } from '@/lib/format';
 import { Logo } from '@/components/Logo';
 import { useChatVars } from '@/theme/useChatVars';
+import { useTheme } from '@/theme/ThemeProvider';
 import { ACCENT_PRESETS, complement } from '@/theme/accent';
 import { ChallengeMeta } from '@/pages/app/parts';
 import type { Side } from '@/scoreboard/model';
@@ -142,6 +143,7 @@ export function ControlMain() {
 function ControlRoom({ controller }: { controller: ReturnType<typeof useChallengeChatController> & { state: AppState } }) {
   const state = controller.state;
   const channel = channelFromState(state);
+  const theme = useTheme();
   const role = useRole();
   const navigate = useNavigate();
   const toast = useToasts();
@@ -211,6 +213,9 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   /** Overlay elements switched on from the header's layout button: the active theme's, shared with /overlay. */
   const [elementsOpen, setElementsOpen] = useState(false);
   const elementsOn = Object.values(useOverlayDisplay().elements).filter(Boolean).length;
+  useEffect(() => {
+    theme.applyBoard(state.theme.primary, state.theme.accent);
+  }, [state.channel.id, state.theme.accent, state.theme.primary, theme.applyBoard]);
   useEffect(() => {
     void api.channels().then(({ channels: available }) => setChannels(available.filter((item) => item.setupComplete).map((item) => item.id === channel.id ? channel : {
       id: item.id, displayName: item.displayName, slug: item.slug, broadcasterLogin: item.slug, setupComplete: item.setupComplete, live: false,

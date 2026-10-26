@@ -195,6 +195,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     const original = (await state(b)).theme.primary;
     const theme = { ...(await state(a)).theme, primary: "#123456" };
     expect((await call("/api/theme", { method: "PATCH", channel: a, cookie: ownerCookie, data: { theme } })).status).toBe(200);
+    expect((await state(a)).theme.primary).toBe("#123456");
     expect((await state(b)).theme.primary).toBe(original);
   });
 

@@ -1,4 +1,4 @@
-import type { AppState, Challenge as ApiChallenge } from '../shared/contracts';
+import type { AppState, Challenge as ApiChallenge, Theme } from '../shared/contracts';
 import type { ScoringRules } from '../shared/scoring';
 
 export type Role = 'owner' | 'mod';
@@ -51,6 +51,7 @@ export type Channel = {
   lastActive: string;
   assignedToMod: boolean;
   scoringRules?: ScoringRules;
+  theme?: Theme;
 };
 
 export type Moderator = {
@@ -101,5 +102,6 @@ export function channelFromState(state: AppState, mods = 0): Channel {
     lastActive: state.session.phase === 'live' ? 'Live now' : 'Current board',
     assignedToMod: true,
     scoringRules: state.channel.scoringRules,
+    theme: state.theme,
   };
 }

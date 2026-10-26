@@ -34,18 +34,19 @@ import {
 } from '@/components/ui';
 import { ORIGIN, SITE, VOTE_LENGTHS, type Channel, type Moderator } from '@/model';
 import { setOverlayTheme, setThemeSettings, useOverlayConfig, useOverlayDisplay } from '@/data/overlayConfig';
-import { setSessionSettings, useSessionSettings } from '@/data/sessionSettings';
+import { hydrateSessionSettings, setSessionSettings, useSessionSettings } from '@/data/sessionSettings';
 import { formatClock } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { EDGE_TABLE } from '@/pages/main/Boards';
 import { OverlayPreview } from '@/overlay/controls/OverlayCanvas';
 import { getTheme, resolveSettings, useThemes, type SettingDef } from '@/overlay/sdk';
-import { lighten } from '@/theme/accent';
+import { complement, lighten } from '@/theme/accent';
 import { useTheme } from '@/theme/ThemeProvider';
 import { api, type ModSummary } from '@/api';
 import { channelPath } from '@/framework/channel';
 import { AppPage, TopBar, useChannel, useRole } from './shell-context';
 import { Avatar, CopyField, Led, OwnerOnly, PageTitle, Section } from './parts';
+import { DEFAULT_THEME } from '../../../shared/contracts';
 
 export const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: SettingsIcon },
@@ -162,6 +163,8 @@ function Example({ children }: { children: ReactNode }) {
 function General({ channel, part }: { channel: Channel; part: 'general' | 'scoring' | 'voting' }) {
   const toast = useToasts();
   const session = useSessionSettings();
+  const theme = useTheme();
+  const boardTheme = channel.theme ?? DEFAULT_THEME;
   const initial = useMemo(
     () => {
       const rules = channel.scoringRules;
@@ -183,6 +186,8 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
       autoNextSecs: session.autoNextSecs,
       publicPage: session.publicPage,
       login: session.twitchLogin ?? channel.broadcasterLogin,
+      primary: boardTheme.primary,
+      chat: boardTheme.accent.toLowerCase() === complement(boardTheme.primary).toLowerCase() ? null : boardTheme.accent,
     });
     },
     // Read once on open; saving writes back.
@@ -193,12 +198,53 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
   const [overwrite, setOverwrite] = useState<Exclude<ScoringPreset, 'custom'> | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const preset = presetOf(form);
   /** The channel's public scoreboard page; served by this app, so it opens here too. */
   const publicUrl = `${window.location.origin}/c/${channel.id}`;
   const applyPreset = (p: Exclude<ScoringPreset, 'custom'>) => setForm((f) => ({ ...f, ...PRESETS[p] }));
+  const applyAppearance = (primary: string, chat: string | null) => theme.applyBoard(primary, chat ?? complement(primary));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const tasks: Promise<unknown>[] = [];
+      if (form.name !== saved.name) tasks.push(api.updateChannel(form.name, channel.slug));
+      if (form.autoNext !== saved.autoNext || form.autoNextSecs !== saved.autoNextSecs || form.publicPage !== saved.publicPage || form.login !== saved.login) {
+        tasks.push(api.updateSessionSettings({ autoNext: form.autoNext, autoNextSecs: form.autoNextSecs, aiTitles: session.aiTitles, publicPage: form.publicPage, twitchLogin: form.login })
+          .then(({ settings }) => hydrateSessionSettings(settings)));
+      }
+      if (form.primary !== saved.primary || form.chat !== saved.chat) {
+        tasks.push(api.updateTheme({ ...boardTheme, primary: form.primary, accent: form.chat ?? complement(form.primary) }));
+      }
+      const scoringChanged = [
+        'win', 'sessionBonus', 'sweep', 'sweepPct', 'sweepLabel', 'selected', 'beats', 'shortlist', 'picks', 'votes', 'vote', 'streaks',
+      ].some((key) => form[key as keyof typeof form] !== saved[key as keyof typeof saved]);
+      if (channel.scoringRules && scoringChanged) {
+        tasks.push(api.updateScoringRules({
+          ...channel.scoringRules,
+          preset: presetOf(form),
+          team: {
+            challengeWinPoints: form.win,
+            sessionWinBonus: form.sessionBonus,
+            cleanSweep: { enabled: form.sweep, multiplierPercent: form.sweepPct, label: form.sweepLabel },
+          },
+          challenger: { selectedPoints: form.selected, defeatedStreamerPoints: form.beats },
+          voting: { shortlistSize: form.shortlist, winnersCount: form.picks, votesPerViewer: form.votes, durationSeconds: Number(form.vote) },
+          streaks: { ...channel.scoringRules.streaks, showOnOverlay: form.streaks },
+        }));
+      }
+      await Promise.all(tasks);
+      setSaved(form);
+      toast.add({ title: 'Saved', description: started ? 'New rules start next round' : 'Applied to the current round' });
+    } catch (caught) {
+      toast.add({ title: 'Could not save settings', description: caught instanceof Error ? caught.message : 'Try again' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Mock session: a live channel has already started its rounds, so new rules wait for the next session.
   const started = channel.live;
@@ -277,7 +323,19 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
 
           <Divider />
 
-          <Appearance name={form.name} />
+          <Appearance
+            name={form.name}
+            primary={form.primary}
+            chat={form.chat}
+            onPrimaryChange={(primary) => {
+              set('primary', primary);
+              applyAppearance(primary, form.chat);
+            }}
+            onChatChange={(chat) => {
+              set('chat', chat);
+              applyAppearance(form.primary, chat);
+            }}
+          />
 
           <Divider />
 
@@ -470,34 +528,19 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
             <span className="text-sm font-semibold text-ink-strong">Unsaved changes</span>
             <span className="hint">{started ? 'This round already started, so these apply from the next one' : 'These apply to the current round'}</span>
           </span>
-          <Button size="sm" variant="ghost" onClick={() => setForm(saved)}>
+          <Button size="sm" variant="ghost" disabled={saving} onClick={() => {
+            setForm(saved);
+            applyAppearance(saved.primary, saved.chat);
+          }}>
             Discard
           </Button>
           <Button
             size="sm"
             variant="accent"
-            onClick={() => {
-              setSaved(form);
-              setSessionSettings({ autoNext: form.autoNext, autoNextSecs: form.autoNextSecs, publicPage: form.publicPage, twitchLogin: form.login });
-              void api.updateChannel(form.name, channel.slug);
-              if (channel.scoringRules) {
-                void api.updateScoringRules({
-                  ...channel.scoringRules,
-                  preset: presetOf(form),
-                  team: {
-                    challengeWinPoints: form.win,
-                    sessionWinBonus: form.sessionBonus,
-                    cleanSweep: { enabled: form.sweep, multiplierPercent: form.sweepPct, label: form.sweepLabel },
-                  },
-                  challenger: { selectedPoints: form.selected, defeatedStreamerPoints: form.beats },
-                  voting: { shortlistSize: form.shortlist, winnersCount: form.picks, votesPerViewer: form.votes, durationSeconds: Number(form.vote) },
-                  streaks: { ...channel.scoringRules.streaks, showOnOverlay: form.streaks },
-                });
-              }
-              toast.add({ title: 'Saved', description: started ? 'New rules start next round' : 'Applied to the current round' });
-            }}
+            disabled={saving}
+            onClick={() => void save()}
           >
-            Save changes
+            {saving ? 'Saving…' : 'Save changes'}
           </Button>
         </Well>
       )}
@@ -1039,10 +1082,22 @@ function SettingControl({ def, value, onChange }: { def: SettingDef; value: unkn
 
 /* ───────── Appearance (on General) ───────── */
 
-/** The control panel's own colours: a primary from the presets or a custom pick, and chat's colour, which follows the primary unless picked. `name` labels the streamer's side of the preview. */
-function Appearance({ name }: { name: string }) {
-  const theme = useTheme();
-  const chatAuto = !theme.chat;
+/** Board-owned colours: a primary from the presets or a custom pick, and chat's colour, which follows the primary unless picked. */
+function Appearance({
+  name,
+  primary,
+  chat,
+  onPrimaryChange,
+  onChatChange,
+}: {
+  name: string;
+  primary: string;
+  chat: string | null;
+  onPrimaryChange: (hex: string) => void;
+  onChatChange: (hex: string | null) => void;
+}) {
+  const chatHex = chat ?? complement(primary);
+  const chatAuto = chat === null;
   const vars = { '--sw-size': '30px' } as CSSProperties;
 
   return (
@@ -1050,17 +1105,17 @@ function Appearance({ name }: { name: string }) {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label>Primary</Label>
-          <ThemeSwitcher size={30} />
+          <ThemeSwitcher size={30} value={primary} onChange={onPrimaryChange} />
         </div>
         <div className="flex flex-col gap-2">
           <Label>Chat</Label>
           <div className="flex flex-wrap items-center gap-3">
-            <ColorPopover value={theme.chatHex} onChange={theme.setChat} aria-label="Pick a custom chat colour">
+            <ColorPopover value={chatHex} onChange={onChatChange} aria-label="Pick a custom chat colour">
               <button
                 type="button"
                 className="sw sw-picker"
                 data-on=""
-                style={{ ...vars, background: `linear-gradient(180deg, ${lighten(theme.chatHex, 0.28)}, ${theme.chatHex})` }}
+                style={{ ...vars, background: `linear-gradient(180deg, ${lighten(chatHex, 0.28)}, ${chatHex})` }}
                 title="Custom chat colour"
               />
             </ColorPopover>
@@ -1071,22 +1126,22 @@ function Appearance({ name }: { name: string }) {
                 { value: 'custom', label: 'Custom' },
               ]}
               value={chatAuto ? 'auto' : 'custom'}
-              onValueChange={(v) => theme.setChat(v === 'auto' ? null : theme.chatHex)}
+              onValueChange={(v) => onChatChange(v === 'auto' ? null : chatHex)}
             />
-            <span className="mono text-[11px] tracking-[.08em] text-ink-label">{theme.chatHex.toUpperCase()}</span>
+            <span className="mono text-[11px] tracking-[.08em] text-ink-label">{chatHex.toUpperCase()}</span>
           </div>
         </div>
       </div>
       {/* The two sides as the scoreboard paints them: each glows in from its own edge, scores on the outside. */}
       <Well
         className="flex items-center gap-4 overflow-hidden px-5 py-4"
-        style={{ background: `linear-gradient(90deg, ${theme.hex}1f, transparent 35%, transparent 65%, ${theme.chatHex}1f), linear-gradient(180deg, #0c0e0f 0%, #121416 100%)` }}
+        style={{ background: `linear-gradient(90deg, ${primary}1f, transparent 35%, transparent 65%, ${chatHex}1f), linear-gradient(180deg, #0c0e0f 0%, #121416 100%)` }}
       >
         <span className="flex flex-none items-center gap-3">
-          <span className="pixel text-[28px] leading-none" style={{ color: lighten(theme.hex, 0.28), textShadow: `0 0 14px ${theme.hex}99` }}>
+          <span className="pixel text-[28px] leading-none" style={{ color: lighten(primary, 0.28), textShadow: `0 0 14px ${primary}99` }}>
             3,500
           </span>
-          <span className="size-2.5 rounded-full" style={{ background: theme.hex, boxShadow: `0 0 10px ${theme.hex}` }} />
+          <span className="size-2.5 rounded-full" style={{ background: primary, boxShadow: `0 0 10px ${primary}` }} />
         </span>
         <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
         <span className="flex flex-none items-baseline gap-2.5 text-[13px] font-semibold text-ink-strong">
@@ -1096,8 +1151,8 @@ function Appearance({ name }: { name: string }) {
         </span>
         <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
         <span className="flex flex-none items-center gap-3">
-          <span className="size-2.5 rounded-full" style={{ background: theme.chatHex, boxShadow: `0 0 10px ${theme.chatHex}` }} />
-          <span className="pixel text-[28px] leading-none" style={{ color: lighten(theme.chatHex, 0.28), textShadow: `0 0 14px ${theme.chatHex}99` }}>
+          <span className="size-2.5 rounded-full" style={{ background: chatHex, boxShadow: `0 0 10px ${chatHex}` }} />
+          <span className="pixel text-[28px] leading-none" style={{ color: lighten(chatHex, 0.28), textShadow: `0 0 14px ${chatHex}99` }}>
             2,250
           </span>
         </span>

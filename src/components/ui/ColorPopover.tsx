@@ -1,5 +1,5 @@
 import { Popover } from '@base-ui/react/popover';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Color, ColorPicker } from 'react-beautiful-color';
 import { PipetteIcon } from '@/components/icons';
 
@@ -18,6 +18,14 @@ export function ColorPopover({ value, onChange, children, ...rest }: ColorPopove
   // Kept locally so dragging through greys doesn't lose the hue, which a hex value can't carry.
   const [color, setColor] = useState(() => new Color(value));
   const [hex, setHex] = useState(value.toUpperCase());
+  const onChangeRef = useRef(onChange);
+  const changeTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => () => window.clearTimeout(changeTimer.current), []);
 
   useEffect(() => {
     if (color.getHex().toLowerCase() !== value.toLowerCase()) setColor(new Color(value));
@@ -29,7 +37,8 @@ export function ColorPopover({ value, onChange, children, ...rest }: ColorPopove
   const pick = (c: Color) => {
     setColor(c);
     setHex(c.getHex().toUpperCase());
-    onChange(c.getHex());
+    window.clearTimeout(changeTimer.current);
+    changeTimer.current = window.setTimeout(() => onChangeRef.current(c.getHex()), 80);
   };
 
   return (

@@ -83,7 +83,7 @@ The production OBS route is `/overlay?channel=ID`. `src/overlay/sources/live.ts`
 
 Built-in themes live under `src/overlay/themes/` and are registered in `src/overlay/themes/index.ts`. Setup, Settings, Studio, and OBS discover themes from that registry. Channel-owned overlay configuration is validated generically in the Worker and projected publicly; the React-side theme schema resolves exact defaults and control values. Unknown stored theme IDs fall back to Broadcast.
 
-The control-panel accent is a per-browser preference. Broadcast colors and theme configuration are channel-owned server data, keeping operator preferences out of OBS. Full component replacement remains available when tokens are insufficient.
+The control-panel primary and Chat colours are Channel-owned theme data and load with the selected board; local storage only caches the last rendered colours before board state arrives. Broadcast theme configuration remains independently Channel-owned. Full component replacement remains available when tokens are insufficient.
 
 ## Deploy and security state
 
