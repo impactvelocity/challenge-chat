@@ -1208,7 +1208,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
             </Panel>
 
             {/* While a session runs, keep the page about it: totals only, no history or leaderboard. */}
-            <OverallBoard history={history} current={thisRun} simple={inSession} />
+            <OverallBoard history={history} current={thisRun} simple={inSession} streamerName={state.channel.displayName} />
             {!inSession && (
               <>
                 <HistoryBoard

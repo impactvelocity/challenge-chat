@@ -124,7 +124,7 @@ export function mapPublicOverlayState(
     serverTime,
     channel: { id: state.channel.id, name: state.channel.displayName, login: state.channel.broadcasterLogin },
     sides: {
-      streamer: { name: 'Streamer', color: state.theme.primary },
+      streamer: { name: state.channel.displayName, color: state.theme.primary },
       chat: { name: 'Chat', color: state.theme.accent },
     },
     session,

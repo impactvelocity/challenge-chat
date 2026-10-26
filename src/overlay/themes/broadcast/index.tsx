@@ -94,11 +94,11 @@ export const broadcast = defineTheme({
   },
   // Stack order is the order here
   elements: {
-    scoreboard: { label: 'Scoreboard', description: 'The streamer-versus-chat score in the top corner', region: 'stack', on: true, Component: Scoreboard },
+    scoreboard: { label: 'Scoreboard', description: 'The streamer-versus-chat score in the top corner', region: 'stack', Component: Scoreboard },
     goal: { label: 'Follower Goal', description: 'Progress toward the next follower goal, under the scoreboard', region: 'stack', group: 'Custom', Component: Goal },
     leaderboard: { label: 'Leaderboard', description: 'Top challengers by points, down one side', region: 'stack', Component: Leaderboard },
     kills: { label: 'Kill Counter', description: 'A live kill count for the current challenge', region: 'corner', group: 'Custom', Component: Counter },
-    alerts: { label: 'Alerts', description: 'Follows, subs, gifts, raids and cheers, top centre', region: 'top', on: true, Component: Alerts },
+    alerts: { label: 'Alerts', description: 'Follows, subs, gifts, raids and cheers, top centre', region: 'top', Component: Alerts },
     sponsor: { label: 'Sponsor Banner', description: 'The sponsor bar along the bottom edge', region: 'bottom', group: 'Custom', Component: SponsorBar },
   },
 });

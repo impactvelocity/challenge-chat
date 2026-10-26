@@ -18,7 +18,7 @@ export const neon = defineTheme({
   // Stack order is the order here: the hype meter rides right under the score
   elements: {
     scoreboard,
-    hype: { label: 'Hype Meter', description: 'A glowing meter that charges with chat activity, under the scoreboard', region: 'stack', on: true, Component: HypeMeter },
+    hype: { label: 'Hype Meter', description: 'A glowing meter that charges with chat activity, under the scoreboard', region: 'stack', Component: HypeMeter },
     ...rest,
   },
 });

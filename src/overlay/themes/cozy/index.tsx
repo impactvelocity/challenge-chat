@@ -17,7 +17,7 @@ export const cozy = defineTheme({
   // Stack order is the order here
   elements: {
     scoreboard: COMMON.scoreboard,
-    todo: { label: 'To-Do Note', description: "Tonight's lineup as a sticky-note checklist, under the scoreboard", region: 'stack', on: true, Component: TodoNote },
+    todo: { label: 'To-Do Note', description: "Tonight's lineup as a sticky-note checklist, under the scoreboard", region: 'stack', Component: TodoNote },
     goal: { ...COMMON.goal, Component: Goal },
     leaderboard: COMMON.leaderboard,
     kills: COMMON.kills,

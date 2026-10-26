@@ -17,7 +17,7 @@ export const relic = defineTheme({
   scenes: { open: IdeasScene, vote: VoteScene, lock: LineupScene, live: LiveScene, result: ResultScene, done: RecapScene },
   // Doom Clock leads the corner; the kill counter sits under it
   elements: {
-    doom: { label: 'Doom Clock', description: 'An ominous timer for the live challenge, top corner', region: 'corner', on: true, Component: DoomClock },
+    doom: { label: 'Doom Clock', description: 'An ominous timer for the live challenge, top corner', region: 'corner', Component: DoomClock },
     ...COMMON,
   },
 });

@@ -16,6 +16,6 @@ export const arcade = defineTheme({
   elements: {
     ...COMMON,
     scoreboard: { ...COMMON.scoreboard, description: 'Streamer vs Chat health bars, top centre', region: 'banner', Component: VsBar },
-    combo: { label: 'Combo Pops', description: 'STAGE CLEAR on every call and COMBO bursts on win streaks', region: 'fx', on: true, Component: ComboPops },
+    combo: { label: 'Combo Pops', description: 'STAGE CLEAR on every call and COMBO bursts on win streaks', region: 'fx', Component: ComboPops },
   },
 });

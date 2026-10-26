@@ -18,6 +18,6 @@ export const comic = defineTheme({
     ...COMMON,
     scoreboard: { ...COMMON.scoreboard, description: 'Both sides as inked name plates with big outlined scores', Component: Scoreboard },
     goal: { ...COMMON.goal, Component: Goal },
-    impact: { label: 'Impact Words', description: 'POW! BAM! KAPOW! on calls, lead changes, streaks, goals and raids', region: 'fx', on: true, Component: ImpactWords },
+    impact: { label: 'Impact Words', description: 'POW! BAM! KAPOW! on calls, lead changes, streaks, goals and raids', region: 'fx', Component: ImpactWords },
   },
 });

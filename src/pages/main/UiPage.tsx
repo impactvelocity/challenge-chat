@@ -397,7 +397,7 @@ export function UiPage() {
               </span>
               <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
               <span className="flex items-baseline gap-2.5 text-[13px] font-semibold text-ink-strong">
-                TG <span className="text-[17px] font-medium text-ink-muted">vs</span> Chat
+                Board <span className="text-[17px] font-medium text-ink-muted">vs</span> Chat
               </span>
               <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
               <span className="pixel text-[28px] leading-none" style={{ color: 'var(--c-hi)' }}>

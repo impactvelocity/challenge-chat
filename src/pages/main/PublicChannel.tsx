@@ -63,7 +63,7 @@ export function PublicChannel() {
           <Panel className="px-6 py-16 text-center text-ink-sub">Loading board…</Panel>
         ) : state.publicSettings.publicPage ? (
           <>
-            <OverallBoard history={history} current={null} />
+            <OverallBoard history={history} current={null} streamerName={name} />
             <HistoryBoard history={history} current={null} live={false} challengers={challengers} />
             <ChallengerBoard challengers={challengers} sessions={history} />
           </>

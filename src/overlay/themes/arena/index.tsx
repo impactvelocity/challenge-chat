@@ -19,6 +19,6 @@ export const arena = defineTheme({
   elements: {
     ...COMMON,
     scoreboard: { ...COMMON.scoreboard, description: 'A TV score bug with the clock, top corner', region: 'corner', Component: ScoreBug },
-    replay: { label: 'Replay Sting', description: 'A team-coloured wipe across the frame on every call', region: 'fx', on: true, Component: ReplaySting },
+    replay: { label: 'Replay Sting', description: 'A team-coloured wipe across the frame on every call', region: 'fx', Component: ReplaySting },
   },
 });

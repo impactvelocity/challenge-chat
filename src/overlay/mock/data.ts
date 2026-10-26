@@ -5,7 +5,7 @@ import { SIDE_NAME } from '@/pages/main/Boards';
 import { CHALLENGERS, HISTORY } from '@/data/board';
 import type { EngineOptions } from './engine';
 
-/** The mock board: TG's season so far, and a session that can be dropped in at any stage. */
+/** The mock board's season so far, and a session that can be dropped in at any stage. */
 
 const toChallenge = (c: AppChallenge): Challenge => ({
   id: c.id,
@@ -86,7 +86,7 @@ export function mockBoard(now: number): Omit<OverlaySnapshot, 'session' | 'displ
     revision: 1,
     serverTime: now,
     channel: { id: 'ch_7k2m9q', name: 'Nova Plays', login: 'nova_plays' },
-    sides: { streamer: { name: SIDE_NAME.streamer, color: null }, chat: { name: SIDE_NAME.chat, color: null } },
+    sides: { streamer: { name: 'Nova Plays', color: null }, chat: { name: SIDE_NAME.chat, color: null } },
     history,
     challengers: CHALLENGERS.map((c) => ({ id: `u_${c.name}`, name: c.name, points: c.points, played: c.played, won: c.won })),
     scoring: { selectedPoints: 50, defeatedPoints: 100 },

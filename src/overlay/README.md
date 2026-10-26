@@ -56,7 +56,7 @@ export const myTheme = defineTheme({
   },
   Layout,                                   // places <SceneOutlet /> and <ElementOutlet region="…" />
   scenes: { live: LiveCard, result: Winner }, // idle · open · vote · lock · live · result · done
-  elements: { scoreboard: { label: 'Scoreboard', region: 'stack', on: true, Component: Scoreboard } },
+  elements: { scoreboard: { label: 'Scoreboard', region: 'stack', Component: Scoreboard } },
 });
 registerTheme(myTheme);
 
@@ -65,7 +65,7 @@ const { glow, corner } = myTheme.useSettings();
 ```
 
 - Setting types: `boolean`, `number` (min/max/step/unit), `select` (options), `color` (`null` follows the board), `text`. Values are checked against the schema before a theme sees them, and the control room builds its form from the same schema (`controls/ThemeSettingsForm`).
-- Regions are the theme's own names; its Layout decides where each goes. Off elements are still passed to `ElementOutlet` so they can animate out.
+- Regions are the theme's own names; its Layout decides where each goes. New boards begin with every element off, and off elements are still passed to `ElementOutlet` so they can animate out.
 - `extendTheme(base, { id, name, … })` makes a variant: add settings, swap any scene, element or the layout, keep the rest.
 - The control room lists a theme's elements by their `group` (ungrouped first) and builds Settings → Theme from its schema, so a new theme needs no control-room changes. Reuse the conventional ids (`scoreboard`, `leaderboard`, `goal`, `kills`, `sponsor`) and a streamer's switches carry over when they change theme.
 

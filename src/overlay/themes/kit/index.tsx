@@ -35,11 +35,11 @@ export const CORE = {
  * and overrides any it draws itself; keeping the ids means a streamer's switches carry over between themes.
  */
 export const COMMON = {
-  scoreboard: { label: 'Scoreboard', description: 'The streamer-versus-chat score', region: 'stack', on: true, Component: Scoreboard },
+  scoreboard: { label: 'Scoreboard', description: 'The streamer-versus-chat score', region: 'stack', Component: Scoreboard },
   goal: { label: 'Follower Goal', description: 'Progress toward the next follower goal', region: 'stack', group: 'Custom', Component: Goal },
   leaderboard: { label: 'Leaderboard', description: 'Top challengers by points', region: 'stack', Component: Leaderboard },
   kills: { label: 'Kill Counter', description: 'A live kill count for the current challenge', region: 'corner', group: 'Custom', Component: Counter },
-  alerts: { label: 'Alerts', description: 'Follows, subs, gifts, raids and cheers, top centre', region: 'top', on: true, Component: Alerts },
+  alerts: { label: 'Alerts', description: 'Follows, subs, gifts, raids and cheers, top centre', region: 'top', Component: Alerts },
   sponsor: { label: 'Sponsor Banner', description: 'The sponsor bar along the bottom edge', region: 'bottom', group: 'Custom', Component: SponsorBar },
 } satisfies Record<string, ElementDef>;
 

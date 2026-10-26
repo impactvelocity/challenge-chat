@@ -17,7 +17,7 @@ export const fantasy = defineTheme({
   // Stack order is the order here
   elements: {
     scoreboard: { ...COMMON.scoreboard, description: 'The streamer-versus-chat tally, top of the stack', Component: FramedScoreboard },
-    quests: { label: 'Quest Log', description: "Tonight's quests with what became of each, under the scoreboard", region: 'stack', on: true, Component: QuestLog },
+    quests: { label: 'Quest Log', description: "Tonight's quests with what became of each, under the scoreboard", region: 'stack', Component: QuestLog },
     goal: { ...COMMON.goal, Component: Goal },
     leaderboard: { ...COMMON.leaderboard, Component: FramedLeaderboard },
     kills: { ...COMMON.kills, Component: FramedCounter },

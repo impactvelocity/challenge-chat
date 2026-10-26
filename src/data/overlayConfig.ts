@@ -49,7 +49,7 @@ export function displayOf(config: OverlayConfig): Display {
   return {
     theme: theme.id,
     settings: config.settings[theme.id] ?? {},
-    elements: Object.fromEntries(Object.entries(theme.elements).map(([id, element]) => [id, config.elements[id] ?? !!element.on])),
+    elements: Object.fromEntries(Object.keys(theme.elements).map((id) => [id, config.elements[id] ?? false])),
   };
 }
 

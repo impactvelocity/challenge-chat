@@ -18,6 +18,6 @@ export const esports = defineTheme({
   elements: {
     ...COMMON,
     scoreboard: { ...COMMON.scoreboard, description: 'A compact HUD score with wins, points and the lead', Component: HudScore },
-    status: { label: 'Match Status', description: 'A slim strip, top centre: live state, stage, clock, tries and link', region: 'banner', on: true, Component: MatchStatus },
+    status: { label: 'Match Status', description: 'A slim strip, top centre: live state, stage, clock, tries and link', region: 'banner', Component: MatchStatus },
   },
 });

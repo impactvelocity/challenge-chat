@@ -17,7 +17,7 @@ type Props = {
 };
 
 /** What each side is called on screen. The streamer side uses the channel's short name. */
-export const SIDE_NAME: Record<Side, string> = { streamer: 'TG', chat: 'Chat' };
+export const SIDE_NAME: Record<Side, string> = { streamer: 'Streamer', chat: 'Chat' };
 
 const winnerOf = (n: Session): Side | null => (n.streamer > n.chat ? 'streamer' : n.chat > n.streamer ? 'chat' : null);
 
@@ -42,7 +42,8 @@ function streaksFor(history: Session[], side: Side) {
 }
 
 /** `simple`: just the two totals, for while a session is running and the session itself needs the room. */
-export function OverallBoard({ history, current, simple }: Props & { simple?: boolean }) {
+export function OverallBoard({ history, current, simple, streamerName = SIDE_NAME.streamer }: Props & { simple?: boolean; streamerName?: string }) {
+  const names: Record<Side, string> = { streamer: streamerName, chat: SIDE_NAME.chat };
   const all = current ? [current, ...history] : history;
   const total = (side: Side) => ({
     pts: all.reduce((s, n) => s + n[side], 0),
@@ -53,7 +54,7 @@ export function OverallBoard({ history, current, simple }: Props & { simple?: bo
   const lead = t.streamer.pts - t.chat.pts;
   const leader: Side | null = lead > 0 ? 'streamer' : lead < 0 ? 'chat' : null;
   const share = t.streamer.pts / Math.max(1, t.streamer.pts + t.chat.pts);
-  /** Sessions TG won and lost (draws aside). */
+  /** Sessions the streamer won and lost (draws aside). */
   const record = { won: history.filter((n) => winnerOf(n) === 'streamer').length, lost: history.filter((n) => winnerOf(n) === 'chat').length };
 
   if (simple) {
@@ -62,7 +63,7 @@ export function OverallBoard({ history, current, simple }: Props & { simple?: bo
         <div className="grid grid-cols-2 gap-3">
           {SIDES.map((side) => (
             <Well key={side} data-side={side} className={cn('flex items-center justify-between gap-3 px-5 py-4', side === 'chat' && 'flex-row-reverse')}>
-              <span className="text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{SIDE_NAME[side]}</span>
+              <span className="max-w-[70%] truncate text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{names[side]}</span>
               <Num value={t[side].pts} className="pixel sb-lit sb-lit-crisp text-[clamp(26px,4.5vw,36px)] leading-none" />
             </Well>
           ))}
@@ -106,8 +107,8 @@ export function OverallBoard({ history, current, simple }: Props & { simple?: bo
               {(leader === side || (!leader && side === 'streamer')) && (
                 <span
                   className={cn('absolute top-5 flex items-center gap-0.5 text-[12px] font-medium whitespace-nowrap opacity-[.69] transition-opacity duration-200 group-hover:opacity-90 max-sm:hidden', right ? 'left-5' : 'right-5', leader ? 'text-[var(--t-hi)]' : 'text-ink-soft')}
-                  title={leader ? `${SIDE_NAME[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
-                  aria-label={leader ? `${SIDE_NAME[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
+                  title={leader ? `${names[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
+                  aria-label={leader ? `${names[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
                 >
                   {leader ? <PlusIcon size={12} strokeWidth={2.8} className="opacity-80" /> : <MinusIcon size={12} strokeWidth={2.8} className="opacity-80" />}
                   {fmt(Math.abs(lead))}
@@ -117,7 +118,7 @@ export function OverallBoard({ history, current, simple }: Props & { simple?: bo
           );
         })}
       </div>
-      <SplitBar share={share} record={record} />
+      <SplitBar share={share} record={record} streamerName={streamerName} />
     </Panel>
   );
 }
@@ -142,20 +143,20 @@ function StreakBadge({ kind, n, label, children }: { kind: 'streak' | 'flawless'
 }
 
 /** Tug of war: each side's share of every point as lit cells, with the session record underneath. */
-function SplitBar({ share, record }: { share: number; record: { won: number; lost: number } }) {
+function SplitBar({ share, record, streamerName }: { share: number; record: { won: number; lost: number }; streamerName: string }) {
   return (
     <div className="flex flex-col gap-3">
-      <SplitCells share={share} count={40} />
-      <SplitLabels a={record.won} b={record.lost} tip={<><b>Rounds</b> {SIDE_NAME.streamer} has won / lost</>} label={`${record.won} rounds won, ${record.lost} lost`} />
+      <SplitCells share={share} count={40} streamerName={streamerName} />
+      <SplitLabels a={record.won} b={record.lost} streamerName={streamerName} tip={<><b>Rounds</b> {streamerName} has won / lost</>} label={`${record.won} rounds won, ${record.lost} lost`} />
     </div>
   );
 }
 
-/** TG ——— a / b ——— CHAT under a split: names at the ends, a tally in each side's colour in the middle. */
-function SplitLabels({ a, b, tip, label }: { a: number; b: number; tip: ReactNode; label: string }) {
+/** STREAMER ——— a / b ——— CHAT under a split: names at the ends, a tally in each side's colour in the middle. */
+function SplitLabels({ a, b, tip, label, streamerName = SIDE_NAME.streamer }: { a: number; b: number; tip: ReactNode; label: string; streamerName?: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{SIDE_NAME.streamer}</span>
+      <span className="max-w-[35%] truncate text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{streamerName}</span>
       <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
       <Tooltip content={tip}>
         <span tabIndex={0} className="mono flex items-baseline gap-1.5 text-[15px]" aria-label={label}>
@@ -225,6 +226,19 @@ export function HistoryBoard({ history, current, live, onDelete, challengers }: 
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={3} className="!px-5 !py-10 sm:!py-12">
+                <div className="mx-auto flex max-w-[430px] flex-col items-center gap-2.5 text-center">
+                  <span className="grid size-11 place-items-center rounded-full bg-[rgba(var(--ar),.1)] text-accent-text shadow-[inset_0_0_0_1px_rgba(var(--ar),.28),0_0_20px_rgba(var(--ar),.12)]">
+                    <BoltIcon size={19} />
+                  </span>
+                  <strong className="text-[15px] text-ink-strong">No rounds played yet</strong>
+                  <span className="text-[13px] leading-relaxed text-ink-sub">Your completed rounds, final scores, and win streaks will build up here.</span>
+                </div>
+              </td>
+            </tr>
+          )}
           {rows.map((n, i) => {
             const inPlay = n.now && live;
             const w = inPlay ? null : winnerOf(n);
@@ -345,7 +359,7 @@ function playedIn(_n: Session, _index: number): { c: Challenge; winner: Side; vo
  * Segmented split in the "Segment pop" style from /feel: recessed cells that pop in one after another
  * when it mounts or the split moves — the streamer's from the left, chat's from the right, meeting at the split.
  */
-export function SplitCells({ share, count, height = 18, className }: { share: number | null; count: number; height?: number; className?: string }) {
+export function SplitCells({ share, count, height = 18, className, streamerName = SIDE_NAME.streamer }: { share: number | null; count: number; height?: number; className?: string; streamerName?: string }) {
   // null: nothing scored yet, so every cell gets the soft white "empty" light.
   const lit = share == null ? 0 : Math.round(share * count);
   const pct = Math.round((share ?? 0) * 100);
@@ -374,7 +388,7 @@ export function SplitCells({ share, count, height = 18, className }: { share: nu
       data-empty={share == null || undefined}
       style={{ '--cell-h': `${height}px` } as CSSProperties}
       role="img"
-      aria-label={share == null ? 'No points yet' : `Share of points: ${SIDE_NAME.streamer} ${pct}%, chat ${100 - pct}%`}
+      aria-label={share == null ? 'No points yet' : `Share of points: ${streamerName} ${pct}%, chat ${100 - pct}%`}
     >
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="cell" data-accent={i < lit ? undefined : 'chat'}>
@@ -656,6 +670,19 @@ export function ChallengerBoard({ challengers, sessions }: { challengers: Challe
           </tr>
         </thead>
         <tbody>
+          {top.length === 0 && (
+            <tr>
+              <td colSpan={4} className="!px-5 !py-10 sm:!py-12">
+                <div className="mx-auto flex max-w-[430px] flex-col items-center gap-2.5 text-center">
+                  <span className="grid size-11 place-items-center rounded-full bg-[rgba(var(--cr),.1)] text-[var(--c-hi)] shadow-[inset_0_0_0_1px_rgba(var(--cr),.28),0_0_20px_rgba(var(--cr),.12)]">
+                    <TrophyIcon size={19} />
+                  </span>
+                  <strong className="text-[15px] text-ink-strong">Your challenger board is waiting</strong>
+                  <span className="text-[13px] leading-relaxed text-ink-sub">When chat’s ideas make the lineup, their points and rankings will appear here.</span>
+                </div>
+              </td>
+            </tr>
+          )}
           {top.map((c, i) => (
             <tr key={c.name} className="group cursor-pointer transition-colors hover:[&>td]:bg-white/[.045]" onClick={() => setOpen({ c, rank: i + 1 })}>
               <td className="py-2.5">

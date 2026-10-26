@@ -67,6 +67,7 @@ describe('live overlay source mapping', () => {
     expect(snapshot.metrics).toEqual([{ id: 'kills', kind: 'counter', label: 'Kills', value: 2, target: 5 }]);
     expect(snapshot.display).toEqual({ theme: 'neon', settings: { glow: 80 }, elements: { scoreboard: true } });
     expect(snapshot.channel.id).toBe('channel-1');
+    expect(snapshot.sides.streamer.name).toBe('Night Shift');
   });
 
   it('falls back to the first registered theme for unknown stored ids', () => {

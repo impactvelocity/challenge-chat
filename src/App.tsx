@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { Logo } from '@/components/Logo';
 import { Button, Panel, TextField, ToastProvider, Toasts } from '@/components/ui';
 import { api, type AuthSession } from '@/api';
@@ -97,6 +97,7 @@ function AuthenticatedLayout() {
 }
 
 function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticated: () => Promise<void> }) {
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [controlRoomName, setControlRoomName] = useState('');
@@ -108,9 +109,11 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
     setBusy(true);
     setError(null);
     try {
-      if (auth.setup === 'ready') await api.setupOwner(password, controlRoomName);
+      const firstRun = auth.setup === 'ready';
+      if (firstRun) await api.setupOwner(password, controlRoomName);
       else await api.login(password);
       await onAuthenticated();
+      if (firstRun) navigate(channelPath('/setup', selectedChannelId()), { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not sign in');
     } finally {

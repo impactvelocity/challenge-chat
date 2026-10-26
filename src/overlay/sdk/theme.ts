@@ -72,8 +72,6 @@ export type ElementDef = {
   description?: string;
   /** Where it sits. Regions are the theme's own: its Layout decides what each one means. */
   region: string;
-  /** On until the control room says otherwise. */
-  on?: boolean;
   /** Elements sharing a group are listed together under its name in the control room. */
   group?: string;
   Component: ComponentType;
@@ -139,7 +137,8 @@ export function extendTheme<B extends SettingsSchema, const S extends SettingsSc
   });
 }
 
-export const defaultElements = (theme: OverlayTheme) => Object.fromEntries(Object.entries(theme.elements).map(([id, e]) => [id, !!e.on]));
+/** New boards start with a clean canvas; creators explicitly choose every visible element. */
+export const defaultElements = (theme: OverlayTheme) => Object.fromEntries(Object.keys(theme.elements).map((id) => [id, false]));
 
 /* ───────────────────────── Registry ───────────────────────── */
 

@@ -1,8 +1,8 @@
 import type { Challenger, Session } from '@/pages/main/Boards';
 
-/** TG's season so far: the control room, the public page and the overlay mock all read it. */
+/** The streamer's season so far: the control room, the public page and the overlay mock all read it. */
 
-/** Finished sessions, newest first. Includes flawless sweeps and a live win streak for TG. */
+/** Finished sessions, newest first. Includes flawless sweeps and a live streamer win streak. */
 export const HISTORY: Session[] = [
   {
     name: 'Blindfolded Blitz',
