@@ -52,8 +52,8 @@ export function OverallBoard({ history, current, simple, streamerName = SIDE_NAM
   });
   const t = { streamer: total('streamer'), chat: total('chat') };
   const lead = t.streamer.pts - t.chat.pts;
-  const leader: Side | null = lead > 0 ? 'streamer' : lead < 0 ? 'chat' : null;
-  const share = t.streamer.pts / Math.max(1, t.streamer.pts + t.chat.pts);
+  const points = t.streamer.pts + t.chat.pts;
+  const share = points ? t.streamer.pts / points : 0.5;
   /** Sessions the streamer won and lost (draws aside). */
   const record = { won: history.filter((n) => winnerOf(n) === 'streamer').length, lost: history.filter((n) => winnerOf(n) === 'chat').length };
 
@@ -78,6 +78,7 @@ export function OverallBoard({ history, current, simple, streamerName = SIDE_NAM
         {SIDES.map((side) => {
           const s = t[side];
           const right = side === 'chat';
+          const sideLead = side === 'streamer' ? lead : -lead;
           return (
             <Well key={side} data-side={side} className={cn('group flex min-w-0 flex-col gap-3.5 px-4 pt-4 pb-5 sm:px-5', right && 'items-end text-right')}>
               <div className={cn('flex w-full flex-wrap items-center justify-between gap-2', right && 'flex-row-reverse')}>
@@ -103,15 +104,15 @@ export function OverallBoard({ history, current, simple, streamerName = SIDE_NAM
                 </span>
               </div>
               <Num value={s.pts} className="pixel sb-lit sb-lit-crisp text-[clamp(34px,7vw,56px)] leading-none" />
-              {/* Lead, in the top corner away from the points. */}
-              {(leader === side || (!leader && side === 'streamer')) && (
+              {/* Point differential, in the top corner away from the points. Ties stay quiet. */}
+              {sideLead !== 0 && (
                 <span
-                  className={cn('absolute top-5 flex items-center gap-0.5 text-[12px] font-medium whitespace-nowrap opacity-[.69] transition-opacity duration-200 group-hover:opacity-90 max-sm:hidden', right ? 'left-5' : 'right-5', leader ? 'text-[var(--t-hi)]' : 'text-ink-soft')}
-                  title={leader ? `${names[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
-                  aria-label={leader ? `${names[leader]} leads by ${fmt(Math.abs(lead))}` : 'All square'}
+                  className={cn('absolute top-5 flex items-center gap-0.5 text-[12px] font-medium whitespace-nowrap opacity-[.69] transition-opacity duration-200 group-hover:opacity-90 max-sm:hidden', right ? 'left-5' : 'right-5', sideLead > 0 ? 'text-[var(--t-hi)]' : 'text-ink-soft')}
+                  title={`${names[side]} ${sideLead > 0 ? 'leads' : 'trails'} by ${fmt(Math.abs(sideLead))}`}
+                  aria-label={`${names[side]} ${sideLead > 0 ? 'leads' : 'trails'} by ${fmt(Math.abs(sideLead))}`}
                 >
-                  {leader ? <PlusIcon size={12} strokeWidth={2.8} className="opacity-80" /> : <MinusIcon size={12} strokeWidth={2.8} className="opacity-80" />}
-                  {fmt(Math.abs(lead))}
+                  {sideLead > 0 ? <PlusIcon size={12} strokeWidth={2.8} className="opacity-80" /> : <MinusIcon size={12} strokeWidth={2.8} className="opacity-80" />}
+                  {fmt(Math.abs(sideLead))}
                 </span>
               )}
             </Well>
@@ -155,9 +156,11 @@ function SplitBar({ share, record, streamerName }: { share: number; record: { wo
 /** STREAMER ——— a / b ——— CHAT under a split: names at the ends, a tally in each side's colour in the middle. */
 function SplitLabels({ a, b, tip, label, streamerName = SIDE_NAME.streamer }: { a: number; b: number; tip: ReactNode; label: string; streamerName?: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="max-w-[35%] truncate text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{streamerName}</span>
-      <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="min-w-0 truncate text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase" title={streamerName}>{streamerName}</span>
+        <span className="h-px min-w-3 flex-1 bg-white/10" aria-hidden="true" />
+      </span>
       <Tooltip content={tip}>
         <span tabIndex={0} className="mono flex items-baseline gap-1.5 text-[15px]" aria-label={label}>
           <b data-side="streamer" className="font-bold text-[var(--t-hi)]">
@@ -169,8 +172,10 @@ function SplitLabels({ a, b, tip, label, streamerName = SIDE_NAME.streamer }: { 
           </b>
         </span>
       </Tooltip>
-      <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
-      <span className="text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{SIDE_NAME.chat}</span>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="h-px min-w-3 flex-1 bg-white/10" aria-hidden="true" />
+        <span className="flex-none text-[13px] font-bold tracking-[.12em] text-ink-strong uppercase">{SIDE_NAME.chat}</span>
+      </span>
     </div>
   );
 }
@@ -360,14 +365,14 @@ function playedIn(_n: Session, _index: number): { c: Challenge; winner: Side; vo
  * when it mounts or the split moves — the streamer's from the left, chat's from the right, meeting at the split.
  */
 export function SplitCells({ share, count, height = 18, className, streamerName = SIDE_NAME.streamer }: { share: number | null; count: number; height?: number; className?: string; streamerName?: string }) {
-  // null: nothing scored yet, so every cell gets the soft white "empty" light.
-  const lit = share == null ? 0 : Math.round(share * count);
-  const pct = Math.round((share ?? 0) * 100);
+  // With nothing scored, both sides own half the bar instead of making either side look ahead.
+  const balancedShare = share ?? 0.5;
+  const lit = Math.round(balancedShare * count);
+  const pct = Math.round(balancedShare * 100);
   const lights = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (share == null) return;
     lights.current.forEach((el, i) => {
       const step = i < lit ? i : count - 1 - i;
       el?.animate(
@@ -379,16 +384,15 @@ export function SplitCells({ share, count, height = 18, className, streamerName 
         { duration: 300, delay: 120 + step * (800 / count), easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'backwards' },
       );
     });
-  }, [lit, count, share]);
+  }, [lit, count]);
 
   return (
     <div
       className={cn('cells', className)}
       data-crisp=""
-      data-empty={share == null || undefined}
       style={{ '--cell-h': `${height}px` } as CSSProperties}
       role="img"
-      aria-label={share == null ? 'No points yet' : `Share of points: ${streamerName} ${pct}%, chat ${100 - pct}%`}
+      aria-label={share == null ? `No points yet: ${streamerName} and chat are evenly split` : `Share of points: ${streamerName} ${pct}%, chat ${100 - pct}%`}
     >
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="cell" data-accent={i < lit ? undefined : 'chat'}>
@@ -401,9 +405,10 @@ export function SplitCells({ share, count, height = 18, className, streamerName 
 
 /** The drawer's split: cells plus the session's challenge tally underneath. */
 function SegmentSplit({ session: n }: { session: Session }) {
+  const total = n.streamer + n.chat;
   return (
     <div className="flex flex-col gap-3">
-      <SplitCells share={n.streamer / Math.max(1, n.streamer + n.chat)} count={24} />
+      <SplitCells share={total ? n.streamer / total : null} count={24} />
       <SplitLabels
         a={n.bouts[0]}
         b={n.bouts[1]}
@@ -757,7 +762,7 @@ function ChallengerSheet({ open, sessions, onClose }: { open: { c: Challenger; r
           </div>
 
           <div className="flex flex-col gap-3">
-            <SplitCells key={c.name} share={lost / Math.max(1, c.played)} count={24} />
+            <SplitCells key={c.name} share={c.played ? lost / c.played : null} count={24} />
             <SplitLabels
               a={lost}
               b={c.won}

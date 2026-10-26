@@ -2070,14 +2070,6 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.7),
       inset 0 -2px 0 rgba(0, 0, 0, 0.18);
   }
-  /* Nothing scored yet: every cell softly lit in white, so the bar still reads as a bar. */
-  .cells[data-empty] .cell > i {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.2));
-    box-shadow:
-      0 1.5px 0 rgba(0, 0, 0, 0.55),
-      0 0 6px rgba(255, 255, 255, 0.12),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  }
   /* Lineup strip (Live): a cell pops when its challenge is decided, the live one breathes in soft white, skipped ones stay dim */
   .cell > i[data-pop] {
     animation: cell-pop 0.32s cubic-bezier(0.3, 1.4, 0.5, 1) backwards;
