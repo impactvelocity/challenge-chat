@@ -115,14 +115,12 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
 
   it("creates the named control room and D1-backed owner password on first deployment", async () => {
     env.OWNER_PASSWORD = undefined;
-    env.OWNER_SETUP_TOKEN = "one-time-setup-token-for-tests";
     const before = await (await call("/api/auth/session")).json() as any;
     expect(before).toMatchObject({ authenticated: false, setup: "ready", controlRoomName: "Control room" });
 
     const setup = await call("/api/auth/setup", {
       method: "POST",
       data: {
-        setupToken: env.OWNER_SETUP_TOKEN,
         password: "a-strong-owner-password",
         controlRoomName: "Friday Night Control Room",
       },
@@ -138,6 +136,10 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
       controlRoomName: "Friday Night Control Room",
       setup: "complete",
     });
+    expect((await call("/api/auth/setup", {
+      method: "POST",
+      data: { password: "another-strong-password", controlRoomName: "Taken Over" },
+    })).status).toBe(409);
   });
 
   it("creates independent channels and prevents cross-channel challenge and ballot mutations", async () => {

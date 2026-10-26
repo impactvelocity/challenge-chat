@@ -99,7 +99,6 @@ function AuthenticatedLayout() {
 function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticated: () => Promise<void> }) {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
-  const [setupToken, setSetupToken] = useState('');
   const [controlRoomName, setControlRoomName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,7 +108,7 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
     setBusy(true);
     setError(null);
     try {
-      if (auth.setup === 'ready') await api.setupOwner(setupToken, password, controlRoomName);
+      if (auth.setup === 'ready') await api.setupOwner(password, controlRoomName);
       else await api.login(password);
       await onAuthenticated();
     } catch (caught) {
@@ -127,17 +126,14 @@ function AuthEntry({ auth, onAuthenticated }: { auth: AuthSession; onAuthenticat
           <p className="mb-0 text-sm leading-relaxed text-ink-sub">
             {auth.setup === 'ready'
               ? 'Name this deployment and choose the owner password stored securely in D1.'
-              : auth.setup === 'needs_setup_token'
-                ? 'Configure OWNER_SETUP_TOKEN for first-run setup, or OWNER_PASSWORD for environment-managed access, then reload.'
-                : 'Sign in as the owner. Moderators use their one-time invite link.'}
+              : 'Sign in as the owner. Moderators use their one-time invite link.'}
           </p>
         </div>
         {auth.setup === 'ready' && <TextField label="Control room name" value={controlRoomName} maxLength={60} placeholder="Friday Night Control Room" onChange={(event) => setControlRoomName(event.target.value)} required />}
-        {auth.setup === 'ready' && <TextField label="Setup code" type="password" value={setupToken} onChange={(event) => setSetupToken(event.target.value)} required />}
-        {auth.setup !== 'needs_setup_token' && <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />}
+        <TextField label={auth.setup === 'ready' ? 'New owner password' : 'Owner password'} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
         {auth.setup === 'ready' && <TextField label="Confirm password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />}
         {error && <p className="m-0 text-sm text-red-300" role="alert">{error}</p>}
-        {auth.setup === 'needs_setup_token' ? <Button type="button" variant="accent" onClick={() => window.location.reload()}>Check setup</Button> : <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>}
+        <Button type="submit" variant="accent" disabled={busy}>{busy ? 'Connecting…' : auth.setup === 'ready' ? 'Create control room' : 'Sign in'}</Button>
       </Panel>
     </main>
   );

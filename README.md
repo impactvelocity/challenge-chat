@@ -31,7 +31,7 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Before starting Vite, copy `.dev.vars.example` to `.dev.vars` and replace `OWNER_SETUP_TOKEN` with a unique code (for example, from `openssl rand -hex 32`). Open the local URL printed by Vite, then name the control room and choose the owner password on the first visit. The name and salted password hash are stored in D1. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly and bypass first-run setup. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
+Open the local URL printed by Vite, then name the control room and choose the owner password on the first visit. The name and salted password hash are stored in D1. No setup secret is required. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly and bypass first-run setup. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
 
 ## Surface routes
 
@@ -64,20 +64,19 @@ This repo is prepared for Cloudflare's Deploy to Cloudflare flow: Wrangler defin
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=YOUR_PUBLIC_REPO_URL)
 ```
 
-The public repository URL is not known in this workspace, so there is no live button yet. Cloudflare's deploy flow provisions supported resources from the Wrangler config. Choose either `OWNER_SETUP_TOKEN` for first-visit password setup, or `OWNER_PASSWORD` for an environment-managed password. Until one is configured, the control panel remains locked. `INTEGRATION_TOKEN` and `OPENAI_API_KEY` are optional, separate secrets.
+The public repository URL is not known in this workspace, so there is no live button yet. Cloudflare's deploy flow provisions supported resources from the Wrangler config. On first visit, name the control room and choose its owner password. `OWNER_PASSWORD` is an optional environment-managed alternative; `INTEGRATION_TOKEN` and `OPENAI_API_KEY` are optional, separate secrets.
 
 For a direct CLI deployment:
 
 ```bash
 npx wrangler login
 npm run deploy
-npx wrangler secret put OWNER_SETUP_TOKEN
-# alternatively: npx wrangler secret put OWNER_PASSWORD
+# optional alternative to browser setup: npx wrangler secret put OWNER_PASSWORD
 # optional: npx wrangler secret put INTEGRATION_TOKEN
 # optional: npx wrangler secret put OPENAI_API_KEY
 ```
 
-After setting `OWNER_SETUP_TOKEN`, visit `/`, name the control room, and choose a password of at least 12 characters. The control-room name and salted password hash are stored in D1; the setup code cannot replace them later. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access; existing deployments must configure one of the new owner secrets.
+After deployment, visit `/`, name the control room, and choose a password of at least 12 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
 
 The owner can create named moderators from the control panel and copy a 15-minute, one-use magic link for each. A mod can review suggestions, manage votes, and run challenges in assigned Channels, but cannot manage access, branding, integration tokens, or scoring rules. Removing channel access invalidates that Channel's invitations and closes its admin sockets; the moderator can still operate other assigned Channels. There is no Twitch OAuth or email provider. Authenticated sessions use opaque HTTP-only cookies; overlays remain public.
 

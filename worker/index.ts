@@ -171,8 +171,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (method === "POST" && path === "/api/auth/setup") {
     const denied = requireSameOrigin(request);
     if (denied) return denied;
-    const input = await body<{ setupToken?: string; password?: string; controlRoomName?: string }>(request);
-    const token = await setupOwner(env, input.setupToken ?? "", input.password ?? "", input.controlRoomName ?? "");
+    const input = await body<{ password?: string; controlRoomName?: string }>(request);
+    const token = await setupOwner(env, input.password ?? "", input.controlRoomName ?? "");
     return authResponse(request, {
       authenticated: true,
       role: "owner",

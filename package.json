@@ -61,11 +61,8 @@
   },
   "cloudflare": {
     "bindings": {
-      "OWNER_SETUP_TOKEN": {
-        "description": "Recommended first-run path. Generate a unique code with `openssl rand -hex 32`, set it as a Worker secret, then open the control panel to choose a stored owner password. Required only until setup is complete."
-      },
       "OWNER_PASSWORD": {
-        "description": "Alternative to first-run setup: set a long, unique owner password as a Worker secret. If both owner secrets exist, this password takes precedence."
+        "description": "Optional alternative to browser setup: set a long, unique owner password as a Worker secret. When set, it takes precedence over a D1-backed owner password."
       },
       "INTEGRATION_TOKEN": {
         "description": "Optional separate bearer token for server-side game adapters publishing normalized events. Do not put it in browser code or overlay URLs."
