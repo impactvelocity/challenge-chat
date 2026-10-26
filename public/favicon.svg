@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- LogoIcon (src/components/Logo.tsx), centred. The white Challenge half turns near-black on light browser chrome. -->
+  <style>
+    .challenge { fill: #fafbfb; }
+    @media (prefers-color-scheme: light) { .challenge { fill: #121416; } }
+  </style>
+  <g transform="translate(0 6)">
+    <path class="challenge" d="M13 0H33.6Q37.6 0 36.47 3.84L23.33 48.16Q22.2 52 18.2 52H13A13 13 0 0 1 0 39V13A13 13 0 0 1 13 0Z"/>
+    <path fill="#EE6039" d="M45.8 0H51A13 13 0 0 1 64 13V39A13 13 0 0 1 51 52H30.4Q26.4 52 27.53 48.16L40.67 3.84Q41.8 0 45.8 0Z"/>
+  </g>
+</svg>

@@ -1,0 +1,293 @@
+/* The Challenge.Chat logo (see Logo.tsx). Explored on /logos as "Slash on hover".
+   Two blocks cut on a slash, with every corner rounded. On hover the Chat block slides right and a
+   slash strikes into the gap and stays; on mouse-out the slash shrinks into its bottom end, then
+   the block closes. Challenge never moves, so the logo's left edge stays put in a nav.
+   Joins the `components` layer declared by Tailwind in index.css, so utilities still win. */
+
+@layer theme, base, components, utilities;
+
+@layer components {
+  .logo {
+    /* Colours, overridable through Logo's props */
+    --logo-l-bg: #fafbfb;
+    --logo-l-text: #0e1012;
+    --logo-r-bg: var(--a);
+    --logo-r-text: #fff;
+    --logo-slash: #fafbfb;
+    --logo-glow: rgba(var(--ar), 0.9);
+    display: inline-flex;
+    flex: none;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  /* Lettering is 60% of the logo's font size */
+  .logo-banner {
+    --s: 0.55em; /* how far the cut leans across the banner */
+    --tilt: -16.5deg; /* the cut's angle, for the slash */
+    --px: 0.3em; /* padding inside each block */
+    --r: 0.3em; /* corner radius */
+    --pad-out: 0.25em; /* extra room at the outer ends */
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    font: 900 0.6em/1 var(--font-sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .logo-l,
+  .logo-r {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    padding-block: 0.44em 0.4em;
+  }
+  .logo-l > i,
+  .logo-r > i {
+    display: block;
+    font-style: normal;
+  }
+
+  /* Each block is a rect rounded on its outer end plus a skewed rounded slab for the cut end.
+     Both are sized from the radius so they overlap without a seam. */
+  .logo-l::before,
+  .logo-l::after,
+  .logo-r::before,
+  .logo-r::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: -1;
+  }
+  .logo-l::after,
+  .logo-r::after {
+    width: calc(var(--s) + var(--r) * 2 + 0.4em);
+    border-radius: var(--r);
+    transform: skewX(var(--tilt));
+  }
+
+  .logo-l {
+    padding-left: calc(var(--px) + var(--pad-out));
+    padding-right: calc(var(--s) + var(--px));
+    color: var(--logo-l-text);
+  }
+  .logo-l::before {
+    left: 0;
+    right: calc(var(--s) + var(--r) + 0.05em);
+    border-radius: var(--r) 0 0 var(--r);
+    background: var(--logo-l-bg);
+  }
+  .logo-l::after {
+    right: calc(var(--s) / 2);
+    background: var(--logo-l-bg);
+  }
+
+  /* The resting gap is 0.24 × the cut (about 2px in a nav), so each side of the slot adds a fixed
+     0.75px: 1.5px wider at small sizes, negligible at large ones, and the slot stays centred. */
+  .logo-r {
+    margin-left: calc(var(--s) * -0.38 + 0.75px);
+    padding-left: calc(var(--s) + var(--px));
+    padding-right: calc(var(--px) + var(--pad-out));
+    color: var(--logo-r-text);
+  }
+  .logo-r::before {
+    right: 0;
+    left: calc(var(--s) + var(--r) + 0.05em);
+    border-radius: 0 var(--r) var(--r) 0;
+    background: var(--logo-r-bg);
+  }
+  .logo-r::after {
+    left: calc(var(--s) / 2);
+    background: var(--logo-r-bg);
+  }
+
+  /* Where clip-path: shape() is supported, each block is one clipped outline instead of rect + slab.
+     The skewed slab draws its top and bottom edges a fraction of a pixel fuller than the rect, which
+     shows as a notch along the bottom where they meet at nav sizes; a single shape has no seam.
+     The cut runs from the top corner down by --s over the banner's 1.84em height, so a point --r
+     along it is (0.2864, 0.9581) × --r away. */
+  @supports (clip-path: shape(from 0 0, line to 1px 1px)) {
+    .logo-l::after,
+    .logo-r::after {
+      content: none;
+    }
+    .logo-l::before,
+    .logo-r::before {
+      left: 0;
+      right: 0;
+      border-radius: 0;
+    }
+    .logo-l::before {
+      clip-path: shape(
+        from var(--r) 0,
+        hline to calc(100% - var(--r)),
+        curve to calc(100% - var(--r) * 0.2864) calc(var(--r) * 0.9581) with 100% 0,
+        line to calc(100% - var(--s) + var(--r) * 0.2864) calc(100% - var(--r) * 0.9581),
+        curve to calc(100% - var(--s) - var(--r)) 100% with calc(100% - var(--s)) 100%,
+        hline to var(--r),
+        arc to 0 calc(100% - var(--r)) of var(--r) cw,
+        vline to var(--r),
+        arc to var(--r) 0 of var(--r) cw,
+        close
+      );
+    }
+    .logo-r::before {
+      clip-path: shape(
+        from calc(var(--s) + var(--r)) 0,
+        hline to calc(100% - var(--r)),
+        arc to 100% var(--r) of var(--r) cw,
+        vline to calc(100% - var(--r)),
+        arc to calc(100% - var(--r)) 100% of var(--r) cw,
+        hline to var(--r),
+        curve to calc(var(--r) * 0.2864) calc(100% - var(--r) * 0.9581) with 0 100%,
+        line to calc(var(--s) - var(--r) * 0.2864) calc(var(--r) * 0.9581),
+        curve to calc(var(--s) + var(--r)) 0 with var(--s) 0,
+        close
+      );
+    }
+  }
+
+  /* A zero-width slot at the centre of the cut, where the slash lands */
+  .logo-mid {
+    position: relative;
+    z-index: 2;
+    width: 0;
+    margin-left: calc(var(--s) * -0.38 + 0.75px);
+  }
+  /* Scaling from the bottom needs a bottom origin, which would also make the skew pivot there and
+     shove the bar sideways; the leading translate puts it back on the cut's centre. */
+  .logo-slash {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.16em;
+    height: 1.9em;
+    border-radius: 0.05em;
+    background: var(--logo-slash);
+    box-shadow: 0 0 0.45em var(--logo-glow);
+    translate: -50% -50%;
+    transform: translateX(calc(tan(var(--tilt)) * 0.95em)) skewX(var(--tilt)) scaleY(0);
+    transform-origin: 50% 100%;
+    transition: transform 0.24s cubic-bezier(0.5, 0, 0.75, 0.4);
+  }
+
+  /* Mouse-out: the slash shrinks first, then Chat closes. Delays sit on the state being entered. */
+  .logo-r,
+  .logo-mid {
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1.15) 0.14s;
+  }
+
+  /* Hover (or a focused link/button around the logo): Chat opens, then the slash strikes in top-down */
+  .logo[data-animated]:hover .logo-r,
+  :is(a, button):is(:hover, :focus-visible) .logo[data-animated] .logo-r {
+    transform: translateX(0.6em);
+    transition-delay: 0s;
+  }
+  /* Halfway between the blocks is the geometric centre, but at nav sizes the small rounded cut
+     corners render so the slash reads too close to Challenge; a fixed 0.75px evens it out there
+     and is invisible at larger sizes. */
+  .logo[data-animated]:hover .logo-mid,
+  :is(a, button):is(:hover, :focus-visible) .logo[data-animated] .logo-mid {
+    transform: translateX(calc(0.3em + 0.75px));
+    transition-delay: 0s;
+  }
+  .logo[data-animated]:hover .logo-slash,
+  :is(a, button):is(:hover, :focus-visible) .logo[data-animated] .logo-slash {
+    transform: translateX(calc(tan(var(--tilt)) * 0.95em)) skewX(var(--tilt)) scaleY(1);
+    transition: none;
+    animation: logo-strike 0.22s cubic-bezier(0.3, 0.7, 0.2, 1) 0.16s both;
+  }
+  @keyframes logo-strike {
+    from {
+      clip-path: inset(0 0 100% 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  /* ───────── Responsive Logo: the icon stands in for the wordmark on narrow screens ─────────
+     Sized to the banner's height (1.84em of the 0.6em lettering). */
+  .logo > .logo-icon {
+    display: none;
+    width: auto;
+    height: 1.104em;
+  }
+  @media (max-width: 639.98px) {
+    .logo[data-responsive] > .logo-banner {
+      display: none;
+    }
+    .logo[data-responsive] > .logo-icon {
+      display: inline-block;
+    }
+  }
+
+  /* ───────── Icon (LogoIcon) ─────────
+     Same hover as the wordmark, in the icon's 64-unit space. The slash's exit and entry run on
+     two nested groups so each can scale from its own end: the outer one shrinks into the bottom
+     on mouse-out (a transition), the inner one strikes in from the top on hover (an animation). */
+  .logo-icon {
+    display: inline-block;
+    overflow: visible;
+  }
+  .logo-icon-l {
+    fill: var(--logo-l-bg);
+  }
+  .logo-icon-r {
+    fill: var(--logo-r-bg);
+  }
+  .logo-icon-slash {
+    fill: var(--logo-slash);
+    filter: drop-shadow(0 0 1.6px var(--logo-glow));
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+  }
+  .logo-icon-out {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    transform: scaleY(0);
+    transition: transform 0.24s cubic-bezier(0.5, 0, 0.75, 0.4);
+  }
+  .logo-icon-r,
+  .logo-icon-mid {
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1.15) 0.14s;
+  }
+  .logo-icon[data-animated]:hover .logo-icon-r,
+  :is(a, button):is(:hover, :focus-visible) .logo-icon[data-animated] .logo-icon-r {
+    transform: translateX(3px);
+    transition-delay: 0s;
+  }
+  .logo-icon[data-animated]:hover .logo-icon-mid,
+  :is(a, button):is(:hover, :focus-visible) .logo-icon[data-animated] .logo-icon-mid {
+    transform: translateX(1.5px);
+    transition-delay: 0s;
+  }
+  .logo-icon[data-animated]:hover .logo-icon-out,
+  :is(a, button):is(:hover, :focus-visible) .logo-icon[data-animated] .logo-icon-out {
+    transform: scaleY(1);
+    transition: none;
+  }
+  .logo-icon[data-animated]:hover .logo-icon-slash,
+  :is(a, button):is(:hover, :focus-visible) .logo-icon[data-animated] .logo-icon-slash {
+    animation: logo-icon-strike 0.22s cubic-bezier(0.3, 0.7, 0.2, 1) 0.16s both;
+  }
+  @keyframes logo-icon-strike {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+}
