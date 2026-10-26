@@ -125,7 +125,7 @@ type ScoringPreset = 'classic' | 'arcade' | 'custom';
 /** Starting points for every scoring field. Editing any of them leaves neither preset selected. */
 const PRESETS: Record<Exclude<ScoringPreset, 'custom'>, Scoring> = {
   classic: { win: 1, sessionBonus: 0, sweep: false, sweepPct: 150, sweepLabel: 'Clean Sweep', selected: 1, beats: 1 },
-  arcade: { win: 100, sessionBonus: 50, sweep: true, sweepPct: 150, sweepLabel: 'Clean Sweep', selected: 100, beats: 100 },
+  arcade: { win: 100, sessionBonus: 0, sweep: false, sweepPct: 150, sweepLabel: 'Clean Sweep', selected: 100, beats: 100 },
 };
 const SCORING_KEYS = Object.keys(PRESETS.classic) as (keyof Scoring)[];
 const presetOf = (s: Scoring): ScoringPreset =>
@@ -483,16 +483,6 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
             </Example>
           </Section>
 
-          <Divider />
-
-          <Section title="Streaks" sub="Worked out from challenge and round history, never entered by hand">
-            <RockerSwitch
-              label="Show streaks on overlay"
-              description="A flame beside the team score and a win-streak line on challenge results"
-              checked={form.streaks}
-              onCheckedChange={(v) => set('streaks', v)}
-            />
-          </Section>
         </>
       )}
       {part === 'voting' && (

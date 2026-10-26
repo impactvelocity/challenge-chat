@@ -180,6 +180,10 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(createdState.channel.setupComplete).toBe(true);
     expect(createdState.sessionSettings.twitchLogin).toBe("horror");
     expect(createdState.theme).toMatchObject({ primary: "#EE6039", accent: "#39C7EE" });
+    expect(createdState.session.scoringRules).toMatchObject({
+      preset: "arcade",
+      team: { cleanSweep: { enabled: false } },
+    });
     const first = await suggestion(a); const second = await suggestion(a, "Horror", "Bob");
     await approve(a, first); await approve(a, second);
     expect((await state(b)).challenges).toEqual([]);
