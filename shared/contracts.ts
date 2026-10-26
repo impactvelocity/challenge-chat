@@ -153,6 +153,7 @@ export interface SideStreaks {
 
 export interface SessionHistoryEntry {
   id: string;
+  name: string | null;
   streamerScore: number;
   chatScore: number;
   streamerChallengeWins: number;
@@ -181,6 +182,7 @@ export interface AppState {
   };
   session: {
     id: string;
+    name: string | null;
     status: "live" | "ended";
     streamerScore: number;
     chatScore: number;

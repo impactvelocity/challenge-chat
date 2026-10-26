@@ -13,7 +13,7 @@ export type PublicSubmission = Pick<
 
 export interface PublicOverlayState {
   channel: Pick<AppState["channel"], "id" | "displayName" | "broadcasterLogin">;
-  session: Pick<AppState["session"], "id" | "streamerScore" | "chatScore" | "phase" | "submissionsOpen" | "winner" | "sweepWinner" | "sweepLabel" | "scoringRules">;
+  session: Pick<AppState["session"], "id" | "name" | "streamerScore" | "chatScore" | "phase" | "submissionsOpen" | "winner" | "sweepWinner" | "sweepLabel" | "scoringRules">;
   submissions: PublicSubmission[];
   activeRound: Pick<ActiveRound, "challengeId" | "startedAt" | "endsAt" | "attemptsUsed"> | null;
   activeChallenge: PublicChallenge | null;
@@ -53,6 +53,7 @@ export function projectOverlayState(state: AppState): PublicOverlayState {
     },
     session: {
       id: state.session.id,
+      name: state.session.name,
       streamerScore: state.session.streamerScore,
       chatScore: state.session.chatScore,
       phase: state.session.phase,

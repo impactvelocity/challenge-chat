@@ -21,7 +21,8 @@ export function parseMockChatMessage(input: string): MockChatCommand {
       : { type: 'invalid', error: 'Use !vote followed by a positive number' };
   }
 
-  if (text.startsWith('!')) return { type: 'invalid', error: 'Supported commands are !challenge and !vote' };
+  // A real Twitch channel contains bot commands for many tools. Anything other
+  // than Challenge.chat's two commands stays ordinary chat and never hits the Worker.
   return { type: 'message', text };
 }
 

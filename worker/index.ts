@@ -13,17 +13,20 @@ import {
   incrementAttempt,
   insertChallenge,
   loadState,
+  readSessionSettings,
   resetDemo,
   resolveChallenge,
+  selectedChallengeSummaries,
   setChallengeStatus,
   setSubmissionsOpen,
   startChallenge,
   updateChallengeDraft,
   updateOverlayConfig,
+  updateSessionName,
   updateSessionSettings,
   updateTheme,
 } from "./db";
-import { parseChallenge } from "./parser";
+import { generateRoundName, parseChallenge } from "./parser";
 import {
   AuthError,
   authStatus,
@@ -50,8 +53,12 @@ interface Env extends AuthEnv {
   ASSETS_BUCKET: R2Bucket;
   LIVE_SESSIONS: DurableObjectNamespace;
   APP_MODE?: "demo" | "live";
-  OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
+  AI?: {
+    run(model: string, input: unknown, options?: unknown): Promise<unknown>;
+    aiGatewayLogId?: string;
+  };
+  AI_MODEL?: string;
+  AI_GATEWAY_ID?: string;
 }
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -304,6 +311,14 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!actor) return json({ error: "Sign in to access the control panel" }, 401);
     return json(await loadState(env.DB, scope, env.APP_MODE ?? "demo"));
   }
+  if (method === "GET" && path === "/api/ai/status") {
+    return json({
+      configured: Boolean(env.AI),
+      provider: "Cloudflare AI Gateway",
+      gateway: env.AI_GATEWAY_ID || "default",
+      model: env.AI_MODEL || "openai/gpt-4.1-mini",
+    });
+  }
 
   if (!actor) return json({ error: "Sign in to access the control panel" }, 401);
   const denied = requireSameOrigin(request);
@@ -365,7 +380,11 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
   if (method === "POST" && path === "/api/challenges") {
     const input = await body<{ text?: string; game?: string; author?: { id?: string; login?: string; displayName?: string } }>(request);
-    const parsed = await parseChallenge(input.text ?? "", input.game?.trim() || null, env);
+    const settings = await readSessionSettings(env.DB, scope);
+    const parsed = await parseChallenge(input.text ?? "", input.game?.trim() || null, env, {
+      enabled: settings.aiParsing,
+      writeTitle: settings.aiChallengeTitles,
+    });
     const displayName = input.author?.displayName?.trim().slice(0, 40) || "DemoViewer";
     const login = input.author?.login?.trim().slice(0, 40) || displayName.toLowerCase().replace(/[^a-z0-9_]/g, "");
     const id = await insertChallenge(
@@ -432,7 +451,40 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
 
   const closeMatch = path.match(/^\/api\/ballots\/([^/]+)\/close$/);
-  if (method === "POST" && closeMatch) return json({ winnerIds: await closeBallot(env.DB, scope, decodeURIComponent(closeMatch[1])) });
+  if (method === "POST" && closeMatch) {
+    const winnerIds = await closeBallot(env.DB, scope, decodeURIComponent(closeMatch[1]));
+    const settings = await readSessionSettings(env.DB, scope);
+    let roundName: string | null = null;
+    let namingStatus: "ai" | "fallback" | null = null;
+    if (settings.aiTitles) {
+      const generated = await generateRoundName(
+        await selectedChallengeSummaries(env.DB, scope),
+        settings.aiRoundNameTone,
+        env,
+      );
+      roundName = generated.name;
+      namingStatus = generated.generatorStatus;
+      await updateSessionName(env.DB, scope, roundName);
+    }
+    return json({ winnerIds, roundName, namingStatus });
+  }
+
+  if (method === "PATCH" && path === "/api/session/name") {
+    const input = await body<{ name?: string }>(request);
+    const name = input.name?.trim() ?? "";
+    if (!name || name.length > 60) throw new Error("Round name must be between 1 and 60 characters");
+    await updateSessionName(env.DB, scope, name);
+    return json({ name });
+  }
+
+  if (method === "POST" && path === "/api/session/name/generate") {
+    const settings = await readSessionSettings(env.DB, scope);
+    const challenges = await selectedChallengeSummaries(env.DB, scope);
+    if (!challenges.length) throw new Error("Lock in the lineup before naming the round");
+    const generated = await generateRoundName(challenges, settings.aiRoundNameTone, env);
+    await updateSessionName(env.DB, scope, generated.name);
+    return json(generated);
+  }
 
   if (method === "PATCH" && path === "/api/theme") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);

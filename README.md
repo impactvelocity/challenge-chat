@@ -38,7 +38,7 @@ Open the local URL printed by Vite, then name the control room and choose the ow
 | Route | Purpose | Access |
 | --- | --- | --- |
 | `/` and `/inbox` | Live creator control room and challenge inbox | Owner or assigned moderator |
-| `/settings/:tab?` | General, scoring, voting, theme, mods, OBS, and AI settings | Signed in; owner-only sections are also enforced by the Worker |
+| `/settings/:tab?` | General, scoring, voting, theme, moderators, OBS, AI, and local mock-chat tools | Signed in; owner-only sections are also enforced by the Worker |
 | `/setup?channel=…` | New-board onboarding and overlay theme selection | Signed in |
 | `/overlay?channel=…` | Transparent OBS browser source using real public state | Public |
 | `/overlay/studio?channel=…` | Theme studio with mock game/events and channel-owned appearance settings | Signed in; moderator appearance controls are read-only |
@@ -47,14 +47,14 @@ Open the local URL printed by Vite, then name the control room and choose the ow
 
 The overlay registry and source contract are documented in [`src/overlay/README.md`](./src/overlay/README.md). UI/backend limitations that remain intentionally empty or disabled are tracked in [`GAPS.md`](./GAPS.md).
 
-The parser works without a key. To enable OpenAI Structured Outputs locally, add this to `.dev.vars`:
+Challenge cleanup and round naming use the Worker's `AI` binding through Cloudflare AI Gateway. The checked-in defaults use the `default` gateway and `openai/gpt-4.1-mini`; Cloudflare Unified Billing means no provider API key is needed. Override either value in `.dev.vars` only when needed:
 
 ```dotenv
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-6-astra
+AI_GATEWAY_ID=default
+AI_MODEL=openai/gpt-4.1-mini
 ```
 
-Never expose this key to the browser; parsing happens inside the Worker.
+The deterministic parser and round-name generator remain available when AI is disabled or unavailable. AI calls happen only inside the Worker; no AI credentials or administrative state reach the browser or overlay.
 
 ## Deploy to Cloudflare
 
@@ -64,7 +64,7 @@ This repo is prepared for Cloudflare's Deploy to Cloudflare flow: Wrangler defin
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=YOUR_PUBLIC_REPO_URL)
 ```
 
-The public repository URL is not known in this workspace, so there is no live button yet. Cloudflare's deploy flow provisions supported resources from the Wrangler config. On first visit, name the control room and choose its owner password. `OWNER_PASSWORD` is an optional environment-managed alternative; `INTEGRATION_TOKEN` and `OPENAI_API_KEY` are optional, separate secrets.
+The public repository URL is not known in this workspace, so there is no live button yet. Cloudflare's deploy flow provisions supported resources from the Wrangler config. On first visit, name the control room and choose its owner password. `OWNER_PASSWORD` is an optional environment-managed alternative and `INTEGRATION_TOKEN` is an optional, separate secret.
 
 For a direct CLI deployment:
 
@@ -73,7 +73,6 @@ npx wrangler login
 npm run deploy
 # optional alternative to browser setup: npx wrangler secret put OWNER_PASSWORD
 # optional: npx wrangler secret put INTEGRATION_TOKEN
-# optional: npx wrangler secret put OPENAI_API_KEY
 ```
 
 After deployment, visit `/`, name the control room, and choose a password of at least 6 characters. The control-room name and salted password hash are stored in D1, and first-run setup cannot replace an existing owner profile. If `OWNER_PASSWORD` is set, it takes precedence and is not copied into D1. The old `ADMIN_TOKEN` setting no longer grants access.
@@ -82,7 +81,7 @@ The owner can create named moderators from the control panel and copy a 15-minut
 
 ## Channels and leaderboard
 
-Use the Channel selector at the top of the control panel to switch Channels. Owners can use **+ New** or **Channel settings** to create a Channel and edit its name and slug. Existing NightShift data is preserved as the default Channel. A new Channel starts empty with its own live session and Challenger leaderboard. The deployment owner can manage every Channel; moderators see only those assigned to them. An existing moderator can be granted access to another Channel without creating another account.
+Use the Channel selector at the top of the control panel to switch Channels. Owners can use **+ New** or **Channel settings** to create a Channel and edit its name and slug. A new Channel starts empty with its own live session and Challenger leaderboard. The deployment owner can manage every Channel; moderators see only those assigned to them. An existing moderator can be granted access to another Channel without creating another account.
 
 Every control API, WebSocket, integration event, and OBS URL accepts `?channel=CHANNEL_ID`. Omitting it selects the original `demo-channel` for compatibility. OBS URLs include the Channel ID so switching the control panel never switches the broadcast. Branding, scores, proposals, ballots, runs, and integration tokens are isolated by Channel. Slugs are display identifiers; stable IDs keep saved URLs working after a rename.
 

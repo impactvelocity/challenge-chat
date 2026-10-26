@@ -18,7 +18,7 @@ describe("surface configuration", () => {
   });
 
   it("bounds session timing and Twitch login values", () => {
-    const valid = { autoNext: true, autoNextSecs: 45, aiTitles: false, publicPage: true, twitchLogin: "night_shift" };
+    const valid = { autoNext: true, autoNextSecs: 45, aiTitles: false, aiParsing: true, aiChallengeTitles: true, aiRoundNameTone: "playful" as const, publicPage: true, twitchLogin: "night_shift" };
     expect(SessionSettingsSchema.parse(valid)).toEqual(valid);
     expect(() => SessionSettingsSchema.parse({ ...valid, autoNextSecs: 4 })).toThrow();
     expect(() => SessionSettingsSchema.parse({ ...valid, twitchLogin: "not a login" })).toThrow();

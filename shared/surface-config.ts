@@ -21,6 +21,9 @@ export const SessionSettingsSchema = z.object({
   autoNext: z.boolean(),
   autoNextSecs: z.number().int().min(5).max(300),
   aiTitles: z.boolean(),
+  aiParsing: z.boolean().default(true),
+  aiChallengeTitles: z.boolean().default(true),
+  aiRoundNameTone: z.enum(["playful", "hype", "straight"]).default("playful"),
   publicPage: z.boolean(),
   twitchLogin: z.string().trim().min(1).max(64).regex(/^[a-zA-Z0-9_]+$/).nullable(),
 });
@@ -31,6 +34,9 @@ export const DEFAULT_SESSION_SETTINGS: SessionSettings = {
   autoNext: true,
   autoNextSecs: 45,
   aiTitles: true,
+  aiParsing: true,
+  aiChallengeTitles: true,
+  aiRoundNameTone: "playful",
   publicPage: true,
   twitchLogin: null,
 };

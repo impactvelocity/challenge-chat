@@ -3,4 +3,5 @@
 # OWNER_PASSWORD=replace-with-a-long-unique-password
 # Optional adapter-only bearer token:
 # INTEGRATION_TOKEN=replace-with-a-different-random-token
-# Optional: OPENAI_API_KEY=your-openai-api-key
+# AI uses the Cloudflare AI binding and the AI_GATEWAY_ID / AI_MODEL vars in wrangler.jsonc.
+# No provider API key is required when Cloudflare Unified Billing is enabled.

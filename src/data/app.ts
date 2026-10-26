@@ -257,7 +257,7 @@ export const SETUP_CHECKS = [
   { id: 'do', kind: 'DO', name: 'LIVE_SESSIONS', note: 'Durable Object bound', required: true },
   { id: 'r2', kind: 'R2', name: 'ASSETS_BUCKET', note: 'Bucket bound', required: true },
   { id: 'owner', kind: 'D1', name: 'OWNER PROFILE', note: 'Created during first-run setup', required: true },
-  { id: 'openai', kind: 'SECRET', name: 'OPENAI_API_KEY', note: 'Not set — the fallback parser will be used', required: false },
+  { id: 'ai', kind: 'AI', name: 'AI', note: 'Cloudflare AI binding · routed through AI Gateway', required: false },
 ] as const;
 
 export const slugify = (s: string) =>

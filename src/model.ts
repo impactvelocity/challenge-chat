@@ -32,6 +32,7 @@ export type Challenge = {
   timeLimit: number | null;
   maxAttempts: number | null;
   roundValue: number;
+  voteCount: number;
   parser: 'ai' | 'fallback';
   constraints: string[];
   warnings: string[];
@@ -81,6 +82,7 @@ export function challengeFromState(value: ApiChallenge): Challenge {
     timeLimit: value.timeLimitSeconds,
     maxAttempts: value.maxAttempts,
     roundValue: value.roundValue,
+    voteCount: value.voteCount,
     parser: value.parserStatus,
     constraints: value.constraints.map((constraint) => constraint.label),
     warnings: value.warnings,

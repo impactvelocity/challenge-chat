@@ -8,10 +8,10 @@ describe('mock chat commands', () => {
     expect(parseMockChatMessage('hello chat')).toEqual({ type: 'message', text: 'hello chat' });
   });
 
-  it('rejects malformed and unsupported commands', () => {
+  it('rejects malformed supported commands and ignores unrelated bot commands', () => {
     expect(parseMockChatMessage('!challenge')).toEqual({ type: 'invalid', error: 'Add an idea after !challenge' });
     expect(parseMockChatMessage('!vote 0')).toEqual({ type: 'invalid', error: 'Use !vote followed by a positive number' });
-    expect(parseMockChatMessage('!ban viewer')).toEqual({ type: 'invalid', error: 'Supported commands are !challenge and !vote' });
+    expect(parseMockChatMessage('!ban viewer')).toEqual({ type: 'message', text: '!ban viewer' });
   });
 
   it('creates a stable, bounded mock viewer id', () => {

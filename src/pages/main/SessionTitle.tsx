@@ -1,22 +1,39 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshIcon, SparkleIcon } from '@/components/icons';
 import { Button, Sheet, TextField } from '@/components/ui';
+import { api } from '@/api';
 
 export type TitlePhase = 'loading' | 'streaming' | 'done';
 
 /**
- * Local title affordance until sessions gain an authoritative title field.
- * `set()` keeps the streamer's draft in this control-room mount only.
+ * Authoritative title affordance backed by the active D1 session.
  */
-export function useStreamedTitle() {
-  const [text, setText] = useState('');
+export function useStreamedTitle(initial = '') {
+  const [text, setText] = useState(initial);
   const [phase, setPhase] = useState<TitlePhase>('done');
-  const set = useCallback((t: string) => {
-    setText(t);
-    setPhase('done');
+  useEffect(() => { setText(initial); }, [initial]);
+  const set = useCallback(async (title: string) => {
+    setPhase('loading');
+    try {
+      const saved = await api.updateSessionName(title.trim());
+      setText(saved.name);
+    } finally {
+      setPhase('done');
+    }
   }, []);
+  const regenerate = useCallback(async () => {
+    setPhase('loading');
+    try {
+      const generated = await api.generateSessionName();
+      setText(generated.name);
+      return generated;
+    } finally {
+      setPhase('done');
+    }
+  }, []);
+  const clear = useCallback(() => { setText(''); setPhase('done'); }, []);
 
-  return { text, phase, set };
+  return { text, phase, set, regenerate, clear };
 }
 
 /** The title as it appears in the window: a skeleton while loading, a caret while streaming. Fixed height so nothing below moves. */
@@ -75,8 +92,7 @@ export function SessionTitleSheet({ open, onOpenChange, title }: SheetProps) {
             variant="accent"
             disabled={busy || !draft.trim()}
             onClick={() => {
-              title.set(draft.trim());
-              onOpenChange(false);
+              void title.set(draft.trim()).then(() => onOpenChange(false));
             }}
           >
             Save title
@@ -95,8 +111,7 @@ export function SessionTitleSheet({ open, onOpenChange, title }: SheetProps) {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && draft.trim()) {
-                title.set(draft.trim());
-                onOpenChange(false);
+                void title.set(draft.trim()).then(() => onOpenChange(false));
               }
             }}
           />
@@ -105,14 +120,12 @@ export function SessionTitleSheet({ open, onOpenChange, title }: SheetProps) {
           variant="ghost"
           size="sm"
           className="self-start"
-          disabled
-          title="AI title generation is not connected to the server yet"
-          onClick={() => undefined}
+          onClick={() => void title.regenerate().then((generated) => setDraft(generated.name))}
         >
           <RefreshIcon size={14} />
-          Suggestions unavailable
+          Generate another
         </Button>
-        <span className="hint">Manual titles are local to this control room until session title storage is added.</span>
+        <span className="hint">Round titles are saved to this board and update the OBS overlay.</span>
       </div>
     </Sheet>
   );

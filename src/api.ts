@@ -26,6 +26,13 @@ export interface ModInvite {
   expiresAt: string;
 }
 
+export interface AiStatus {
+  configured: boolean;
+  provider: string;
+  gateway: string;
+  model: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const globalRoute = path === "/api/channels" || (path.startsWith("/api/auth/") && !path.startsWith("/api/auth/mods"));
   const response = await fetch(globalRoute ? path : channelPath(path), {
@@ -53,6 +60,7 @@ export const api = {
   integrationStatus: () => request<{ token: { lastFour: string; createdAt: number } | null; environmentFallback: boolean }>("/api/channel/integration"),
   rotateIntegrationToken: () => request<{ token: string }>("/api/channel/integration", { method: "POST", body: "{}" }),
   state: () => request<AppState>("/api/state"),
+  aiStatus: () => request<AiStatus>("/api/ai/status"),
   publicState: () => request<PublicOverlayState>("/api/public/state"),
   authSession: () => request<AuthSession>("/api/auth/session"),
   login: (password: string) => request<AuthSession>("/api/auth/owner/login", { method: "POST", body: JSON.stringify({ password }) }),
@@ -80,7 +88,9 @@ export const api = {
     request<{ id: string }>("/api/ballots", { method: "POST", body: JSON.stringify({ challengeIds, durationSeconds, winnersCount }) }),
   vote: (ballotId: string, challengeId: string, voterId: string) =>
     request(`/api/ballots/${ballotId}/vote`, { method: "POST", body: JSON.stringify({ challengeId, voterId }) }),
-  closeBallot: (id: string) => request(`/api/ballots/${id}/close`, { method: "POST", body: "{}" }),
+  closeBallot: (id: string) => request<{ winnerIds: string[]; roundName: string | null; namingStatus: "ai" | "fallback" | null }>(`/api/ballots/${id}/close`, { method: "POST", body: "{}" }),
+  updateSessionName: (name: string) => request<{ name: string }>("/api/session/name", { method: "PATCH", body: JSON.stringify({ name }) }),
+  generateSessionName: () => request<{ name: string; generatorStatus: "ai" | "fallback" }>("/api/session/name/generate", { method: "POST", body: "{}" }),
   updateTheme: (theme: Theme) => request("/api/theme", { method: "PATCH", body: JSON.stringify({ theme }) }),
   upload: async (file: File) => {
     const data = new FormData();

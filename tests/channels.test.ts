@@ -8,7 +8,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql", "0009_challenge_inbox.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql", "0009_challenge_inbox.sql", "0010_session_names.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -111,6 +111,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0007_owner_profile.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0008_channel_setup.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0009_challenge_inbox.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0010_session_names.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
@@ -396,7 +397,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
       settings: { neon: { accent: "#33ff99", bloom: 0.75, scanlines: true } },
       elements: { scoreboard: true, "hype-meter": false },
     };
-    const settings = { autoNext: false, autoNextSecs: 30, aiTitles: false, publicPage: false, twitchLogin: "surface_a" };
+    const settings = { autoNext: false, autoNextSecs: 30, aiTitles: false, aiParsing: false, aiChallengeTitles: false, aiRoundNameTone: "straight", publicPage: false, twitchLogin: "surface_a" };
     expect((await call("/api/overlay-config", { method: "PATCH", channel: a, cookie: ownerCookie, data: { config } })).status).toBe(200);
     expect((await call("/api/session-settings", { method: "PATCH", channel: a, cookie: ownerCookie, data: { settings } })).status).toBe(200);
 
@@ -416,14 +417,13 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(invalid.status).toBe(400);
   });
 
-  it("snapshots the control room's per-round winner count on the ballot", async () => {
+  it("snapshots the per-round winner count and treats selected pending ideas as approved", async () => {
     const channel = await create("round-picks");
     const ids = await Promise.all([
       suggestion(channel, "Puzzle", "Alice"),
       suggestion(channel, "Puzzle", "Bob"),
       suggestion(channel, "Puzzle", "Carol"),
     ]);
-    for (const id of ids) await approve(channel, id);
     const opened = await call("/api/ballots", {
       method: "POST",
       channel,
@@ -469,6 +469,12 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     const ballot = (await state(channel)).ballot;
     expect(ballot.votesPerViewer).toBe(3);
     expect(ballot.entries.map((entry: any) => entry.votes)).toEqual([1, 1, 1, 0]);
+
+    expect((await call(`/api/ballots/${ballotId}/close`, {
+      method: "POST", channel, cookie: ownerCookie,
+    })).status).toBe(200);
+    const locked = await state(channel);
+    expect(locked.challenges.filter((challenge: any) => challenge.status === "queued").map((challenge: any) => challenge.voteCount)).toEqual([1, 1, 1]);
   });
 
   it("applies custom voting, scoring, sweep labels, challenger awards, lifecycle history, and streaks", async () => {

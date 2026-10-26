@@ -51,10 +51,12 @@ interface ChallengeRow {
   round_value: number;
   parser_status: Challenge["parserStatus"];
   created_at: string;
+  vote_count?: number;
 }
 
 interface SessionRow {
   id: string;
+  name: string | null;
   status: "live" | "ended";
   mode: "open_queue" | "blitz" | "hype";
   streamer_score: number;
@@ -351,7 +353,7 @@ export async function createBallot(
   const valid = await db
     .prepare(
       `SELECT COUNT(*) AS count FROM challenges
-       WHERE session_id = ? AND id IN (${placeholders}) AND status IN ('approved', 'queued')`,
+       WHERE session_id = ? AND id IN (${placeholders}) AND status IN ('pending_review', 'approved', 'queued')`,
     )
     .bind(scope.sessionId, ...uniqueIds)
     .first<{ count: number }>();
@@ -704,6 +706,32 @@ export async function updateSessionSettings(db: D1Database, scope: ChannelScope,
   return parsed;
 }
 
+export async function readSessionSettings(db: D1Database, scope: ChannelScope): Promise<SessionSettings> {
+  const row = await db.prepare("SELECT session_settings_json FROM channels WHERE id = ?")
+    .bind(scope.channelId).first<{ session_settings_json: string }>();
+  if (!row) throw new AuthError("Channel not found", 404);
+  return SessionSettingsSchema.parse(parseJson(row.session_settings_json, DEFAULT_SESSION_SETTINGS));
+}
+
+export async function selectedChallengeSummaries(
+  db: D1Database,
+  scope: ChannelScope,
+): Promise<{ title: string; objective: string; game: string | null }[]> {
+  const rows = await db.prepare(
+    `SELECT title, objective, game FROM challenges
+     WHERE session_id = ? AND status IN ('queued', 'active', 'streamer_won', 'chat_won', 'skipped', 'voided')
+     ORDER BY updated_at, created_at, id`,
+  ).bind(scope.sessionId).all<{ title: string; objective: string; game: string | null }>();
+  return rows.results;
+}
+
+export async function updateSessionName(db: D1Database, scope: ChannelScope, name: string | null): Promise<void> {
+  const changed = await db.prepare(
+    "UPDATE sessions SET name = ? WHERE id = ? AND channel_id = ? AND status = 'live'",
+  ).bind(name?.trim().slice(0, 60) || null, scope.sessionId, scope.channelId).run();
+  if (!changed.meta.changes) throw new AuthError("Active round not found", 404);
+}
+
 export async function resetDemo(db: D1Database, scope: ChannelScope): Promise<void> {
   await db.batch([
     db.prepare("DELETE FROM sessions WHERE id = ? AND channel_id = ?").bind(scope.sessionId, scope.channelId),
@@ -825,8 +853,15 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
     db.prepare("SELECT * FROM channels WHERE id = ?").bind(scope.channelId).first<ChannelRow>(),
     db.prepare("SELECT * FROM sessions WHERE id = ?").bind(scope.sessionId).first<SessionRow>(),
     db
-      .prepare("SELECT * FROM challenges WHERE session_id = ? OR (channel_id = ? AND status = 'inbox') ORDER BY created_at ASC")
-      .bind(scope.sessionId, scope.channelId)
+      .prepare(
+        `SELECT c.*,
+          (SELECT COUNT(*) FROM votes v JOIN ballots b ON b.id = v.ballot_id
+           WHERE v.challenge_id = c.id AND b.session_id = ?) AS vote_count
+         FROM challenges c
+         WHERE c.session_id = ? OR (c.channel_id = ? AND c.status = 'inbox')
+         ORDER BY c.created_at ASC`,
+      )
+      .bind(scope.sessionId, scope.sessionId, scope.channelId)
       .all<ChallengeRow>(),
     db
       .prepare("SELECT * FROM rounds WHERE session_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1")
@@ -839,7 +874,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
   ]);
 
   if (!channel || !session) throw new Error("Demo state could not be initialized");
-  const challenges = challengeResult.results.map((row) => rowToChallenge(row));
+  const challenges = challengeResult.results.map((row) => rowToChallenge(row, Number(row.vote_count ?? 0)));
   let ballot: Ballot | null = null;
 
   if (openBallot) {
@@ -878,7 +913,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
        GROUP BY p.user_id HAVING points > 0 ORDER BY points DESC, displayName ASC, p.user_id ASC LIMIT 50`,
     ).bind(scope.channelId).all<AppState["leaderboard"][number]>(),
     db.prepare(
-      `SELECT s.id, s.streamer_score AS streamerScore, s.chat_score AS chatScore,
+      `SELECT s.id, s.name, s.streamer_score AS streamerScore, s.chat_score AS chatScore,
         SUM(CASE WHEN r.result = 'streamer_won' THEN 1 ELSE 0 END) AS streamerChallengeWins,
         SUM(CASE WHEN r.result = 'chat_won' THEN 1 ELSE 0 END) AS chatChallengeWins,
         s.winner, s.sweep_winner AS sweepWinner, s.sweep_label AS sweepLabel, s.completed_at AS completedAt
@@ -914,6 +949,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
     },
     session: {
       id: session.id,
+      name: session.name,
       status: session.status,
       streamerScore: session.streamer_score,
       chatScore: session.chat_score,

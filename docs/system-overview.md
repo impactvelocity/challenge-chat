@@ -17,7 +17,7 @@ A typical challenge moves through several stages:
 7. The creator or moderator records the result.
 8. The system updates the streamer-versus-chat score and the viewer's contribution history.
 
-Challenge suggestions can be parsed through OpenAI Structured Outputs when an API key is configured. A deterministic parser remains available when AI parsing is disabled or unavailable. Every parsed challenge retains its original text and records whether it came from the AI parser or the fallback parser.
+Challenge suggestions are parsed through the Worker's Cloudflare AI binding, routed through AI Gateway with structured JSON output. The same server-only path generates a short round name from the winning lineup when voting closes. Both features are independently configurable per board. Deterministic cleanup and naming remain available when AI is disabled or unavailable, and every challenge retains its original text plus the parser source used.
 
 Structured challenge data can include:
 

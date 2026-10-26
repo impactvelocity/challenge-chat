@@ -2,13 +2,24 @@ import { z } from "zod";
 import { ChallengeDraftSchema, type ChallengeDraft } from "../shared/contracts";
 
 export interface ParserEnv {
-  OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
+  AI?: {
+    run(model: string, input: unknown, options?: unknown): Promise<unknown>;
+    aiGatewayLogId?: string;
+  };
+  AI_MODEL?: string;
+  AI_GATEWAY_ID?: string;
 }
 
 export interface ParsedChallenge {
   challenge: ChallengeDraft;
   parserStatus: "ai" | "fallback";
+}
+
+export type RoundNameTone = "playful" | "hype" | "straight";
+
+export interface GeneratedRoundName {
+  name: string;
+  generatorStatus: "ai" | "fallback";
 }
 
 const numberWords: Record<string, number> = {
@@ -98,7 +109,15 @@ export function fallbackParseChallenge(text: string, game?: string | null): Chal
 }
 
 function extractResponseText(payload: unknown): string | null {
+  if (typeof payload === "string") return payload;
   if (!payload || typeof payload !== "object") return null;
+  const response = (payload as { response?: unknown }).response;
+  if (typeof response === "string") return response;
+  const choices = (payload as { choices?: unknown }).choices;
+  if (Array.isArray(choices)) {
+    const content = (choices[0] as { message?: { content?: unknown } } | undefined)?.message?.content;
+    if (typeof content === "string") return content;
+  }
   const output = (payload as { output?: unknown }).output;
   if (!Array.isArray(output)) return null;
 
@@ -121,67 +140,75 @@ function extractResponseText(payload: unknown): string | null {
   return null;
 }
 
-async function parseWithOpenAI(text: string, game: string | null, env: ParserEnv): Promise<ChallengeDraft> {
-  const schema = z.toJSONSchema(ChallengeDraftSchema) as Record<string, unknown>;
+async function gatewayJson<T>(env: ParserEnv, name: string, instructions: string, input: unknown, outputSchema: z.ZodType<T>): Promise<T> {
+  if (!env.AI) throw new Error("Cloudflare AI binding is unavailable");
+  const schema = z.toJSONSchema(outputSchema) as Record<string, unknown>;
   delete schema.$schema;
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
+  const payload = await env.AI.run(
+    env.AI_MODEL || "openai/gpt-4.1-mini",
+    {
+      messages: [
+        { role: "system", content: instructions },
+        { role: "user", content: JSON.stringify(input) },
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_schema", json_schema: { name, strict: true, schema } },
     },
-    body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-6-astra",
-      store: false,
-      instructions: [
-        "Convert a viewer's livestream challenge into the supplied schema.",
-        "Extract only constraints that are explicitly stated.",
-        "Use null and empty arrays when information is absent.",
-        "Keep the objective concise and imperative without changing its meaning.",
-        "Flag ambiguity, danger, harassment, or likely impossibility in warnings and set needsReview true.",
-        "Never add a punishment, wager, or physical risk that the viewer did not request.",
-      ].join(" "),
-      input: JSON.stringify({ text, game }),
-      text: {
-        format: {
-          type: "json_schema",
-          name: "challenge_draft",
-          strict: true,
-          schema,
-        },
+    {
+      gateway: {
+        id: env.AI_GATEWAY_ID || "default",
+        skipCache: true,
+        collectLog: true,
+        metadata: { feature: name },
       },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI parser request failed with ${response.status}`);
-  }
-
-  const payload = (await response.json()) as unknown;
+    },
+  );
   const outputText = extractResponseText(payload);
-  if (!outputText) throw new Error("OpenAI parser returned no structured output");
+  if (!outputText) throw new Error("AI Gateway returned no structured output");
+  return outputSchema.parse(JSON.parse(outputText));
+}
 
-  const parsed = ChallengeDraftSchema.parse(JSON.parse(outputText));
+async function parseWithGateway(text: string, game: string | null, env: ParserEnv, writeTitle: boolean): Promise<ChallengeDraft> {
+  const parsed = await gatewayJson(
+    env,
+    "challenge_draft",
+    [
+      "Convert a viewer's livestream challenge into the supplied JSON schema.",
+      "Clean up spelling and grammar without changing the viewer's intent.",
+      "Extract only constraints that are explicitly stated.",
+      "Use null and empty arrays when information is absent.",
+      "Keep the objective concise and imperative.",
+      "Flag ambiguity, danger, harassment, or likely impossibility in warnings and set needsReview true.",
+      "Never add a punishment, wager, or physical risk that the viewer did not request.",
+    ].join(" "),
+    { text, game },
+    ChallengeDraftSchema,
+  );
   return {
     ...parsed,
     rawText: text.trim().slice(0, 500),
     game: parsed.game ?? game,
+    title: writeTitle ? parsed.title : cleanTitle(text),
   };
 }
 
-export async function parseChallenge(text: string, game: string | null, env: ParserEnv): Promise<ParsedChallenge> {
+export async function parseChallenge(
+  text: string,
+  game: string | null,
+  env: ParserEnv,
+  options: { enabled?: boolean; writeTitle?: boolean } = {},
+): Promise<ParsedChallenge> {
   const safeText = text.trim().slice(0, 500);
   if (!safeText) throw new Error("Challenge text is required");
 
-  if (env.OPENAI_API_KEY) {
+  if (options.enabled !== false && env.AI) {
     try {
       return {
-        challenge: await parseWithOpenAI(safeText, game, env),
+        challenge: await parseWithGateway(safeText, game, env, options.writeTitle !== false),
         parserStatus: "ai",
       };
     } catch (error) {
-      console.warn("Falling back to deterministic challenge parsing", error);
+      console.warn("Falling back to deterministic challenge parsing after AI Gateway failure", error);
     }
   }
 
@@ -189,4 +216,34 @@ export async function parseChallenge(text: string, game: string | null, env: Par
     challenge: fallbackParseChallenge(safeText, game),
     parserStatus: "fallback",
   };
+}
+
+function fallbackRoundName(challenges: { title: string; game: string | null }[], tone: RoundNameTone): string {
+  const game = challenges.find((challenge) => challenge.game)?.game;
+  const lead = challenges[0]?.title || "Challenge Round";
+  if (tone === "straight") return `${game ? `${game}: ` : ""}${challenges.length} Challenge${challenges.length === 1 ? "" : "s"}`.slice(0, 60);
+  if (tone === "hype") return `${lead} Gauntlet`.slice(0, 60);
+  return `${lead} & Friends`.slice(0, 60);
+}
+
+export async function generateRoundName(
+  challenges: { title: string; objective: string; game: string | null }[],
+  tone: RoundNameTone,
+  env: ParserEnv,
+): Promise<GeneratedRoundName> {
+  if (env.AI) {
+    try {
+      const result = await gatewayJson(
+        env,
+        "round_name",
+        `Name a livestream challenge round in a ${tone} tone. Return a memorable title only, 2–7 words, maximum 60 characters. Do not include quotes, a colon suffix, or claims not supported by the lineup.`,
+        { challenges },
+        z.object({ name: z.string().trim().min(2).max(60) }),
+      );
+      return { name: result.name, generatorStatus: "ai" };
+    } catch (error) {
+      console.warn("Falling back to deterministic round naming after AI Gateway failure", error);
+    }
+  }
+  return { name: fallbackRoundName(challenges, tone), generatorStatus: "fallback" };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fallbackParseChallenge } from "./parser";
+import { fallbackParseChallenge, generateRoundName, parseChallenge } from "./parser";
 
 describe("fallbackParseChallenge", () => {
   it("extracts the core primitives from a messy viewer request", () => {
@@ -17,5 +17,38 @@ describe("fallbackParseChallenge", () => {
 
   it("recognizes one-shot challenges", () => {
     expect(fallbackParseChallenge("Win the round, one shot attempt", "Fortnite").maxAttempts).toBe(1);
+  });
+
+  it("routes challenge cleanup through the configured AI Gateway", async () => {
+    const calls: unknown[][] = [];
+    const fallback = fallbackParseChallenge("get 3 elimz with pistl only", "Fortnite");
+    const result = await parseChallenge("get 3 elimz with pistl only", "Fortnite", {
+      AI_MODEL: "openai/test-model",
+      AI_GATEWAY_ID: "challenge-chat",
+      AI: {
+        run: async (...args: unknown[]) => {
+          calls.push(args);
+          return { choices: [{ message: { content: JSON.stringify({ ...fallback, title: "Pistol Purist", objective: "Get 3 eliminations using pistols only." }) } }] };
+        },
+      },
+    });
+
+    expect(result.parserStatus).toBe("ai");
+    expect(result.challenge).toMatchObject({ title: "Pistol Purist", objective: "Get 3 eliminations using pistols only.", rawText: "get 3 elimz with pistl only" });
+    expect(calls[0]?.[0]).toBe("openai/test-model");
+    expect(calls[0]?.[2]).toMatchObject({ gateway: { id: "challenge-chat", skipCache: true, collectLog: true } });
+  });
+
+  it("uses AI Gateway for round naming and falls back safely", async () => {
+    const challenges = [{ title: "Pistol Purist", objective: "Use pistols only", game: "Fortnite" }];
+    const named = await generateRoundName(challenges, "hype", {
+      AI: { run: async () => ({ choices: [{ message: { content: JSON.stringify({ name: "Pistols at Dawn" }) } }] }) },
+    });
+    expect(named).toEqual({ name: "Pistols at Dawn", generatorStatus: "ai" });
+
+    const fallback = await generateRoundName(challenges, "hype", {
+      AI: { run: async () => { throw new Error("offline"); } },
+    });
+    expect(fallback).toEqual({ name: "Pistol Purist Gauntlet", generatorStatus: "fallback" });
   });
 });

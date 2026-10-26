@@ -66,9 +66,6 @@
       },
       "INTEGRATION_TOKEN": {
         "description": "Optional separate bearer token for server-side game adapters publishing normalized events. Do not put it in browser code or overlay URLs."
-      },
-      "OPENAI_API_KEY": {
-        "description": "Optional. Enables AI parsing of viewer challenge suggestions; the deterministic fallback works without it."
       }
     }
   }

@@ -21,6 +21,10 @@
       "bucket_name": "challenge-chat-assets"
     }
   ],
+  "ai": {
+    "binding": "AI",
+    "remote": true
+  },
   "durable_objects": {
     "bindings": [
       {
@@ -37,6 +41,7 @@
   ],
   "vars": {
     "APP_MODE": "demo",
-    "OPENAI_MODEL": "gpt-6-astra"
+    "AI_GATEWAY_ID": "default",
+    "AI_MODEL": "openai/gpt-4.1-mini"
   }
 }

@@ -21,7 +21,7 @@ const challenge = {
 const state: PublicOverlayState = {
   channel: { id: 'channel-1', displayName: 'Night Shift', broadcasterLogin: 'nightshift' },
   session: {
-    id: 'session-1', streamerScore: 200, chatScore: 100, phase: 'live', winner: null,
+    id: 'session-1', name: 'The Knife Gauntlet', streamerScore: 200, chatScore: 100, phase: 'live', winner: null,
     submissionsOpen: false, sweepWinner: null, sweepLabel: null, scoringRules: ARCADE_SCORING_RULES,
   },
   submissions: [],
@@ -59,6 +59,7 @@ describe('live overlay source mapping', () => {
   it('maps public state, clocks, framework metrics, and persisted display config', () => {
     const snapshot = mapPublicOverlayState(state, run, 7, Date.parse(run.serverTime));
     expect(snapshot.session?.stage).toBe('live');
+    expect(snapshot.session?.name).toBe('The Knife Gauntlet');
     expect(snapshot.session?.round?.clock).toEqual({
       startsAt: Date.parse(state.activeRound!.startedAt),
       endsAt: Date.parse(state.activeRound!.endsAt!),

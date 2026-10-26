@@ -219,7 +219,7 @@ function General({ channel, part, onSaved }: { channel: Channel; part: 'general'
       const tasks: Promise<unknown>[] = [];
       if (form.name !== saved.name) tasks.push(api.updateChannel(form.name, channel.slug));
       if (form.autoNext !== saved.autoNext || form.autoNextSecs !== saved.autoNextSecs || form.publicPage !== saved.publicPage || form.login !== saved.login) {
-        tasks.push(api.updateSessionSettings({ autoNext: form.autoNext, autoNextSecs: form.autoNextSecs, aiTitles: session.aiTitles, publicPage: form.publicPage, twitchLogin: form.login })
+        tasks.push(api.updateSessionSettings({ ...session, autoNext: form.autoNext, autoNextSecs: form.autoNextSecs, publicPage: form.publicPage, twitchLogin: form.login })
           .then(({ settings }) => hydrateSessionSettings(settings)));
       }
       if (form.primary !== saved.primary || form.chat !== saved.chat) {
@@ -919,17 +919,19 @@ function Overlays({ channel }: { channel: Channel }) {
 /** Everything the model helps with. Each switch takes effect straight away; drafts always keep the viewer's original text. */
 function AiSettings() {
   const session = useSessionSettings();
-  const [parse, setParse] = useState(true);
-  const [titles, setTitles] = useState(true);
-  const [tone, setTone] = useState<'playful' | 'hype' | 'straight'>('playful');
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof api.aiStatus>> | null>(null);
+  useEffect(() => { void api.aiStatus().then(setStatus).catch(() => setStatus(null)); }, []);
+  const parse = session.aiParsing;
+  const titles = session.aiChallengeTitles;
+  const tone = session.aiRoundNameTone;
 
   return (
     <>
       <Section title="Provider">
         <Well className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <Led tone="ok" />
-          <span className="text-sm font-semibold text-ink-strong">OpenAI connected</span>
-          <span className="mono text-xs text-ink-muted">gpt-6-astra</span>
+          <Led tone={status?.configured ? 'ok' : 'warn'} />
+          <span className="text-sm font-semibold text-ink-strong">{status?.configured ? 'AI Gateway ready' : 'AI Gateway unavailable'}</span>
+          <span className="mono text-xs text-ink-muted">{status ? `${status.gateway} · ${status.model}` : 'checking…'}</span>
           <span className="hint ml-auto">If it's down, everything below falls back to the built-in rules</span>
         </Well>
       </Section>
@@ -941,9 +943,9 @@ function AiSettings() {
           label="Use AI parsing"
           description="Off uses the built-in rules parser, which is faster but needs more moderator edits"
           checked={parse}
-          onCheckedChange={setParse}
+          onCheckedChange={(value) => setSessionSettings({ aiParsing: value })}
         />
-        {parse && <RockerSwitch label="Write challenge titles" description="A short, readable name like “Pistol Purist”" checked={titles} onCheckedChange={setTitles} />}
+        {parse && <RockerSwitch label="Write challenge titles" description="A short, readable name like “Pistol Purist”" checked={titles} onCheckedChange={(value) => setSessionSettings({ aiChallengeTitles: value })} />}
         <p className="hint m-0">Every draft keeps the viewer's original text and shows which parser made it</p>
       </Section>
 
@@ -968,7 +970,7 @@ function AiSettings() {
                   { value: 'straight', label: 'Straight' },
                 ]}
                 value={tone}
-                onValueChange={setTone}
+                onValueChange={(value) => setSessionSettings({ aiRoundNameTone: value })}
               />
             </Rule>
           )}

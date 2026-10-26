@@ -98,7 +98,7 @@ export function mapPublicOverlayState(
   const displayTheme = getTheme(state.overlayConfig.theme) ?? listThemes()[0];
   const session: Session = {
     id: state.session.id,
-    name: null,
+    name: state.session.name,
     stage,
     startedAt: ballotEnd ? ballotEnd - state.session.scoringRules.voting.durationSeconds * 1000 : serverTime,
     submissions: {
