@@ -16,6 +16,14 @@ import { ARCADE_SCORING_RULES, CLASSIC_SCORING_RULES, parseScoringRules, type Sc
 import { fallbackParseChallenge } from "./parser";
 import { AuthError } from "./auth";
 import type { ChannelScope } from "../shared/channels";
+import {
+  DEFAULT_OVERLAY_CONFIG,
+  DEFAULT_SESSION_SETTINGS,
+  OverlayConfigSchema,
+  SessionSettingsSchema,
+  type OverlayConfig,
+  type SessionSettings,
+} from "../shared/surface-config";
 
 export const DEMO_CHANNEL_ID = "demo-channel";
 export const DEMO_SESSION_ID = "demo-session";
@@ -65,6 +73,8 @@ interface ChannelRow {
   broadcaster_login: string;
   theme_json: string;
   scoring_rules_json: string;
+  overlay_config_json: string;
+  session_settings_json: string;
 }
 
 interface RoundRow {
@@ -284,14 +294,20 @@ export async function setChallengeStatus(
   await db.batch(statements);
 }
 
-export async function createBallot(db: D1Database, scope: ChannelScope, challengeIds: string[], durationSeconds: number): Promise<string> {
+export async function createBallot(
+  db: D1Database,
+  scope: ChannelScope,
+  challengeIds: string[],
+  durationSeconds: number,
+  requestedWinnersCount?: number,
+): Promise<string> {
   const session = await db.prepare("SELECT phase, scoring_rules_json FROM sessions WHERE id = ? AND status = 'live'")
     .bind(scope.sessionId).first<{ phase: string; scoring_rules_json: string }>();
   if (!session || session.phase !== "collecting") throw new Error("Voting can only start while suggestions are being collected");
   const rules = parseScoringRules(parseJson(session.scoring_rules_json, null));
   const uniqueIds = [...new Set(challengeIds)].slice(0, rules.voting.shortlistSize);
   if (uniqueIds.length < 2) throw new Error("Choose at least two challenges");
-  const winnersCount = Math.min(rules.voting.winnersCount, uniqueIds.length - 1);
+  const winnersCount = Math.min(requestedWinnersCount ?? rules.voting.winnersCount, uniqueIds.length - 1);
   const id = crypto.randomUUID();
   const chosenDuration = Number.isFinite(durationSeconds) ? durationSeconds : rules.voting.durationSeconds;
   const endsAt = new Date(Date.now() + Math.max(10, Math.min(chosenDuration, 900)) * 1000).toISOString();
@@ -591,6 +607,24 @@ export async function updateTheme(db: D1Database, scope: ChannelScope, theme: Th
     .run();
 }
 
+export async function updateOverlayConfig(db: D1Database, scope: ChannelScope, config: OverlayConfig): Promise<OverlayConfig> {
+  const parsed = OverlayConfigSchema.parse(config);
+  await db
+    .prepare("UPDATE channels SET overlay_config_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(JSON.stringify(parsed), scope.channelId)
+    .run();
+  return parsed;
+}
+
+export async function updateSessionSettings(db: D1Database, scope: ChannelScope, settings: SessionSettings): Promise<SessionSettings> {
+  const parsed = SessionSettingsSchema.parse(settings);
+  await db
+    .prepare("UPDATE channels SET session_settings_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(JSON.stringify(parsed), scope.channelId)
+    .run();
+  return parsed;
+}
+
 export async function resetDemo(db: D1Database, scope: ChannelScope): Promise<void> {
   await db.batch([
     db.prepare("DELETE FROM sessions WHERE id = ? AND channel_id = ?").bind(scope.sessionId, scope.channelId),
@@ -837,5 +871,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
       chatSessionWins: Number(overallRow?.chatSessionWins ?? 0),
     },
     theme: ThemeSchema.catch(DEFAULT_THEME).parse(parseJson(channel.theme_json, DEFAULT_THEME)),
+    overlayConfig: OverlayConfigSchema.catch(DEFAULT_OVERLAY_CONFIG).parse(parseJson(channel.overlay_config_json, DEFAULT_OVERLAY_CONFIG)),
+    sessionSettings: SessionSettingsSchema.catch(DEFAULT_SESSION_SETTINGS).parse(parseJson(channel.session_settings_json, DEFAULT_SESSION_SETTINGS)),
   };
 }

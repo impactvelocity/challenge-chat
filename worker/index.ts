@@ -16,6 +16,8 @@ import {
   setChallengeStatus,
   startChallenge,
   updateChallengeDraft,
+  updateOverlayConfig,
+  updateSessionSettings,
   updateTheme,
 } from "./db";
 import { parseChallenge } from "./parser";
@@ -280,6 +282,16 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const input = await body<{ rules?: unknown }>(request);
     return json({ rules: await updateScoringRules(env.DB, scope.channelId, input.rules) });
   }
+  if (path === "/api/overlay-config" && method === "PATCH") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    const input = await body<{ config?: unknown }>(request);
+    return json({ config: await updateOverlayConfig(env.DB, scope, input.config as never) });
+  }
+  if (path === "/api/session-settings" && method === "PATCH") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    const input = await body<{ settings?: unknown }>(request);
+    return json({ settings: await updateSessionSettings(env.DB, scope, input.settings as never) });
+  }
   if (path === "/api/session/complete" && method === "POST") {
     return json(await completeSession(env.DB, scope));
   }
@@ -353,8 +365,13 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
 
   if (method === "POST" && path === "/api/ballots") {
-    const input = await body<{ challengeIds?: string[]; durationSeconds?: number }>(request);
-    return json({ id: await createBallot(env.DB, scope, input.challengeIds ?? [], input.durationSeconds ?? Number.NaN) }, 201);
+    const input = await body<{ challengeIds?: string[]; durationSeconds?: number; winnersCount?: number }>(request);
+    if (input.winnersCount !== undefined && (!Number.isInteger(input.winnersCount) || input.winnersCount < 1 || input.winnersCount > 10)) {
+      throw new Error("Winner count must be an integer from 1 to 10");
+    }
+    return json({
+      id: await createBallot(env.DB, scope, input.challengeIds ?? [], input.durationSeconds ?? Number.NaN, input.winnersCount),
+    }, 201);
   }
 
   const voteMatch = path.match(/^\/api\/ballots\/([^/]+)\/vote$/);

@@ -2,6 +2,7 @@ import type { AppState, ChallengeDraft, Theme } from "../shared/contracts";
 import type { PublicOverlayState } from "../shared/public-state";
 import type { ChannelSummary } from "../shared/channels";
 import type { ScoringRules } from "../shared/scoring";
+import type { OverlayConfig, SessionSettings } from "../shared/surface-config";
 import { channelPath } from "./framework/channel";
 
 export interface AuthSession {
@@ -40,6 +41,8 @@ export const api = {
   createChannel: (displayName: string, slug: string) => request<{ channel: ChannelSummary }>("/api/channels", { method: "POST", body: JSON.stringify({ displayName, slug }) }),
   updateChannel: (displayName: string, slug: string) => request("/api/channel", { method: "PATCH", body: JSON.stringify({ displayName, slug }) }),
   updateScoringRules: (rules: ScoringRules) => request<{ rules: ScoringRules }>("/api/scoring-rules", { method: "PATCH", body: JSON.stringify({ rules }) }),
+  updateOverlayConfig: (config: OverlayConfig) => request<{ config: OverlayConfig }>("/api/overlay-config", { method: "PATCH", body: JSON.stringify({ config }) }),
+  updateSessionSettings: (settings: SessionSettings) => request<{ settings: SessionSettings }>("/api/session-settings", { method: "PATCH", body: JSON.stringify({ settings }) }),
   completeSession: () => request<{ winner: "streamer" | "chat" | null; sweepWinner: "streamer" | "chat" | null }>("/api/session/complete", { method: "POST", body: "{}" }),
   createSession: () => request<{ id: string }>("/api/sessions", { method: "POST", body: "{}" }),
   integrationStatus: () => request<{ token: { lastFour: string; createdAt: number } | null; environmentFallback: boolean }>("/api/channel/integration"),
@@ -68,8 +71,8 @@ export const api = {
     request(`/api/challenges/${id}/attempt`, { method: "POST", body: JSON.stringify({ delta }) }),
   resolve: (id: string, result: "streamer_won" | "chat_won" | "skipped" | "voided") =>
     request(`/api/challenges/${id}/resolve`, { method: "POST", body: JSON.stringify({ result }) }),
-  openBallot: (challengeIds: string[], durationSeconds = 60) =>
-    request<{ id: string }>("/api/ballots", { method: "POST", body: JSON.stringify({ challengeIds, durationSeconds }) }),
+  openBallot: (challengeIds: string[], durationSeconds = 60, winnersCount?: number) =>
+    request<{ id: string }>("/api/ballots", { method: "POST", body: JSON.stringify({ challengeIds, durationSeconds, winnersCount }) }),
   vote: (ballotId: string, challengeId: string, voterId: string) =>
     request(`/api/ballots/${ballotId}/vote`, { method: "POST", body: JSON.stringify({ challengeId, voterId }) }),
   closeBallot: (id: string) => request(`/api/ballots/${id}/close`, { method: "POST", body: "{}" }),

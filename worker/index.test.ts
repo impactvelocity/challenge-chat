@@ -50,13 +50,17 @@ describe("creator and moderator access", () => {
     expect(cookie).not.toContain(env.OWNER_PASSWORD);
   });
 
-  it("prevents moderators from managing other moderators or changing the theme", async () => {
+  it("prevents moderators from managing other moderators or changing owner-only surface settings", async () => {
     const env = { DB: fakeDatabase("mod") };
     const headers = { Cookie: `__Host-challenge_session=${sessionToken}`, Origin: "https://creator.example" };
     const mods = await worker.fetch(new Request("https://creator.example/api/auth/mods", { headers }), env as never, context);
     expect(mods.status).toBe(403);
     const theme = await worker.fetch(new Request("https://creator.example/api/theme", { method: "PATCH", headers }), env as never, context);
     expect(theme.status).toBe(403);
+    const overlay = await worker.fetch(new Request("https://creator.example/api/overlay-config", { method: "PATCH", headers }), env as never, context);
+    expect(overlay.status).toBe(403);
+    const session = await worker.fetch(new Request("https://creator.example/api/session-settings", { method: "PATCH", headers }), env as never, context);
+    expect(session.status).toBe(403);
     const reset = await worker.fetch(new Request("https://creator.example/api/demo/reset", { method: "POST", headers }), env as never, context);
     expect(reset.status).toBe(403);
   });

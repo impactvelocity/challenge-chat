@@ -1,0 +1,161 @@
+/* The 1920×1080 overlay canvas, scaled to fit its box, and the mock gameplay behind it. The overlay itself
+   is the theme's (src/overlay/themes). Joins the `components` layer declared by Tailwind in index.css. */
+
+@layer components {
+  .ov-fit {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .ov-canvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1920px;
+    height: 1080px;
+    translate: -50% -50%;
+    scale: var(--k, 1);
+    overflow: hidden;
+  }
+  /* What OBS sees behind the overlay */
+  .ov-canvas[data-bg='clear'] {
+    background: repeating-conic-gradient(#1a1d20 0 25%, #121416 0 50%) 0 0 / 48px 48px;
+  }
+
+  /* ───────────────────────── Mock gameplay ───────────────────────── */
+
+  .ov-game {
+    position: absolute;
+    inset: 0;
+  }
+  .ov-shot {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    animation: ov-drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes ov-drift {
+    from {
+      scale: 1.04;
+      translate: -10px 4px;
+    }
+    to {
+      scale: 1.08;
+      translate: 10px -6px;
+    }
+  }
+  /* A real stream or video, filling the frame the way it would in OBS */
+  .ov-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
+  .ov-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
+  }
+  .ov-facecam {
+    position: absolute;
+    right: 48px;
+    bottom: 148px;
+    width: 400px;
+    height: 225px;
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+      radial-gradient(160px 120px at 80% 10%, rgba(var(--ar), 0.45), transparent 70%),
+      radial-gradient(200px 160px at 10% 90%, rgba(120, 90, 255, 0.35), transparent 70%),
+      linear-gradient(180deg, #2a2440, #16141f);
+    box-shadow:
+      0 0 0 3px rgba(0, 0, 0, 0.6),
+      0 20px 40px -10px rgba(0, 0, 0, 0.7);
+  }
+  /* Head and shoulders */
+  .ov-face {
+    position: absolute;
+    left: 50%;
+    bottom: -40px;
+    width: 220px;
+    height: 130px;
+    translate: -50% 0;
+    border-radius: 110px 110px 0 0;
+    background: linear-gradient(180deg, #3a3550, #24202f);
+  }
+  .ov-face::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -96px;
+    width: 104px;
+    height: 120px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #c99a82, #8a6252);
+  }
+
+  /* ───────────────────────── Guides ───────────────────────── */
+
+  .ov-guides {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    /* Thirds */
+    background:
+      linear-gradient(90deg, transparent calc(33.333% - 1px), rgba(255, 255, 255, 0.14) calc(33.333% - 1px) 33.333%, transparent 33.333%),
+      linear-gradient(90deg, transparent calc(66.667% - 1px), rgba(255, 255, 255, 0.14) calc(66.667% - 1px) 66.667%, transparent 66.667%),
+      linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(255, 255, 255, 0.14) calc(33.333% - 1px) 33.333%, transparent 33.333%),
+      linear-gradient(180deg, transparent calc(66.667% - 1px), rgba(255, 255, 255, 0.14) calc(66.667% - 1px) 66.667%, transparent 66.667%);
+  }
+  .ov-guides > i {
+    position: absolute;
+  }
+  .ov-guide-action {
+    inset: 3.5%;
+    border: 2px dashed rgba(127, 246, 255, 0.7);
+  }
+  .ov-guide-title {
+    inset: 5%;
+    border: 2px solid rgba(255, 210, 122, 0.6);
+  }
+  .ov-guide-v {
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    translate: -1px 0;
+    background: rgba(255, 77, 94, 0.55);
+  }
+  .ov-guide-h {
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    translate: 0 -1px;
+    background: rgba(255, 77, 94, 0.55);
+  }
+  .ov-guide-label {
+    position: absolute;
+    left: 50%;
+    bottom: calc(5% + 10px);
+    translate: -50% 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font: 600 16px/1 var(--font-mono);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ov-shot {
+      animation: none;
+    }
+  }
+}

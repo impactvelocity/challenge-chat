@@ -1,0 +1,782 @@
+/* Cozy Corner: warm paper cards with big soft corners, diffuse shadows, washi tape, pastel team tints and
+   handwritten scribbles. Everything rises in slowly and sways a little. Settings: data-paper (cream | cocoa),
+   data-notes. */
+
+@layer components {
+  .sk[data-skin='cozy'] {
+    --font-sans: 'Fredoka Variable', 'Geist Variable', system-ui, sans-serif;
+    --cz-hand: 'Caveat Variable', 'Fredoka Variable', cursive;
+    --bc-radius: 22px;
+    --bc-inner: 14px;
+    --bc-in: cubic-bezier(0.22, 1, 0.36, 1);
+    --bc-dist: 22px;
+    --bc-dur: 0.9s;
+
+    /* Cream paper, cocoa ink */
+    --cz-paper: #fff8ec;
+    --cz-paper-2: #fcecd3;
+    --cz-ink: #4b3427;
+    --cz-soft: rgba(75, 52, 39, 0.64);
+    --cz-faint: rgba(122, 84, 58, 0.09);
+    --cz-line: rgba(122, 84, 58, 0.16);
+    --cz-shadow:
+      0 2px 0 rgba(120, 80, 50, 0.1),
+      0 22px 44px -18px rgba(70, 40, 20, 0.55),
+      0 8px 16px -8px rgba(70, 40, 20, 0.3);
+    /* Team colours, pulled toward the ink so they read on paper */
+    --cz-mix: 68%;
+    --cz-mix-base: #3a2316;
+    --cz-tint-mix: 20%;
+    --cz-easy: #4b8a3a;
+    --cz-medium: #b4741a;
+    --cz-hard: #c4532c;
+    --cz-silly: #bf3c6b;
+    --cz-berry: #c8445f;
+    --cz-honey: #e9a23b;
+    --cz-acc: color-mix(in srgb, var(--a) var(--cz-mix), var(--cz-mix-base));
+    color: var(--cz-ink);
+
+    &[data-paper='cocoa'] {
+      --cz-paper: #4a342a;
+      --cz-paper-2: #3a2820;
+      --cz-ink: #fdf1de;
+      --cz-soft: rgba(253, 241, 222, 0.66);
+      --cz-faint: rgba(253, 241, 222, 0.08);
+      --cz-line: rgba(253, 241, 222, 0.1);
+      --cz-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.2),
+        0 22px 44px -18px rgba(20, 8, 2, 0.8),
+        0 8px 16px -8px rgba(20, 8, 2, 0.5);
+      --cz-mix: 52%;
+      --cz-mix-base: #fff;
+      --cz-tint-mix: 28%;
+      --cz-easy: #a6e08f;
+      --cz-medium: #ffd27e;
+      --cz-hard: #ffa27c;
+      --cz-silly: #ff9ec2;
+      --cz-berry: #ff8fa3;
+    }
+    & [data-side='streamer'],
+    & [data-side='chat'] {
+      --cz-tt: color-mix(in srgb, var(--t) var(--cz-mix), var(--cz-mix-base));
+      --cz-tint: color-mix(in srgb, var(--t) var(--cz-tint-mix), var(--cz-paper));
+    }
+
+    & .cz-ink {
+      color: var(--cz-ink);
+    }
+    & .cz-soft {
+      color: var(--cz-soft);
+    }
+
+    /* ── Paper cards ── */
+    & .bc-card {
+      background: linear-gradient(180deg, var(--cz-paper), var(--cz-paper-2));
+      box-shadow:
+        inset 0 0 0 1.5px var(--cz-line),
+        var(--cz-shadow);
+    }
+    & .bc-card::before {
+      display: none;
+    }
+    & .bc-card[data-side] {
+      background: linear-gradient(180deg, var(--cz-tint), var(--cz-paper-2));
+    }
+    & .bc-enter {
+      animation-name: cz-rise;
+    }
+
+    /* ── Type: round and friendly ── */
+    & .bc-title {
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.05;
+      color: var(--cz-ink);
+    }
+    & .bc-lit {
+      background: none;
+      color: var(--cz-tt, var(--cz-acc));
+      filter: none;
+    }
+    & .bc-kicker {
+      font-weight: 600;
+      font-size: calc(16px * var(--d));
+      letter-spacing: 0.1em;
+      color: var(--cz-tt, var(--cz-acc));
+    }
+    & .bc-sub,
+    & .bc-by,
+    & .bc-foot,
+    & .bc-pct,
+    & .bc-clock-l {
+      color: var(--cz-soft);
+    }
+    & .bc-foot {
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+    & .bc-sub {
+      font-weight: 400;
+    }
+
+    /* ── Bits ── */
+    & .bc-cmdline {
+      border-radius: 16px;
+      background: var(--cz-faint);
+      border: 2px dashed var(--cz-line);
+      box-shadow: none;
+    }
+    & .bc-cmd {
+      color: var(--cz-acc);
+    }
+    & .bc-key {
+      border-radius: 50%;
+      font-weight: 600;
+      color: var(--cz-ink);
+      background: var(--cz-faint);
+      box-shadow: inset 0 0 0 2px var(--cz-line);
+    }
+    & .bc-tag {
+      border-radius: 99px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--cz-ink);
+      background: var(--cz-faint);
+      box-shadow: inset 0 0 0 1.5px var(--cz-line);
+    }
+    & .bc-tag[data-d='easy'] {
+      color: var(--cz-easy);
+    }
+    & .bc-tag[data-d='medium'] {
+      color: var(--cz-medium);
+    }
+    & .bc-tag[data-d='hard'] {
+      color: var(--cz-hard);
+    }
+    & .bc-tag[data-d='ridiculous'] {
+      color: var(--cz-silly);
+    }
+    & .bc-tag[data-alert] {
+      color: var(--cz-medium);
+      background: color-mix(in srgb, var(--cz-honey) 18%, transparent);
+      box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cz-honey) 50%, transparent);
+    }
+    & .bc-tag[data-alert='hot'] {
+      color: var(--cz-berry);
+      background: color-mix(in srgb, var(--cz-berry) 14%, transparent);
+      box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cz-berry) 45%, transparent);
+      animation: cz-breathe 2.4s ease-in-out infinite;
+    }
+    & .bc-bar {
+      height: 10px;
+      background: var(--cz-faint);
+      box-shadow: inset 0 0 0 1px var(--cz-line);
+    }
+    & .bc-bar[data-size='lg'] {
+      height: 16px;
+    }
+    & .bc-bar > i {
+      background: linear-gradient(90deg, var(--t-hi, var(--a-hi)), var(--t, var(--a)));
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+      transition-duration: 1.2s;
+    }
+    & .bc-bar[data-low] > i {
+      background: linear-gradient(90deg, #f0a0ae, var(--cz-berry));
+      box-shadow: none;
+    }
+
+    /* ── Scenes ── */
+    & .bc-idea,
+    & .bc-line {
+      border-radius: 16px;
+      background: var(--cz-faint);
+    }
+    & .bc-idea[data-new],
+    & .bc-line[data-first] {
+      background: color-mix(in srgb, var(--a) var(--cz-tint-mix), transparent);
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--a) 40%, transparent);
+    }
+    & .bc-idea[data-new] {
+      animation-name: cz-pop;
+      animation-duration: 0.7s;
+    }
+    & .bc-line[data-first] .bc-by,
+    & .bc-pts {
+      color: var(--cz-acc);
+    }
+    & .bc-vote:not([data-lead]) .bc-bar > i {
+      background: var(--cz-line);
+      box-shadow: none;
+    }
+    & .bc-vote[data-lead] .bc-key {
+      color: var(--a-ink);
+      background: var(--a);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+    }
+    & .bc-clock .bc-num {
+      font-weight: 600;
+      color: var(--cz-ink);
+    }
+    & .bc-clock[data-low] .bc-num {
+      color: var(--cz-berry);
+    }
+    & .bc-count {
+      color: var(--cz-acc);
+      text-shadow: none;
+      animation-name: cz-count;
+    }
+
+    /* The call, a warm celebration, then the folded card */
+    & .bc-after-side {
+      border-radius: 99px;
+      font-weight: 600;
+      color: var(--cz-ink);
+      background: var(--cz-tint);
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--t) 50%, transparent);
+    }
+    & .bc-recap-name {
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--cz-tt);
+    }
+    & .bc-recap-pts {
+      font-weight: 600;
+      color: var(--cz-tt);
+      text-shadow: none;
+    }
+    & .bc-recap-vs {
+      font: 600 52px/1 var(--cz-hand);
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--cz-soft);
+    }
+    & .bc-recap-side {
+      opacity: 0.55;
+    }
+    & .bc-recap-side[data-won] {
+      opacity: 1;
+    }
+    & .bc-recap-track > i,
+    & .bc-track > i {
+      background: var(--cz-faint);
+      box-shadow: inset 0 0 0 1px var(--cz-line);
+    }
+    & .bc-recap-track > i[data-side],
+    & .bc-track > i[data-side] {
+      background: var(--t);
+      box-shadow: none;
+    }
+    & .bc-track > i[data-skip] {
+      background: repeating-linear-gradient(135deg, var(--cz-line) 0 3px, transparent 3px 6px);
+    }
+    & .bc-track > i[data-live] {
+      background: var(--cz-soft);
+    }
+
+    /* ── Stack ── */
+    & .bc-score-head {
+      font-weight: 600;
+      color: var(--cz-soft);
+    }
+    & .bc-score-row b {
+      font-weight: 600;
+    }
+    & .bc-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--t);
+      box-shadow:
+        0 0 0 4px var(--cz-tint),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+    }
+    & .bc-score-n {
+      font-weight: 600;
+      color: var(--cz-tt);
+    }
+    & .bc-streak {
+      font-weight: 600;
+      color: var(--cz-tt);
+      background: var(--cz-tint);
+      box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--t) 45%, transparent);
+    }
+    & .bc-rank {
+      border-radius: 12px;
+    }
+    & .bc-rank:nth-child(odd) {
+      background: var(--cz-faint);
+    }
+    & .bc-rank[data-top] {
+      color: var(--cz-ink);
+      background: color-mix(in srgb, var(--a) var(--cz-tint-mix), transparent);
+    }
+    & .bc-rank b {
+      font-weight: 500;
+    }
+    & .bc-rank-n,
+    & .bc-rank-pts {
+      color: var(--cz-soft);
+    }
+    & .bc-rank[data-top] .bc-rank-n {
+      color: var(--cz-acc);
+    }
+    & .bc-move {
+      color: var(--cz-easy);
+    }
+    & .bc-move[data-down] {
+      color: var(--cz-berry);
+    }
+    & .bc-kill-n {
+      font-weight: 600;
+      color: var(--cz-acc);
+    }
+    & .bc-goal[data-reached] .bc-bar > i {
+      background: linear-gradient(90deg, #ffd27e, var(--cz-honey));
+      box-shadow: none;
+    }
+    & .bc-alert {
+      box-shadow:
+        inset 0 0 0 1.5px var(--cz-line),
+        0 0 0 5px color-mix(in srgb, var(--a) 30%, transparent),
+        var(--cz-shadow);
+      animation-name: cz-drop;
+      animation-duration: 0.9s;
+    }
+    & .bc-alert-user {
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    & .bc-alert-line,
+    & .bc-alert-more {
+      color: var(--cz-soft);
+    }
+    & .bc-alert[data-kind='cheer'] .bc-kicker {
+      color: #8a5cc2;
+    }
+    & .bc-alert[data-kind='raid'] .bc-kicker,
+    & .bc-alert[data-kind='gift'] .bc-kicker {
+      color: var(--cz-medium);
+    }
+    & .bc-alert::after {
+      left: 22px;
+      right: 22px;
+      bottom: 8px;
+      height: 4px;
+      border-radius: 99px;
+    }
+
+    & .bc-sponsorbar {
+      height: 60px;
+      margin: 0 24px 14px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--cz-paper), var(--cz-paper-2));
+      box-shadow:
+        inset 0 0 0 1.5px var(--cz-line),
+        var(--cz-shadow);
+      overflow: hidden;
+    }
+    & .bc-sponsor-l {
+      padding: 0 28px 0 32px;
+      border-radius: 99px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--a-ink);
+      background: var(--a);
+    }
+    & .bc-brand {
+      font-weight: 600;
+      color: var(--cz-ink);
+      opacity: 0.8;
+    }
+    & .bc-brand:nth-child(even) {
+      font: 700 32px/1 var(--cz-hand);
+    }
+  }
+
+  /* ───────── Tape, notes and hearts ───────── */
+
+  .cz-tape {
+    position: absolute;
+    z-index: 1;
+    top: -13px;
+    left: 50%;
+    width: 112px;
+    height: 28px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--a) 38%, #fff) 0 7px,
+      color-mix(in srgb, var(--a) 22%, #fff) 7px 14px
+    );
+    opacity: 0.85;
+    box-shadow: 0 1px 2px rgba(70, 40, 20, 0.2);
+    /* Torn ends */
+    clip-path: polygon(
+      3% 0,
+      97% 0,
+      100% 20%,
+      96% 40%,
+      100% 60%,
+      96% 80%,
+      100% 100%,
+      3% 100%,
+      0 80%,
+      4% 60%,
+      0 40%,
+      4% 20%
+    );
+  }
+  .cz-tape[data-at='left'] {
+    left: 56px;
+    translate: 0 0;
+    rotate: -6deg;
+  }
+  .cz-tape[data-at='right'] {
+    left: auto;
+    right: 56px;
+    translate: 0 0;
+    rotate: 5deg;
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--c) 38%, #fff) 0 7px,
+      color-mix(in srgb, var(--c) 22%, #fff) 7px 14px
+    );
+  }
+
+  /* A handwritten scrap of paper, pinned to a card's edge */
+  .cz-note {
+    position: absolute;
+    z-index: 2;
+    padding: 6px 16px 9px;
+    border-radius: 6px;
+    font: 700 30px/1 var(--cz-hand);
+    white-space: nowrap;
+    color: #8a3346;
+    background: #ffe0e4;
+    box-shadow:
+      0 1px 0 rgba(120, 50, 60, 0.15),
+      0 8px 16px -8px rgba(70, 30, 20, 0.45);
+    animation: cz-sway 6s ease-in-out infinite;
+  }
+  .cz-note[data-at='ideas'] {
+    top: -22px;
+    right: 26px;
+    rotate: 4deg;
+  }
+  .cz-note[data-at='lineup'] {
+    bottom: -18px;
+    right: 28px;
+    rotate: -3deg;
+  }
+  .cz-note[data-at='live'] {
+    top: -26px;
+    left: 42%;
+    rotate: -4deg;
+    color: #4f6b1f;
+    background: #e8f5c8;
+  }
+  .cz-note[data-at='cheer'] {
+    bottom: -20px;
+    right: 44px;
+    rotate: -5deg;
+  }
+  .cz-note[data-at='recap'] {
+    bottom: -22px;
+    right: 56px;
+    rotate: 3deg;
+  }
+  .cz-note[data-at='goal'] {
+    top: -14px;
+    right: 18px;
+    rotate: 6deg;
+    color: #7a5310;
+    background: #ffefc2;
+  }
+
+  .cz-hearts {
+    display: flex;
+    gap: 4px;
+  }
+  .cz-heart {
+    width: 20px;
+    height: 20px;
+    fill: var(--cz-berry);
+  }
+  .cz-heart[data-lost] {
+    fill: none;
+    stroke: var(--cz-soft);
+    stroke-width: 2;
+    opacity: 0.6;
+  }
+  .cz-heart[data-on] {
+    animation: cz-beat 1.6s ease-in-out infinite;
+  }
+
+  /* ───────── The call ───────── */
+
+  .cz-cheer {
+    min-width: 780px;
+    padding: 50px 96px 56px;
+    text-align: center;
+    animation: cz-cheer 1s var(--bc-in) both;
+  }
+  .cz-cheer-title {
+    font-size: calc(100px * var(--d));
+  }
+  .cz-cheer-pts {
+    font-size: calc(32px * var(--d));
+    font-weight: 600;
+    color: var(--cz-tt);
+  }
+  .cz-float {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .cz-float-heart {
+    position: absolute;
+    bottom: 12%;
+    width: 30px;
+    height: 30px;
+    fill: color-mix(in srgb, var(--t) 70%, #fff);
+    opacity: 0;
+    animation: cz-float 4.2s ease-out infinite;
+  }
+  .cz-float-heart[data-n='0'] {
+    left: 6%;
+    animation-delay: 0.2s;
+  }
+  .cz-float-heart[data-n='1'] {
+    left: 18%;
+    width: 22px;
+    animation-delay: 1.4s;
+  }
+  .cz-float-heart[data-n='2'] {
+    left: 30%;
+    animation-delay: 2.6s;
+  }
+  .cz-float-heart[data-n='3'] {
+    left: 52%;
+    width: 20px;
+    animation-delay: 0.8s;
+  }
+  .cz-float-heart[data-n='4'] {
+    left: 68%;
+    animation-delay: 2s;
+  }
+  .cz-float-heart[data-n='5'] {
+    left: 82%;
+    width: 24px;
+    animation-delay: 3.2s;
+  }
+  .cz-float-heart[data-n='6'] {
+    left: 92%;
+    animation-delay: 0.5s;
+  }
+  .cz-recap {
+    padding-top: 52px;
+  }
+
+  /* ───────── To-do note ───────── */
+
+  .cz-todo {
+    position: relative;
+    margin: 14px 10px 0;
+    padding: 22px 26px 22px;
+    border-radius: 4px 4px 18px 4px;
+    color: #4b3427;
+    background:
+      repeating-linear-gradient(180deg, transparent 0 41px, rgba(120, 80, 40, 0.13) 41px 43px) 0 62px / 100% calc(100% - 62px) no-repeat,
+      linear-gradient(170deg, #fff0b3, #fbe08a);
+    box-shadow:
+      0 2px 0 rgba(120, 90, 20, 0.12),
+      0 22px 36px -18px rgba(70, 40, 10, 0.6);
+    rotate: -1.5deg;
+    animation: cz-note-sway 7s ease-in-out infinite;
+  }
+  .cz-todo-title {
+    font: 700 38px/1 var(--cz-hand);
+    color: #8a5a1c;
+  }
+  .cz-todo-list {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+  }
+  .cz-todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 43px;
+    font: 600 30px/1 var(--cz-hand);
+  }
+  .cz-box {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2.5px solid rgba(75, 52, 39, 0.6);
+    rotate: -4deg;
+    color: #4b8a3a;
+  }
+  .cz-box > svg {
+    scale: 1.25;
+    translate: 2px -3px;
+  }
+  .cz-todo-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cz-todo-item[data-done] .cz-todo-text {
+    text-decoration: line-through 2px rgba(75, 52, 39, 0.55);
+    opacity: 0.72;
+  }
+  .cz-todo-item[data-skip] .cz-todo-text {
+    opacity: 0.45;
+  }
+  /* The one being played, marked with a highlighter */
+  .cz-todo-item[data-live] .cz-todo-text {
+    padding: 0 4px;
+    background: linear-gradient(transparent 52%, color-mix(in srgb, var(--a) 40%, #fff6) 52%, color-mix(in srgb, var(--a) 40%, #fff6) 92%, transparent 92%);
+    font-weight: 700;
+  }
+  .cz-todo-item[data-live] .cz-box {
+    border-color: var(--a-lo);
+    animation: cz-beat 1.8s ease-in-out infinite;
+  }
+  .cz-todo-heart {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    fill: var(--t);
+    margin-left: auto;
+    rotate: 10deg;
+    animation: cz-pop 0.7s var(--bc-in) both;
+  }
+  .cz-todo-by {
+    flex: none;
+    margin-left: auto;
+    font: 700 24px/1 var(--cz-hand);
+    color: rgba(75, 52, 39, 0.6);
+  }
+  .cz-todo-item[data-side='chat'] .cz-todo-by {
+    color: color-mix(in srgb, var(--t) 70%, #3a2316);
+  }
+  .cz-todo-empty {
+    margin: 10px 0 4px;
+    font: 600 28px/1.5 var(--cz-hand);
+    color: rgba(75, 52, 39, 0.6);
+  }
+
+  @keyframes cz-rise {
+    from {
+      opacity: 0;
+      translate: 0 var(--bc-dist);
+      rotate: -1deg;
+    }
+  }
+  @keyframes cz-drop {
+    from {
+      opacity: 0;
+      translate: 0 -26px;
+      rotate: 2deg;
+    }
+  }
+  @keyframes cz-pop {
+    from {
+      opacity: 0;
+      scale: 0.85;
+    }
+  }
+  @keyframes cz-cheer {
+    from {
+      opacity: 0;
+      scale: 0.9;
+      translate: 0 30px;
+      rotate: -2deg;
+    }
+  }
+  @keyframes cz-count {
+    from {
+      opacity: 0;
+      scale: 0.6;
+    }
+    40% {
+      opacity: 1;
+      scale: 1.05;
+    }
+    60% {
+      scale: 1;
+    }
+  }
+  @keyframes cz-float {
+    0% {
+      opacity: 0;
+      translate: 0 0;
+      scale: 0.6;
+    }
+    15% {
+      opacity: 0.9;
+    }
+    100% {
+      opacity: 0;
+      translate: 14px -180px;
+      scale: 1.1;
+      rotate: 12deg;
+    }
+  }
+  @keyframes cz-beat {
+    0%,
+    100% {
+      scale: 1;
+    }
+    15% {
+      scale: 1.18;
+    }
+    30% {
+      scale: 1;
+    }
+  }
+  @keyframes cz-breathe {
+    50% {
+      opacity: 0.6;
+    }
+  }
+  @keyframes cz-sway {
+    50% {
+      translate: 0 -3px;
+    }
+  }
+  @keyframes cz-note-sway {
+    0%,
+    100% {
+      rotate: -1.5deg;
+    }
+    50% {
+      rotate: -0.6deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk[data-skin='cozy'] .bc-enter,
+    .sk[data-skin='cozy'] .bc-alert,
+    .sk[data-skin='cozy'] .bc-tag[data-alert='hot'],
+    .cz-note,
+    .cz-heart[data-on],
+    .cz-cheer,
+    .cz-float-heart,
+    .cz-todo,
+    .cz-todo-heart,
+    .cz-todo-item[data-live] .cz-box {
+      animation: none;
+    }
+    .cz-float-heart {
+      display: none;
+    }
+  }
+}

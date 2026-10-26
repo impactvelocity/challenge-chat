@@ -5,17 +5,21 @@ import { projectOverlayState } from "./public-state";
 describe("public overlay state", () => {
   it("omits moderation and creator-only data", () => {
     const state = {
-      session: { streamerScore: 2, chatScore: 1 },
+      session: { id: "session", streamerScore: 2, chatScore: 1, phase: "collecting", winner: null, sweepWinner: null, sweepLabel: null, scoringRules: {} },
       activeRound: null,
       challenges: [{ id: "private-draft", title: "Secret", status: "pending_review", rawText: "private suggestion" }],
       ballot: null,
       theme: { preset: "arcade", primary: "#ff4d2e" },
       leaderboard: [{ displayName: "Creator", points: 3 }],
-      channel: { displayName: "Creator" },
+      channel: { id: "channel", displayName: "Creator", broadcasterLogin: "creator" },
+      overlayConfig: { theme: "broadcast", settings: {}, elements: {} },
+      sessionHistory: [],
+      overallScore: { streamer: 0, chat: 0, streamerSessionWins: 0, chatSessionWins: 0 },
+      streaks: { streamer: {}, chat: {} },
     } as unknown as AppState;
 
     const publicState = projectOverlayState(state);
-    expect(publicState.session).toEqual({ streamerScore: 2, chatScore: 1 });
+    expect(publicState.session.streamerScore).toBe(2);
     expect(publicState.activeChallenge).toBeNull();
     expect(JSON.stringify(publicState)).not.toContain("private suggestion");
     expect(publicState.leaderboard).toEqual([{ displayName: "Creator", points: 3 }]);

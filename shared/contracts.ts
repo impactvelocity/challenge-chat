@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ScoringRules } from "./scoring";
+import type { OverlayConfig, SessionSettings } from "./surface-config";
 
 export const CHALLENGE_COUNTDOWN_SECONDS = 10;
 
@@ -196,4 +197,6 @@ export interface AppState {
   sessionHistory: SessionHistoryEntry[];
   overallScore: { streamer: number; chat: number; streamerSessionWins: number; chatSessionWins: number };
   theme: Theme;
+  overlayConfig: OverlayConfig;
+  sessionSettings: SessionSettings;
 }

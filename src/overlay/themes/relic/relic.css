@@ -1,0 +1,635 @@
+/* Dark Relic: cinematic darkness. Torn near-black panels sunk in a smoky halo, grain and scratches (--sk-grit),
+   gothic headlines that gutter like candles (data-flicker), bone text, dried-blood and ember accents, and slow
+   fades up from black. Panels stay translucent and compact so the game reads through. */
+
+@layer components {
+  .sk[data-skin='relic'] {
+    --font-sans: 'Oswald Variable', 'Oswald', 'Geist Variable', system-ui, sans-serif;
+    --sk-display: 'Pirata One', 'Oswald Variable', serif;
+    --dr-bone: #ece2cf;
+    --dr-ash: rgba(236, 226, 207, 0.55);
+    --dr-blood: #b3201a;
+    --dr-blood-deep: #4a0806;
+    --dr-ember: #ff6a2b;
+    --dr-ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+    --dr-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .93 0 0 0 0 .88 0 0 0 0 .8 2.4 0 0 0 -1.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --dr-scratch:
+      repeating-linear-gradient(97deg, transparent 0 71px, rgba(236, 226, 207, 0.1) 71px 72px, transparent 72px 163px),
+      repeating-linear-gradient(-14deg, transparent 0 119px, rgba(236, 226, 207, 0.07) 119px 120px, transparent 120px 233px);
+    /* Ragged edges, in percentages so a tall card tears more than a thin one */
+    --dr-torn: polygon(
+      0% 2.2%, 6% 0.4%, 15% 1.8%, 27% 0%, 39% 1.4%, 52% 0.2%, 63% 2%, 76% 0.6%, 88% 1.6%, 100% 0%,
+      99.5% 24%, 100% 51%, 99.3% 77%, 100% 98%,
+      91% 99.4%, 79% 100%, 66% 98.4%, 53% 100%, 41% 98.8%, 28% 100%, 16% 98.2%, 5% 99.6%, 0% 98.4%,
+      0.6% 71%, 0% 44%, 0.4% 19%
+    );
+    --bc-alpha: 0.86;
+    --bc-radius: 0px;
+    --bc-inner: 0px;
+    --bc-in: var(--dr-ease);
+    --bc-dist: 18px;
+    --bc-dur: 1.2s;
+    color: var(--dr-bone);
+
+    /* A smoky halo around every group, so torn panels fade into the frame instead of sitting on it */
+    & .bc-lower,
+    & .bc-stack,
+    & .bc-corner,
+    & .sk-head,
+    & .bc-center > div {
+      filter: drop-shadow(0 0 26px rgba(0, 0, 0, 0.85)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
+    }
+
+    & .bc-card {
+      clip-path: var(--dr-torn);
+      background:
+        linear-gradient(180deg, var(--t-hi, var(--a-hi)), var(--t-deep, var(--a-deep))) left top / 3px 100% no-repeat,
+        radial-gradient(130% 120% at 35% 25%, rgba(28, 18, 16, var(--bc-alpha)) 0%, rgba(10, 7, 7, var(--bc-alpha)) 62%, rgba(2, 1, 1, var(--bc-alpha)) 100%);
+      box-shadow: none;
+    }
+    & .bc-card[data-flat] {
+      background: radial-gradient(130% 120% at 35% 25%, rgba(28, 18, 16, var(--bc-alpha)) 0%, rgba(10, 7, 7, var(--bc-alpha)) 62%, rgba(2, 1, 1, var(--bc-alpha)) 100%);
+    }
+    /* Broadcast's team edge becomes the grain and scratches over the whole panel */
+    & .bc-card::before,
+    & .bc-card[data-flat]::before {
+      display: block;
+      inset: 0;
+      width: auto;
+      border-radius: 0;
+      background: var(--dr-scratch), var(--dr-grain);
+      opacity: calc(var(--sk-grit, 0.6) * 0.9);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    /* ── Type ── */
+    & .bc-title {
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      line-height: 1;
+      color: var(--dr-bone);
+      text-shadow:
+        0 2px 0 #000,
+        0 0 22px rgba(0, 0, 0, 0.9);
+    }
+    & .bc-t1 {
+      font-size: calc(66px * var(--d));
+    }
+    & .bc-t2 {
+      font-size: calc(58px * var(--d));
+    }
+    & .bc-t3 {
+      font-size: calc(50px * var(--d));
+    }
+    & .bc-lit {
+      background: linear-gradient(180deg, #f8efdc 0%, var(--t-pale, var(--a-pale)) 38%, var(--t, var(--a)) 74%, var(--dr-blood-deep) 100%);
+      background-clip: text;
+      color: transparent;
+      text-shadow: none;
+      filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.7)) drop-shadow(0 0 26px rgba(var(--tr, var(--ar)), 0.45));
+    }
+    & .bc-kicker {
+      font-weight: 500;
+      font-size: calc(16px * var(--d));
+      letter-spacing: 0.32em;
+      color: var(--dr-ash);
+    }
+    & .bc-sub {
+      font-weight: 300;
+      font-size: calc(24px * var(--d));
+      letter-spacing: 0.01em;
+      color: rgba(236, 226, 207, 0.78);
+    }
+    & .bc-by,
+    & .dr-by,
+    & .dr-dim {
+      font-weight: 400;
+      color: var(--dr-ash);
+    }
+    & .bc-foot {
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      color: var(--dr-ash);
+    }
+    & .dr-next {
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--dr-bone);
+    }
+    &[data-flicker] .bc-title {
+      animation: dr-flicker 7s linear infinite;
+    }
+    &[data-flicker] .bc-title:nth-of-type(odd) {
+      animation-duration: 9.5s;
+      animation-delay: -3s;
+    }
+
+    /* ── Motion: slow fades up from black ── */
+    & .bc-enter {
+      animation: dr-rise var(--bc-dur) var(--dr-ease) both;
+    }
+    & .bc-winner {
+      animation: dr-rise 1.5s var(--dr-ease) both;
+    }
+    & .bc-alert {
+      animation: dr-rise 0.9s var(--dr-ease) both;
+    }
+
+    /* ── Bits ── */
+    & .bc-key {
+      border-radius: 0;
+      font: 400 calc(26px * var(--d)) / 1 var(--sk-display);
+      color: var(--dr-bone);
+      background: rgba(236, 226, 207, 0.06);
+      box-shadow: inset 0 0 0 1px rgba(236, 226, 207, 0.22);
+    }
+    & .bc-vote[data-lead] .bc-key {
+      color: var(--dr-bone);
+      background: linear-gradient(180deg, var(--dr-blood), var(--dr-blood-deep));
+      box-shadow: inset 0 0 0 1px rgba(255, 106, 43, 0.5);
+    }
+    & .bc-tag {
+      border-radius: 0;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      background: rgba(0, 0, 0, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(236, 226, 207, 0.16);
+    }
+    & .bc-tag[data-alert] {
+      color: var(--dr-ember);
+      background: rgba(255, 106, 43, 0.1);
+      box-shadow: inset 0 0 0 1px rgba(255, 106, 43, 0.45);
+    }
+    & .bc-tag[data-alert='hot'] {
+      color: #ff8a80;
+      background: rgba(179, 32, 26, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(179, 32, 26, 0.75);
+    }
+    & .bc-pips > i {
+      border-radius: 0;
+      rotate: 45deg;
+      width: 10px;
+      height: 10px;
+    }
+    & .bc-pips > i[data-on] {
+      background: var(--dr-blood);
+      box-shadow: 0 0 10px rgba(179, 32, 26, 0.9);
+    }
+    & .bc-cmdline {
+      border-radius: 0;
+      background: rgba(0, 0, 0, 0.5);
+      box-shadow: inset 0 0 0 1px rgba(236, 226, 207, 0.12);
+    }
+    & .bc-bar {
+      height: 4px;
+      border-radius: 0;
+      background: rgba(236, 226, 207, 0.08);
+    }
+    & .bc-bar[data-size='lg'] {
+      height: 8px;
+    }
+    & .bc-bar > i {
+      border-radius: 0;
+      background: linear-gradient(90deg, var(--t-deep, var(--a-deep)), var(--t, var(--a)));
+      box-shadow: 0 0 12px rgba(var(--tr, var(--ar)), 0.5);
+    }
+    & .bc-bar[data-low] > i {
+      background: linear-gradient(90deg, var(--dr-blood-deep), var(--dr-blood));
+      box-shadow: 0 0 14px rgba(179, 32, 26, 0.8);
+    }
+    & .bc-idea,
+    & .bc-line {
+      border-radius: 0;
+      background: linear-gradient(90deg, rgba(236, 226, 207, 0.06), rgba(236, 226, 207, 0.01));
+      box-shadow: inset 2px 0 0 rgba(236, 226, 207, 0.14);
+    }
+    & .bc-idea[data-new],
+    & .bc-line[data-first] {
+      background: linear-gradient(90deg, rgba(var(--ar), 0.24), rgba(var(--ar), 0.02));
+      box-shadow: inset 2px 0 0 var(--a);
+    }
+    & .bc-pts {
+      color: var(--dr-bone);
+    }
+
+    /* ── Clock and count ── */
+    & .bc-clock .bc-num {
+      font-weight: 500;
+      font-size: calc(76px * var(--d));
+      letter-spacing: 0.01em;
+      color: var(--dr-bone);
+    }
+    & .bc-clock[data-low] .bc-num {
+      color: #e0322a;
+      text-shadow: 0 0 22px rgba(179, 32, 26, 0.8);
+    }
+    & .bc-clock-l {
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      color: var(--dr-ash);
+    }
+    & .bc-count {
+      font: 400 calc(96px * var(--d)) / 0.85 var(--sk-display);
+      color: var(--dr-bone);
+      text-shadow: 0 0 30px rgba(179, 32, 26, 0.85);
+    }
+
+    /* ── The call: a verdict lit from below by embers ── */
+    & .bc-winner {
+      padding: 56px 110px 60px;
+    }
+    & .bc-rays {
+      inset: -30% -10%;
+      background:
+        radial-gradient(closest-side at 50% 85%, rgba(var(--tr), 0.42), transparent 70%),
+        radial-gradient(closest-side at 30% 100%, rgba(255, 106, 43, 0.2), transparent 70%);
+      mask: none;
+      animation: dr-smoke 5s ease-in-out infinite alternate;
+    }
+    & .bc-winner-title {
+      font-size: calc(124px * var(--d));
+    }
+    & .bc-winner-pts {
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: calc(28px * var(--d));
+      color: var(--t-text);
+    }
+    & .bc-after-side {
+      border-radius: 0;
+      font: 500 calc(28px * var(--d)) / 1 var(--font-sans);
+      background: linear-gradient(180deg, rgba(var(--tr), 0.3), rgba(var(--tr), 0.08));
+      box-shadow: inset 0 0 0 1px rgba(var(--tr), 0.5);
+    }
+    & .bc-recap-name,
+    & .bc-recap-vs {
+      font-weight: 500;
+      letter-spacing: 0.3em;
+    }
+    & .bc-recap-vs {
+      font: 400 34px/1 var(--sk-display);
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--dr-ash);
+    }
+    & .bc-recap-pts {
+      font-weight: 500;
+      font-size: 116px;
+    }
+    & .bc-recap-track > i {
+      border-radius: 0;
+    }
+
+    /* ── Stack ── */
+    & .bc-score-head {
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      color: var(--dr-ash);
+    }
+    & .bc-score-row b {
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    & .bc-swatch {
+      width: 6px;
+      height: 30px;
+      border-radius: 0 0 3px 3px;
+      background: linear-gradient(180deg, var(--t-hi), var(--t) 60%, var(--t-deep));
+    }
+    & .bc-score-n {
+      font-weight: 500;
+      font-size: calc(46px * var(--d));
+    }
+    & .bc-streak {
+      border-radius: 0;
+      color: #ffb4a8;
+      background: rgba(179, 32, 26, 0.3);
+      box-shadow: inset 0 0 0 1px rgba(179, 32, 26, 0.7);
+    }
+    & .bc-track > i {
+      height: 4px;
+      border-radius: 0;
+    }
+    & .bc-rank {
+      border-radius: 0;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+    & .bc-rank:nth-child(odd) {
+      background: rgba(236, 226, 207, 0.035);
+    }
+    & .bc-rank[data-top] {
+      background: linear-gradient(90deg, rgba(var(--ar), 0.28), rgba(var(--ar), 0.02));
+      color: var(--dr-bone);
+    }
+    & .bc-rank-n {
+      font: 400 calc(26px * var(--d)) / 1 var(--sk-display);
+      color: #d23a30;
+    }
+    & .bc-goal[data-reached] .bc-bar > i {
+      background: linear-gradient(90deg, var(--dr-blood), var(--dr-ember));
+      box-shadow: 0 0 18px rgba(255, 106, 43, 0.8);
+    }
+    & .bc-goal[data-celebrate] {
+      animation: dr-flare 1.4s ease-out 2;
+    }
+    & .bc-kill-n {
+      font: 400 calc(92px * var(--d)) / 0.9 var(--sk-display);
+      color: var(--dr-bone);
+      text-shadow: 0 0 24px rgba(179, 32, 26, 0.7);
+    }
+    & .bc-alert {
+      box-shadow: none;
+    }
+    & .bc-alert .bc-kicker {
+      color: var(--dr-ember);
+    }
+    & .bc-alert-user {
+      font: 400 calc(56px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.01em;
+      color: var(--dr-bone);
+    }
+    & .bc-alert-line {
+      font-weight: 300;
+      color: rgba(236, 226, 207, 0.75);
+    }
+    & .bc-alert::after {
+      height: 2px;
+      background: linear-gradient(90deg, var(--dr-blood-deep), var(--dr-blood), var(--dr-ember));
+    }
+
+    & .bc-sponsorbar {
+      background:
+        var(--dr-scratch),
+        linear-gradient(180deg, rgba(10, 7, 7, 0.9), rgba(2, 1, 1, 0.96));
+      box-shadow: 0 -1px 0 rgba(179, 32, 26, 0.5);
+    }
+    & .bc-sponsor-l {
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      color: var(--dr-bone);
+      background: linear-gradient(180deg, var(--dr-blood), var(--dr-blood-deep));
+      clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 30%, 100% 52%, calc(100% - 16px) 100%, 0 100%);
+      padding-right: 48px;
+    }
+    & .bc-brand {
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      color: rgba(236, 226, 207, 0.75);
+    }
+    & .bc-brand:nth-child(even) {
+      font: 400 28px/1 var(--sk-display);
+      letter-spacing: 0.02em;
+    }
+  }
+
+  /* ───────── Doom Clock ───────── */
+
+  .dr-doom-wrap {
+    transition: filter 0.6s;
+  }
+  .dr-doom-wrap[data-state='low'] {
+    filter: drop-shadow(0 0 14px rgba(179, 32, 26, 0.45));
+  }
+  .dr-doom-wrap[data-state='heart'] {
+    animation: dr-glow 1s ease-out infinite;
+  }
+  .dr-doom {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 240px;
+    padding: 18px 28px 20px;
+  }
+  .dr-doom-l {
+    font: 500 13px/1 var(--font-sans);
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--dr-ash);
+  }
+  .dr-doom-n {
+    font: 300 104px/0.86 var(--font-sans);
+    letter-spacing: 0.02em;
+    color: var(--dr-bone);
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+    transition:
+      color 0.8s,
+      text-shadow 0.8s;
+  }
+  .dr-doom-count {
+    font: 400 104px/0.86 var(--sk-display);
+    animation: dr-count 1s ease-out both;
+  }
+  .dr-doom[data-paused] .dr-doom-n {
+    opacity: 0.4;
+  }
+  .dr-doom-wrap[data-state='low'] .dr-doom-n,
+  .dr-doom-wrap[data-state='heart'] .dr-doom-n {
+    color: #e0322a;
+    text-shadow: 0 0 26px rgba(179, 32, 26, 0.85);
+  }
+  .dr-doom-wrap[data-state='heart'] .dr-doom-n {
+    animation: dr-heartbeat 1s ease-out infinite;
+    transform-origin: left center;
+  }
+  .dr-doom-wrap[data-state='dead'] .dr-doom-n {
+    position: relative;
+    color: #6e1612;
+    animation: dr-gutter 2.4s linear infinite;
+  }
+  /* A crack through the dead clock */
+  .dr-doom-wrap[data-state='dead'] .dr-doom-n::after {
+    content: '';
+    position: absolute;
+    left: -4%;
+    right: -4%;
+    top: 48%;
+    height: 3px;
+    background: var(--dr-blood);
+    clip-path: polygon(0 40%, 22% 0, 41% 70%, 63% 10%, 82% 80%, 100% 30%, 100% 100%, 0 100%);
+    transform: rotate(-8deg);
+    box-shadow: 0 0 10px rgba(179, 32, 26, 0.9);
+  }
+  .dr-doom-bar {
+    display: block;
+    align-self: stretch;
+    height: 3px;
+    background: rgba(236, 226, 207, 0.08);
+  }
+  .dr-doom-bar > i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--dr-blood-deep), var(--dr-blood));
+    box-shadow: 0 0 10px rgba(179, 32, 26, 0.7);
+    transition: width 0.9s linear;
+  }
+  .dr-doom-idle {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    padding: 14px 24px 14px 18px;
+  }
+  .dr-sigil {
+    width: 44px;
+    height: 44px;
+    fill: none;
+    stroke: rgba(236, 226, 207, 0.35);
+    stroke-width: 1.4;
+    animation: dr-breathe 6s ease-in-out infinite;
+  }
+  .sk[data-skin='relic'][data-flicker] .dr-doom-n {
+    animation: dr-flicker 8s linear infinite;
+  }
+
+  @keyframes dr-rise {
+    from {
+      opacity: 0;
+      translate: 0 var(--bc-dist);
+      filter: blur(10px) brightness(0.2);
+    }
+    60% {
+      opacity: 1;
+    }
+    to {
+      filter: blur(0) brightness(1);
+    }
+  }
+  /* A candle guttering: steady, then two quick dips at uneven moments */
+  @keyframes dr-flicker {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    41% {
+      opacity: 1;
+    }
+    41.6% {
+      opacity: 0.35;
+    }
+    42.4% {
+      opacity: 0.95;
+    }
+    43.4% {
+      opacity: 0.55;
+    }
+    44.4% {
+      opacity: 1;
+    }
+    79% {
+      opacity: 1;
+    }
+    79.5% {
+      opacity: 0.5;
+    }
+    80.4% {
+      opacity: 1;
+    }
+  }
+  @keyframes dr-gutter {
+    0%,
+    100% {
+      opacity: 0.9;
+    }
+    12% {
+      opacity: 0.3;
+    }
+    14% {
+      opacity: 0.85;
+    }
+    51% {
+      opacity: 0.6;
+    }
+    53% {
+      opacity: 0.15;
+    }
+    56% {
+      opacity: 0.8;
+    }
+  }
+  @keyframes dr-heartbeat {
+    0% {
+      scale: 1;
+    }
+    12% {
+      scale: 1.08;
+    }
+    24% {
+      scale: 1;
+    }
+    36% {
+      scale: 1.05;
+    }
+    55%,
+    100% {
+      scale: 1;
+    }
+  }
+  @keyframes dr-glow {
+    0%,
+    55%,
+    100% {
+      filter: drop-shadow(0 0 10px rgba(179, 32, 26, 0.3));
+    }
+    12% {
+      filter: drop-shadow(0 0 30px rgba(179, 32, 26, 0.9));
+    }
+    36% {
+      filter: drop-shadow(0 0 22px rgba(179, 32, 26, 0.7));
+    }
+  }
+  @keyframes dr-count {
+    from {
+      opacity: 0;
+      filter: blur(8px);
+      scale: 1.25;
+    }
+    35% {
+      opacity: 1;
+      filter: blur(0);
+      scale: 1;
+    }
+    to {
+      opacity: 0.85;
+    }
+  }
+  @keyframes dr-smoke {
+    from {
+      opacity: 0.65;
+      scale: 0.95;
+    }
+    to {
+      opacity: 1;
+      scale: 1.08;
+    }
+  }
+  @keyframes dr-breathe {
+    50% {
+      opacity: 0.45;
+    }
+  }
+  @keyframes dr-flare {
+    30% {
+      filter: drop-shadow(0 0 24px rgba(255, 106, 43, 0.7));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk[data-skin='relic'] .bc-title,
+    .sk[data-skin='relic'] .bc-enter,
+    .sk[data-skin='relic'] .bc-winner,
+    .sk[data-skin='relic'] .bc-alert,
+    .sk[data-skin='relic'] .bc-rays,
+    .sk[data-skin='relic'] .bc-goal[data-celebrate],
+    .sk[data-skin='relic'] .dr-doom-n,
+    .dr-doom-wrap,
+    .dr-doom-count,
+    .dr-sigil {
+      animation: none;
+    }
+  }
+}

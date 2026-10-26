@@ -1,0 +1,498 @@
+/* Creator Neon: deep indigo glass with luminous streamer-to-chat borders that drift, light bleeding into the frame,
+   a fine scan-line raster and soft electric motion. Settings: --sk-glow (0–1), data-scanlines. */
+
+@layer components {
+  .sk[data-skin='neon'] {
+    --sk-display: 'Unbounded Variable', 'Unbounded', var(--font-sans);
+    --sk-glow: 0.7;
+    --bc-radius: 18px;
+    --bc-inner: 10px;
+    --bc-alpha: 0.86;
+    --bc-in: cubic-bezier(0.22, 1, 0.36, 1);
+    --bc-dist: 24px;
+    --bc-dur: 0.8s;
+    /* The light a panel gives off, and the edge it's drawn with */
+    --ne-rgb: var(--ar);
+    --ne-edge: linear-gradient(110deg, var(--a-hi), var(--c-hi), var(--a-pale), var(--a-hi));
+    --ne-scan: linear-gradient(transparent, transparent);
+    --ne-ink: 7, 5, 20;
+
+    &[data-scanlines] {
+      --ne-scan: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 4px);
+    }
+
+    /* ── Glass panels ── */
+    & .bc-card {
+      background:
+        var(--ne-scan),
+        radial-gradient(120% 90% at 0% 0%, rgba(var(--ar), 0.18), transparent 60%),
+        radial-gradient(120% 90% at 100% 100%, rgba(var(--cr), 0.16), transparent 60%),
+        linear-gradient(160deg, rgba(26, 14, 56, var(--bc-alpha)), rgba(var(--ne-ink), calc(var(--bc-alpha) + 0.04)));
+      backdrop-filter: blur(14px) saturate(150%);
+      box-shadow:
+        0 0 calc(56px * var(--sk-glow)) -8px rgba(var(--ne-rgb), calc(0.6 * var(--sk-glow))),
+        0 0 calc(14px * var(--sk-glow)) -4px rgba(var(--ne-rgb), calc(0.5 * var(--sk-glow))),
+        0 24px 48px -18px rgba(0, 0, 0, 0.85);
+    }
+    & .bc-card[data-side] {
+      --ne-rgb: var(--tr);
+      --ne-edge: linear-gradient(110deg, var(--t-hi), var(--t-pale), var(--t), var(--t-hi));
+      background:
+        var(--ne-scan),
+        radial-gradient(120% 100% at 50% 0%, rgba(var(--tr), 0.3), transparent 65%),
+        linear-gradient(160deg, rgba(26, 14, 56, var(--bc-alpha)), rgba(var(--ne-ink), calc(var(--bc-alpha) + 0.04)));
+    }
+    /* The luminous border, drawn by a masked gradient so it can drift */
+    & .bc-card::before,
+    & .bc-card[data-flat]::before {
+      display: block;
+      inset: 0;
+      width: auto;
+      padding: 1.5px;
+      border-radius: inherit;
+      background: var(--ne-edge);
+      background-size: 300% 100%;
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      pointer-events: none;
+      animation: ne-drift 7s linear infinite;
+    }
+    /* A shimmer that sweeps the lower cards now and then */
+    & .bc-lower > .bc-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.11) 50%, transparent 62%) no-repeat;
+      background-size: 260% 100%;
+      animation: ne-sheen 8s ease-in-out 0.3s infinite;
+    }
+
+    /* ── Type ── */
+    & .bc-title {
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      line-height: 1.06;
+    }
+    & .bc-t1 {
+      font-size: calc(46px * var(--d));
+    }
+    & .bc-t2 {
+      font-size: calc(39px * var(--d));
+    }
+    & .bc-t3 {
+      font-size: calc(35px * var(--d));
+    }
+    & .bc-lit {
+      background: linear-gradient(180deg, #fff 0%, var(--t-pale, var(--a-pale)) 40%, var(--t-hi, var(--a-hi)) 100%);
+      background-clip: text;
+      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 calc(26px * var(--sk-glow)) rgba(var(--tr, var(--ar)), 0.9));
+    }
+    & .bc-kicker {
+      font-family: var(--sk-display);
+      font-size: calc(14px * var(--d));
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      color: var(--t-pale, var(--a-pale));
+      text-shadow: 0 0 calc(14px * var(--sk-glow)) rgba(var(--tr, var(--ar)), 0.9);
+    }
+    & .bc-num {
+      font-family: var(--sk-display);
+    }
+    & .bc-sub {
+      color: rgba(236, 230, 255, 0.8);
+    }
+    & .bc-by {
+      color: rgba(220, 210, 255, 0.55);
+    }
+    & .bc-foot {
+      color: rgba(220, 210, 255, 0.62);
+    }
+
+    /* ── Bits ── */
+    & .bc-cmdline {
+      background: rgba(var(--ne-ink), 0.6);
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--ar), 0.45),
+        0 0 calc(20px * var(--sk-glow)) -4px rgba(var(--ar), 0.7);
+    }
+    & .bc-cmd {
+      color: var(--a-pale);
+      text-shadow: 0 0 12px rgba(var(--ar), 0.9);
+    }
+    & .bc-key {
+      font-family: var(--sk-display);
+      font-size: calc(19px * var(--d));
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+        0 0 14px -4px rgba(var(--ar), 0.6);
+    }
+    & .bc-vote[data-lead] .bc-key {
+      background: linear-gradient(135deg, var(--a-hi), var(--c-hi));
+      color: rgb(var(--ne-ink));
+      box-shadow: 0 0 calc(22px * var(--sk-glow)) rgba(var(--ar), 0.9);
+    }
+    & .bc-tag {
+      font-family: var(--sk-display);
+      font-size: calc(13px * var(--d));
+      font-weight: 600;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow:
+        inset 0 0 0 1px currentColor,
+        0 0 12px -4px currentColor;
+    }
+    & .bc-tag:not([data-d], [data-alert]) {
+      color: #e9e2ff;
+    }
+    & .bc-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: visible;
+    }
+    & .bc-bar[data-size='lg'] {
+      height: 10px;
+    }
+    & .bc-bar > i {
+      background: linear-gradient(90deg, var(--t-lo, var(--a-lo)), var(--t-hi, var(--a-hi)) 70%, var(--t-pale, var(--a-pale)));
+      box-shadow:
+        0 0 calc(18px * var(--sk-glow)) rgba(var(--tr, var(--ar)), 0.95),
+        0 0 4px rgba(255, 255, 255, 0.6);
+    }
+    & .bc-idea,
+    & .bc-line {
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+    & .bc-idea[data-new],
+    & .bc-line[data-first] {
+      background: linear-gradient(90deg, rgba(var(--ar), 0.24), rgba(var(--cr), 0.1));
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--ar), 0.6),
+        0 0 calc(22px * var(--sk-glow)) -6px rgba(var(--ar), 0.9);
+    }
+    & .bc-clock .bc-num {
+      font-size: calc(56px * var(--d));
+      text-shadow: 0 0 calc(22px * var(--sk-glow)) rgba(var(--ar), 0.8);
+    }
+    & .bc-clock[data-low] .bc-num {
+      text-shadow: 0 0 22px rgba(255, 107, 107, 0.9);
+    }
+    & .bc-count {
+      font-size: calc(72px * var(--d));
+    }
+    & .bc-enter {
+      animation-name: ne-in;
+    }
+    & .bc-pips > i[data-on] {
+      box-shadow: 0 0 12px rgba(var(--ar), 1);
+    }
+
+    /* ── The call: a glass slab with a light vortex behind it ── */
+    & .bc-winner {
+      padding: 56px 100px 60px;
+      animation: ne-burst 0.9s var(--bc-in) both;
+    }
+    & .bc-rays {
+      background: conic-gradient(from 0deg, transparent, rgba(var(--tr), 0.35) 10%, transparent 22%, rgba(255, 255, 255, 0.12) 32%, transparent 40%, rgba(var(--tr), 0.3) 60%, transparent 72%);
+      mask: radial-gradient(closest-side, #000 20%, transparent 78%);
+      animation-duration: 9s;
+    }
+    & .bc-winner-title {
+      font-size: calc(92px * var(--d));
+    }
+    & .bc-winner-pts {
+      font-family: var(--sk-display);
+      font-size: calc(28px * var(--d));
+      text-shadow: 0 0 18px rgba(var(--tr), 0.9);
+    }
+    & .bc-after-side {
+      border-radius: 14px;
+      font-family: var(--sk-display);
+      font-size: calc(22px * var(--d));
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--tr), 0.8),
+        0 0 calc(24px * var(--sk-glow)) -4px rgba(var(--tr), 0.9);
+    }
+    & .bc-recap-name,
+    & .bc-recap-vs {
+      font-family: var(--sk-display);
+      font-size: 18px;
+    }
+    & .bc-recap-pts {
+      font-family: var(--sk-display);
+      font-size: 92px;
+      font-weight: 700;
+      text-shadow: 0 0 calc(36px * var(--sk-glow)) rgba(var(--tr), 0.9);
+    }
+
+    /* ── Stack ── */
+    & .bc-score-head {
+      font-family: var(--sk-display);
+      font-size: calc(12px * var(--d));
+      font-weight: 600;
+      color: rgba(220, 210, 255, 0.6);
+    }
+    & .bc-score-row b {
+      font-weight: 700;
+    }
+    & .bc-swatch {
+      width: 6px;
+      border-radius: 99px;
+      box-shadow:
+        0 0 calc(16px * var(--sk-glow)) rgba(var(--tr), 1),
+        0 0 3px #fff;
+    }
+    & .bc-score-n {
+      font-size: calc(34px * var(--d));
+      font-weight: 700;
+      text-shadow: 0 0 calc(20px * var(--sk-glow)) rgba(var(--tr), 0.85);
+    }
+    & .bc-streak {
+      font-family: var(--sk-display);
+      font-size: calc(12px * var(--d));
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--tr), 0.8),
+        0 0 12px -2px rgba(var(--tr), 0.9);
+    }
+    & .bc-track > i {
+      height: 5px;
+    }
+    & .bc-rank[data-top] {
+      background: linear-gradient(90deg, rgba(var(--ar), 0.3), rgba(var(--cr), 0.08));
+      box-shadow: inset 0 0 0 1px rgba(var(--ar), 0.45);
+    }
+    & .bc-rank-n {
+      font-family: var(--sk-display);
+      font-size: 0.8em;
+    }
+    & .bc-kill-n {
+      font-size: calc(64px * var(--d));
+      font-weight: 700;
+      background: linear-gradient(180deg, #fff, var(--a-pale) 45%, var(--a-hi));
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 calc(18px * var(--sk-glow)) rgba(var(--ar), 0.9));
+    }
+    & .bc-alert-user {
+      font-family: var(--sk-display);
+      font-size: calc(38px * var(--d));
+      font-weight: 700;
+      text-shadow: 0 0 calc(24px * var(--sk-glow)) rgba(var(--ar), 0.9);
+    }
+    & .bc-alert::after {
+      background: linear-gradient(90deg, var(--a-hi), var(--c-hi));
+      box-shadow: 0 0 10px rgba(var(--ar), 0.9);
+    }
+
+    & .bc-sponsorbar {
+      background:
+        var(--ne-scan),
+        linear-gradient(180deg, rgba(20, 10, 44, 0.9), rgba(var(--ne-ink), 0.96));
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 -1px 0 rgba(var(--ar), 0.9),
+        0 -10px calc(40px * var(--sk-glow)) -12px rgba(var(--ar), 0.8);
+    }
+    & .bc-sponsor-l {
+      font-family: var(--sk-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: rgb(var(--ne-ink));
+      background: linear-gradient(110deg, var(--a-hi), var(--c-hi));
+    }
+    & .bc-brand {
+      font-family: var(--sk-display);
+      font-size: 21px;
+      font-weight: 600;
+      color: rgba(236, 230, 255, 0.85);
+      text-shadow: 0 0 calc(14px * var(--sk-glow)) rgba(var(--ar), 0.7);
+    }
+    & .bc-offline {
+      font-family: var(--sk-display);
+    }
+  }
+
+  /* ───────── Hype meter ───────── */
+
+  .ne-hype {
+    padding: calc(18px * var(--d)) 24px calc(22px * var(--d));
+  }
+  .ne-hype-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .ne-hype-level {
+    font: 700 calc(15px * var(--d)) / 1 var(--sk-display);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .ne-hype-n {
+    margin-left: auto;
+    font: 700 calc(22px * var(--d)) / 1 var(--sk-display);
+    color: #fff;
+  }
+  .ne-hype-bar {
+    position: relative;
+    height: 14px;
+    margin-top: 14px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+  .ne-hype-bar > i {
+    position: relative;
+    display: block;
+    height: 100%;
+    min-width: 14px;
+    border-radius: inherit;
+    overflow: hidden;
+    background: linear-gradient(90deg, var(--a-lo), var(--a-hi), var(--c-hi), var(--a-hi), var(--a-lo));
+    background-size: 200% 100%;
+    box-shadow:
+      0 0 calc(20px * var(--sk-glow)) rgba(var(--ar), 0.9),
+      0 0 3px rgba(255, 255, 255, 0.7);
+    transition: width 0.3s ease-out;
+    animation: ne-flow 3s linear infinite;
+  }
+  /* Current running through the fill */
+  .ne-hype-bar > i::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0 5px, transparent 5px 16px);
+    background-size: 34px 100%;
+    animation: ne-current 0.9s linear infinite;
+  }
+  .ne-hype-spark {
+    position: absolute;
+    top: 50%;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, rgba(var(--ar), 0.8) 35%, transparent 70%);
+    animation: ne-spark 0.6s ease-out both;
+    pointer-events: none;
+  }
+  .ne-hype[data-level='1'] .bc-kicker {
+    color: var(--a-hi);
+  }
+  .ne-hype[data-level='2'] .ne-hype-bar > i {
+    animation:
+      ne-flow 1.8s linear infinite,
+      ne-throb 1.3s ease-in-out infinite;
+  }
+  .ne-hype[data-level='3'] {
+    animation: ne-charged 0.9s ease-in-out infinite;
+  }
+  .ne-hype[data-level='3'] .ne-hype-bar > i {
+    animation:
+      ne-flow 0.9s linear infinite,
+      ne-hue 3s linear infinite;
+  }
+  .ne-hype[data-level='3'] .ne-hype-level {
+    background: linear-gradient(90deg, var(--a-pale), #fff, var(--c-pale));
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 10px rgba(var(--ar), 1));
+  }
+
+  @keyframes ne-drift {
+    to {
+      background-position: 300% 0;
+    }
+  }
+  @keyframes ne-sheen {
+    0% {
+      background-position: 130% 0;
+    }
+    18%,
+    100% {
+      background-position: -30% 0;
+    }
+  }
+  @keyframes ne-in {
+    from {
+      opacity: 0;
+      translate: 0 var(--bc-dist);
+      filter: blur(10px) brightness(1.8);
+    }
+    60% {
+      filter: blur(0) brightness(1.25);
+    }
+  }
+  @keyframes ne-burst {
+    from {
+      opacity: 0;
+      scale: 0.86;
+      filter: blur(14px) brightness(2.2);
+    }
+    55% {
+      opacity: 1;
+      scale: 1.02;
+      filter: blur(0) brightness(1.3);
+    }
+  }
+  @keyframes ne-flow {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes ne-current {
+    to {
+      background-position: 34px 0;
+    }
+  }
+  @keyframes ne-spark {
+    from {
+      opacity: 1;
+      scale: 0.4;
+    }
+    to {
+      opacity: 0;
+      scale: 1.8;
+    }
+  }
+  @keyframes ne-throb {
+    50% {
+      filter: brightness(1.45);
+    }
+  }
+  @keyframes ne-hue {
+    to {
+      filter: hue-rotate(1turn);
+    }
+  }
+  @keyframes ne-charged {
+    50% {
+      box-shadow:
+        0 0 calc(80px * var(--sk-glow)) -4px rgba(var(--ar), 0.85),
+        0 0 calc(20px * var(--sk-glow)) rgba(var(--cr), 0.6),
+        0 24px 48px -18px rgba(0, 0, 0, 0.85);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk[data-skin='neon'] .bc-card::before,
+    .sk[data-skin='neon'] .bc-lower > .bc-card::after,
+    .sk[data-skin='neon'] .bc-enter,
+    .sk[data-skin='neon'] .bc-winner,
+    .ne-hype,
+    .ne-hype-bar > i,
+    .ne-hype-bar > i::after,
+    .ne-hype-spark {
+      animation: none !important;
+    }
+  }
+}

@@ -8,7 +8,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -104,6 +104,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0003_channels.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0004_session_rules.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0005_single_leaderboard.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0006_surface_settings.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
@@ -139,6 +140,53 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(await (await call("/api/public/leaderboard", { channel: a })).json()).toEqual({ leaderboard: [] });
     expect((await call("/api/public/leaderboards", { channel: a })).status).toBe(401);
     expect((await call("/api/leaderboards", { method: "POST", channel: a, cookie: ownerCookie, data: {} })).status).toBe(404);
+  });
+
+  it("persists channel-scoped overlay and session settings in the public projection", async () => {
+    const a = await create("surface-a"); const b = await create("surface-b");
+    const config = {
+      theme: "neon",
+      settings: { neon: { accent: "#33ff99", bloom: 0.75, scanlines: true } },
+      elements: { scoreboard: true, "hype-meter": false },
+    };
+    const settings = { autoNext: false, autoNextSecs: 30, aiTitles: false, publicPage: false, twitchLogin: "surface_a" };
+    expect((await call("/api/overlay-config", { method: "PATCH", channel: a, cookie: ownerCookie, data: { config } })).status).toBe(200);
+    expect((await call("/api/session-settings", { method: "PATCH", channel: a, cookie: ownerCookie, data: { settings } })).status).toBe(200);
+
+    const admin = await state(a);
+    expect(admin.overlayConfig).toEqual(config);
+    expect(admin.sessionSettings).toEqual(settings);
+    const publicState = await (await call("/api/public/state", { channel: a })).json() as any;
+    expect(publicState.overlayConfig).toEqual(config);
+    expect(publicState.publicSettings).toEqual({ publicPage: false, twitchLogin: "surface_a" });
+    expect(JSON.stringify(publicState)).not.toContain("aiTitles");
+    expect((await state(b)).overlayConfig.theme).toBe("broadcast");
+
+    const invalid = await call("/api/overlay-config", {
+      method: "PATCH", channel: a, cookie: ownerCookie,
+      data: { config: { theme: "../bad", settings: {}, elements: {} } },
+    });
+    expect(invalid.status).toBe(400);
+  });
+
+  it("snapshots the control room's per-round winner count on the ballot", async () => {
+    const channel = await create("round-picks");
+    const ids = await Promise.all([
+      suggestion(channel, "Puzzle", "Alice"),
+      suggestion(channel, "Puzzle", "Bob"),
+      suggestion(channel, "Puzzle", "Carol"),
+    ]);
+    for (const id of ids) await approve(channel, id);
+    const opened = await call("/api/ballots", {
+      method: "POST",
+      channel,
+      cookie: ownerCookie,
+      data: { challengeIds: ids, durationSeconds: 60, winnersCount: 1 },
+    });
+    expect(opened.status).toBe(201);
+    const { id } = await opened.json() as any;
+    expect((await state(channel)).ballot.winnersCount).toBe(1);
+    expect((await (await call(`/api/ballots/${id}/close`, { method: "POST", channel, cookie: ownerCookie })).json() as any).winnerIds).toHaveLength(1);
   });
 
   it("applies custom voting, scoring, sweep labels, challenger awards, lifecycle history, and streaks", async () => {

@@ -1,0 +1,959 @@
+/* Comic Chaos: inked comic panels on bright paper. Thick black outlines with hard offset shadows, halftone dots
+   tinted by the team colours, caption boxes and speech bubbles, starbursts, and springy squash-and-stretch.
+   Settings: data-paper (pop | pulp), data-tilt. */
+
+@layer components {
+  .sk[data-skin='comic'] {
+    --font-sans: 'Comic Neue', 'Geist Variable', system-ui, sans-serif;
+    --sk-display: 'Bangers', 'Geist Variable', system-ui, sans-serif;
+    --cc-ink: #111;
+    --cc-paper: #fffdf5;
+    --cc-white: #fff;
+    --cc-cap: #ffe14d;
+    --cc-alt: #47d1ff;
+    --cc-dots: rgba(71, 209, 255, 0.34);
+    --cc-line: 4px;
+    --cc-outline:
+      -3px -3px 0 var(--cc-ink), 3px -3px 0 var(--cc-ink), -3px 3px 0 var(--cc-ink), 3px 3px 0 var(--cc-ink), 0 -3px 0 var(--cc-ink),
+      0 3px 0 var(--cc-ink), -3px 0 0 var(--cc-ink), 3px 0 0 var(--cc-ink);
+    --cc-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --cc-burst: polygon(
+      50% 2%, 57.9% 15.5%, 71.5% 5.4%, 72.6% 21.6%, 87.7% 19.9%, 82% 34.6%, 98.4% 38.9%, 84.4% 50%, 96.4% 60.6%, 82.2% 65.5%, 88.2% 80.5%,
+      71.6% 77.1%, 70.6% 92.7%, 58.2% 85.9%, 50% 98%, 41.9% 85.4%, 29.5% 92.6%, 27.2% 78.6%, 12.7% 79.8%, 18% 65.4%, 1.9% 61%, 13.1% 50%,
+      4.9% 39.7%, 19.3% 35.2%, 11.3% 19.1%, 27.8% 22.1%, 30% 8.4%, 41.9% 14.5%
+    );
+    --cc-spiky: polygon(
+      50% 1.7%, 59.1% 19%, 74.5% 11.9%, 74% 29.2%, 92.5% 30.6%, 81.8% 45.4%, 94.7% 56.4%, 78.7% 63.1%, 86.4% 81.5%, 67% 76.4%, 62.7% 93.4%,
+      50% 80.6%, 36.4% 96.2%, 33.3% 76%, 14.9% 80.5%, 20% 63.7%, 5% 56.5%, 19.7% 45.6%, 8.4% 31%, 25.5% 28.7%, 23.6% 8.9%, 41% 19.3%
+    );
+    --bc-radius: 6px;
+    --bc-inner: 4px;
+    --bc-in: var(--cc-spring);
+    --bc-dur: 0.7s;
+    color: var(--cc-ink);
+
+    &[data-paper='pulp'] {
+      --cc-ink: #231a12;
+      --cc-paper: #f7ebcf;
+      --cc-white: #fff8e6;
+      --cc-cap: #f0c95e;
+      --cc-alt: #e79a7c;
+      --cc-dots: rgba(110, 72, 30, 0.2);
+    }
+
+    /* ── Panels: paper, ink outline, hard shadow, halftone pooling in one corner ── */
+    & .bc-card {
+      border: var(--cc-line) solid var(--cc-ink);
+      border-radius: var(--bc-radius);
+      background:
+        linear-gradient(155deg, var(--cc-paper) 48%, transparent 92%),
+        radial-gradient(var(--cc-dots) 27%, transparent 29%) 0 0 / 11px 11px,
+        var(--cc-paper);
+      box-shadow: 7px 7px 0 var(--cc-ink);
+    }
+    & .bc-card[data-side] {
+      --cc-dots: rgba(var(--tr), 0.5);
+    }
+    & .bc-card::before {
+      display: none;
+    }
+    & .bc-lower > .bc-card {
+      padding: calc(26px * var(--d)) calc(32px * var(--d)) calc(30px * var(--d));
+      transform-origin: 20% 100%;
+    }
+    & .bc-enter {
+      animation: cc-boing 0.75s var(--cc-spring) both;
+    }
+
+    &[data-tilt] .bc-lower > .bc-card {
+      rotate: -1.2deg;
+    }
+    &[data-tilt] .bc-slot:nth-child(odd) .bc-card {
+      rotate: 0.8deg;
+    }
+    &[data-tilt] .bc-slot:nth-child(even) .bc-card {
+      rotate: -1deg;
+    }
+    &[data-tilt] .bc-pop .bc-card {
+      rotate: -1.6deg;
+    }
+    &[data-tilt] .bc-alert {
+      rotate: 1.2deg;
+    }
+
+    /* ── Type ── */
+    & .cc-title {
+      font: 400 calc(56px * var(--d)) / 0.96 var(--sk-display);
+      letter-spacing: 0.02em;
+      color: var(--cc-ink);
+      text-shadow: 3px 3px 0 var(--cc-alt);
+      text-wrap: balance;
+    }
+    & .bc-card[data-side] .cc-title {
+      text-shadow: 3px 3px 0 var(--t);
+    }
+    & .cc-t1 {
+      font-size: calc(66px * var(--d));
+    }
+    & .cc-t2 {
+      font-size: calc(56px * var(--d));
+    }
+    & .cc-sub {
+      margin: 0;
+      font-size: calc(23px * var(--d));
+      font-weight: 700;
+      line-height: 1.3;
+      color: color-mix(in srgb, var(--cc-ink) 82%, transparent);
+    }
+    & .cc-by {
+      font-size: calc(17px * var(--d));
+      font-weight: 700;
+      opacity: 0.62;
+    }
+    & .cc-foot {
+      font: 400 calc(22px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    & .cc-foot b {
+      font-weight: 400;
+    }
+    & .cc-dim {
+      opacity: 0.5;
+    }
+    & .cc-cmd {
+      padding: 0 7px;
+      border-radius: 3px;
+      font-weight: 700;
+      background: var(--cc-cap);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    /* ── Caption boxes (and Broadcast's kickers, which become them) ── */
+    & .cc-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    /* In a lower panel the caption pokes out over the top edge */
+    & .bc-lower .cc-head {
+      margin-top: calc(-26px * var(--d) - 24px);
+    }
+    & .cc-cap,
+    & .bc-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 8px 14px 6px;
+      border: 3px solid var(--cc-ink);
+      font: 400 calc(22px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--cc-ink);
+      background: var(--cc-cap);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+    }
+    & .cc-cap {
+      rotate: -2deg;
+    }
+    & .bc-card[data-side] .cc-cap {
+      background: var(--t-pale);
+    }
+    & .cc-cap .sb-live {
+      box-shadow: 0 0 0 2px var(--cc-ink);
+    }
+    & .cc-chip {
+      flex: none;
+      padding: 7px 12px 5px;
+      border: 3px solid var(--cc-ink);
+      font: 400 calc(22px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.04em;
+      color: var(--cc-ink);
+      background: var(--cc-white);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+    }
+    & .bc-lower .cc-head .cc-chip {
+      rotate: 2deg;
+    }
+
+    /* ── Speech bubble ── */
+    & .cc-bubble {
+      position: relative;
+      width: fit-content;
+      padding: calc(14px * var(--d)) 26px;
+      border: var(--cc-line) solid var(--cc-ink);
+      border-radius: 32px;
+      font-size: calc(26px * var(--d));
+      font-weight: 700;
+      background: var(--cc-white);
+    }
+    & .cc-bubble::after {
+      content: '';
+      position: absolute;
+      left: 46px;
+      bottom: -15px;
+      width: 22px;
+      height: 22px;
+      background: var(--cc-white);
+      border-right: var(--cc-line) solid var(--cc-ink);
+      border-bottom: var(--cc-line) solid var(--cc-ink);
+      rotate: 45deg;
+    }
+
+    /* ── Lists ── */
+    & .cc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: calc(10px * var(--d));
+    }
+    & .cc-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: calc(9px * var(--d)) 14px calc(9px * var(--d)) 10px;
+      border: 3px solid var(--cc-ink);
+      border-radius: var(--bc-inner);
+      font-size: calc(22px * var(--d));
+      background: var(--cc-white);
+    }
+    & .cc-row > .cc-by {
+      flex: none;
+      margin-left: auto;
+    }
+    & .cc-row[data-new] {
+      background: var(--cc-cap);
+      box-shadow: 4px 4px 0 var(--cc-ink);
+      animation: cc-pop 0.6s var(--cc-spring) both;
+    }
+    & .cc-key {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: calc(44px * var(--d));
+      height: calc(44px * var(--d));
+      border-radius: var(--bc-inner);
+      font: 400 calc(26px * var(--d)) / 1 var(--sk-display);
+      color: var(--cc-white);
+      background: var(--cc-ink);
+      rotate: -4deg;
+    }
+    & .cc-vote {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: calc(22px * var(--d));
+    }
+    & .cc-vote:not([data-making]) {
+      opacity: 0.55;
+    }
+    & .cc-vote[data-lead] .cc-key {
+      color: var(--cc-ink);
+      background: var(--cc-cap);
+      box-shadow: 0 0 0 3px var(--cc-ink);
+    }
+    & .cc-vote:not([data-lead]) .cc-bar > i {
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.18) 30%, transparent 32%) 0 0 / 8px 8px,
+        #c8c8c8;
+    }
+    & .cc-pct {
+      font: 400 calc(24px * var(--d)) / 1 var(--sk-display);
+    }
+
+    /* ── Bars: inked tubes with a halftone fill ── */
+    & .cc-bar {
+      display: block;
+      height: 16px;
+      border: 3px solid var(--cc-ink);
+      border-radius: 99px;
+      background: var(--cc-white);
+      overflow: hidden;
+    }
+    & .cc-bar[data-size='lg'] {
+      height: 22px;
+    }
+    & .cc-bar > i {
+      display: block;
+      height: 100%;
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.2) 30%, transparent 32%) 0 0 / 8px 8px,
+        var(--t, var(--a));
+      box-shadow: 3px 0 0 var(--cc-ink);
+      transition: width 0.9s linear;
+    }
+    & .cc-bar[data-low] > i {
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.2) 30%, transparent 32%) 0 0 / 8px 8px,
+        #ff4f4f;
+    }
+
+    /* ── Tags ── */
+    & .bc-tag {
+      gap: 10px;
+      min-height: calc(40px * var(--d));
+      padding: 2px 16px 0;
+      border: 3px solid var(--cc-ink);
+      border-radius: 99px;
+      font: 400 calc(21px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.06em;
+      color: var(--cc-ink);
+      background: var(--cc-white);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+    }
+    & .bc-tag[data-d='easy'] {
+      background: #9cf0a6;
+    }
+    & .bc-tag[data-d='medium'] {
+      background: #ffd76a;
+    }
+    & .bc-tag[data-d='hard'] {
+      background: #ffa071;
+    }
+    & .bc-tag[data-d='ridiculous'] {
+      background: #ff8fc6;
+    }
+    & .bc-tag[data-alert] {
+      color: var(--cc-ink);
+      background: var(--cc-cap);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+    }
+    & .bc-tag[data-alert='hot'] {
+      background: #ff6b6b;
+      animation: cc-wiggle 0.6s ease-in-out infinite;
+    }
+    & .bc-pips > i {
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--cc-ink);
+      border-radius: 50%;
+      background: var(--cc-white);
+    }
+    & .bc-pips > i[data-used] {
+      background: #9a9a9a;
+    }
+    & .bc-pips > i[data-on] {
+      background: var(--a);
+      box-shadow: none;
+    }
+
+    /* ── The clock, in a starburst ── */
+    & .cc-clock {
+      position: relative;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: calc(220px * var(--d));
+      height: calc(196px * var(--d));
+      rotate: 6deg;
+      filter: drop-shadow(5px 5px 0 var(--cc-ink));
+    }
+    & .cc-clock::before,
+    & .cc-clock::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      clip-path: var(--cc-burst);
+      background: var(--cc-ink);
+    }
+    & .cc-clock::after {
+      inset: 8px;
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.12) 28%, transparent 30%) 0 0 / 9px 9px,
+        var(--cc-cap);
+    }
+    & .cc-clock > * {
+      position: relative;
+      z-index: 1;
+    }
+    & .cc-clock-n {
+      font: 400 calc(52px * var(--d)) / 0.9 var(--sk-display);
+      letter-spacing: 0.02em;
+    }
+    & .cc-clock-l {
+      font: 400 calc(17px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    & .cc-clock[data-low] {
+      animation: cc-jitter 0.4s steps(2) infinite;
+    }
+    & .cc-clock[data-low]::after {
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.15) 28%, transparent 30%) 0 0 / 9px 9px,
+        #ff5a5a;
+    }
+    & .cc-clock[data-paused] .cc-clock-n {
+      opacity: 0.4;
+    }
+    & .cc-clock[data-count]::after {
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.12) 28%, transparent 30%) 0 0 / 9px 9px,
+        var(--cc-alt);
+    }
+    & .cc-count {
+      font-size: calc(84px * var(--d));
+      animation: cc-count 1s var(--cc-spring) both;
+    }
+
+    /* ── The call: a big team-coloured starburst ── */
+    & .cc-boom {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 1180px;
+      height: 640px;
+      filter: drop-shadow(10px 10px 0 var(--cc-ink));
+      animation: cc-boom 0.85s var(--cc-spring) both;
+    }
+    & .cc-boom::before,
+    & .cc-boom::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      clip-path: var(--cc-burst);
+      background: var(--cc-ink);
+    }
+    & .cc-boom::after {
+      inset: 16px;
+      background:
+        radial-gradient(rgba(255, 255, 255, 0.32) 24%, transparent 26%) 0 0 / 16px 16px,
+        radial-gradient(circle, var(--t-hi) 0%, var(--t) 55%, var(--t-lo) 100%);
+    }
+    & .cc-boom-in {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      max-width: 760px;
+      text-align: center;
+      rotate: -4deg;
+      animation: cc-throb 1.6s ease-in-out 0.9s infinite;
+    }
+    & .cc-boom-in .cc-cap {
+      background: var(--cc-white);
+    }
+    & .cc-boom-title {
+      font-size: calc(124px * var(--d));
+      line-height: 0.92;
+      color: var(--cc-white);
+      text-shadow:
+        var(--cc-outline),
+        9px 9px 0 var(--cc-ink);
+    }
+    & .cc-boom-pts {
+      padding: 9px 20px 6px;
+      border: var(--cc-line) solid var(--cc-ink);
+      font: 400 calc(40px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.04em;
+      background: var(--cc-cap);
+      box-shadow: 5px 5px 0 var(--cc-ink);
+      rotate: 3deg;
+    }
+
+    /* After the burst: who took it, and what's next */
+    & .cc-after {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+    & .cc-after-pts {
+      flex: none;
+      padding: 12px 16px 9px;
+      border: var(--cc-line) solid var(--cc-ink);
+      font: 400 calc(36px * var(--d)) / 1 var(--sk-display);
+      background: var(--t);
+      box-shadow: 4px 4px 0 var(--cc-ink);
+      rotate: -4deg;
+    }
+
+    /* ── Recap ── */
+    & .cc-recap {
+      width: 1000px;
+      padding: 52px 64px 50px;
+      text-align: center;
+    }
+    & .cc-recap-score {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+    }
+    & .cc-recap-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-width: 280px;
+      opacity: 0.55;
+    }
+    & .cc-recap-side[data-won] {
+      opacity: 1;
+      scale: 1.06;
+    }
+    & .cc-recap-pts {
+      font: 400 124px/0.9 var(--sk-display);
+      color: var(--t);
+      text-shadow:
+        var(--cc-outline),
+        8px 8px 0 var(--cc-ink);
+    }
+    & .cc-vs {
+      display: grid;
+      place-items: center;
+      width: 86px;
+      height: 86px;
+      border: var(--cc-line) solid var(--cc-ink);
+      border-radius: 50%;
+      font: 400 40px/1 var(--sk-display);
+      background: var(--cc-cap);
+      box-shadow: 4px 4px 0 var(--cc-ink);
+      rotate: -10deg;
+    }
+    & .cc-recap-track {
+      justify-content: center;
+    }
+    & .cc-recap-track > i {
+      flex: none;
+      width: 56px;
+      height: 16px;
+    }
+
+    /* ── Scoreboard ── */
+    & .cc-score {
+      padding: calc(20px * var(--d)) 22px calc(22px * var(--d));
+    }
+    & .cc-score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: calc(14px * var(--d));
+      padding: 4px 6px;
+      border-radius: var(--bc-inner);
+    }
+    & .cc-name {
+      min-width: 0;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 6px 14px 3px;
+      border: 3px solid var(--cc-ink);
+      border-radius: var(--bc-inner);
+      font: 400 calc(30px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.04em;
+      color: var(--cc-ink);
+      background: var(--t);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+      rotate: -2deg;
+    }
+    & .cc-score-row + .cc-score-row .cc-name {
+      rotate: 1.5deg;
+    }
+    & .cc-score-n {
+      margin-left: auto;
+      font: 400 calc(56px * var(--d)) / 1 var(--sk-display);
+      color: var(--t);
+      text-shadow:
+        var(--cc-outline),
+        5px 5px 0 var(--cc-ink);
+    }
+    & .cc-score-row[data-flash='a'] {
+      animation: cc-flash-a 1.2s ease-out;
+    }
+    & .cc-score-row[data-flash='b'] {
+      animation: cc-flash-b 1.2s ease-out;
+    }
+    & .cc-streak {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px 3px 8px;
+      border: 3px solid var(--cc-ink);
+      border-radius: 99px;
+      font: 400 calc(20px * var(--d)) / 1 var(--sk-display);
+      background: var(--cc-cap);
+      animation: cc-pop 0.6s var(--cc-spring) both;
+    }
+    & .cc-track {
+      display: flex;
+      gap: 6px;
+      margin-top: calc(16px * var(--d));
+    }
+    & .cc-track > i {
+      flex: 1;
+      height: 13px;
+      border: 3px solid var(--cc-ink);
+      border-radius: 3px;
+      background: var(--cc-white);
+    }
+    & .cc-track > i[data-side] {
+      background: var(--t);
+    }
+    & .cc-track > i[data-skip] {
+      background: repeating-linear-gradient(135deg, var(--cc-ink) 0 2px, transparent 2px 6px);
+    }
+    & .cc-track > i[data-live] {
+      background: var(--cc-cap);
+      animation: sb-blink 1s ease-in-out infinite;
+    }
+
+    /* ── Goal ── */
+    & .cc-goal {
+      padding: calc(18px * var(--d)) 22px calc(20px * var(--d));
+    }
+    & .cc-goal-n {
+      font: 400 calc(30px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.03em;
+    }
+    & .cc-goal[data-reached] .cc-bar > i {
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.2) 30%, transparent 32%) 0 0 / 8px 8px,
+        #ffc93c;
+    }
+    & .cc-goal[data-celebrate] {
+      animation: cc-wiggle 0.5s ease-in-out 4;
+    }
+
+    /* ── Broadcast's leaderboard, counter, alerts and sponsor bar, inked ── */
+    & .bc-board {
+      padding: calc(20px * var(--d)) 20px calc(18px * var(--d));
+    }
+    & .bc-rank {
+      gap: 12px;
+      padding: calc(7px * var(--d)) 12px;
+      border: 3px solid transparent;
+      border-radius: var(--bc-inner);
+      font-size: calc(21px * var(--d));
+      font-weight: 700;
+    }
+    & .bc-rank:nth-child(odd) {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    & .bc-rank[data-top] {
+      color: var(--cc-ink);
+      background: var(--cc-cap);
+      border-color: var(--cc-ink);
+      box-shadow: 3px 3px 0 var(--cc-ink);
+    }
+    & .bc-rank-n,
+    & .bc-rank-pts {
+      font: 400 calc(24px * var(--d)) / 1 var(--sk-display);
+      color: var(--cc-ink);
+    }
+    & .bc-rank-n {
+      opacity: 0.55;
+    }
+    & .bc-rank[data-top] .bc-rank-n {
+      opacity: 1;
+    }
+    & .bc-move {
+      font: 400 calc(17px * var(--d)) / 1 var(--sk-display);
+      color: #0c8f35;
+    }
+    & .bc-move[data-down] {
+      color: #d42a2a;
+    }
+
+    & .bc-killbox {
+      padding: calc(16px * var(--d)) 26px calc(14px * var(--d));
+    }
+    & .bc-kill-n {
+      font: 400 calc(92px * var(--d)) / 0.9 var(--sk-display);
+      color: var(--a);
+      text-shadow:
+        var(--cc-outline),
+        6px 6px 0 var(--cc-ink);
+    }
+
+    /* Alerts become a speech bubble with a tail */
+    & .bc-alert {
+      overflow: visible;
+      padding: calc(22px * var(--d)) 52px calc(32px * var(--d));
+      border-radius: 44px;
+      background: var(--cc-white);
+      box-shadow: none;
+      filter: drop-shadow(6px 6px 0 var(--cc-ink));
+    }
+    & .bc-alert::before {
+      display: block;
+      left: 74px;
+      top: auto;
+      bottom: -17px;
+      width: 26px;
+      height: 26px;
+      border-radius: 0;
+      background: var(--cc-white);
+      border-right: var(--cc-line) solid var(--cc-ink);
+      border-bottom: var(--cc-line) solid var(--cc-ink);
+      rotate: 45deg;
+    }
+    & .bc-alert::after {
+      left: 34px;
+      right: 34px;
+      bottom: 12px;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--a);
+    }
+    & .bc-alert[data-kind] .bc-kicker {
+      color: var(--cc-ink);
+    }
+    & .bc-alert[data-kind='cheer'] .bc-kicker {
+      background: #d6b8ff;
+    }
+    & .bc-alert[data-kind='raid'] .bc-kicker,
+    & .bc-alert[data-kind='gift'] .bc-kicker {
+      background: #ffb8d0;
+    }
+    & .bc-alert-user {
+      font: 400 calc(62px * var(--d)) / 1 var(--sk-display);
+      letter-spacing: 0.03em;
+      text-shadow: 3px 3px 0 var(--cc-alt);
+    }
+    & .bc-alert-line {
+      font-size: calc(22px * var(--d));
+      font-weight: 700;
+      color: color-mix(in srgb, var(--cc-ink) 78%, transparent);
+    }
+    & .bc-alert-more {
+      font: 400 20px/1 var(--sk-display);
+      color: var(--cc-ink);
+      opacity: 0.6;
+    }
+
+    & .bc-sponsorbar {
+      height: 66px;
+      border-top: var(--cc-line) solid var(--cc-ink);
+      background:
+        radial-gradient(rgba(0, 0, 0, 0.1) 27%, transparent 29%) 0 0 / 10px 10px,
+        var(--cc-cap);
+      box-shadow: none;
+    }
+    & .bc-sponsor-l {
+      font: 400 24px/1 var(--sk-display);
+      letter-spacing: 0.08em;
+      color: var(--cc-white);
+      background: var(--cc-ink);
+    }
+    & .bc-brand {
+      font: 400 32px/1 var(--sk-display);
+      letter-spacing: 0.05em;
+      color: var(--cc-ink);
+    }
+    & .bc-brand:nth-child(even) {
+      font: 700 26px/1 var(--font-sans);
+    }
+  }
+
+  /* ───────── Impact words ───────── */
+
+  .cc-impact {
+    position: absolute;
+    translate: -50% -50%;
+    rotate: var(--cc-tilt);
+    animation: cc-impact 1.4s both;
+  }
+  .cc-impact-in {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 70px 96px;
+    filter: drop-shadow(7px 7px 0 var(--cc-ink));
+  }
+  .cc-impact-in::before,
+  .cc-impact-in::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    clip-path: var(--cc-spiky);
+    background: var(--cc-ink);
+  }
+  .cc-impact-in::after {
+    inset: 10px;
+    background:
+      radial-gradient(rgba(255, 255, 255, 0.35) 24%, transparent 26%) 0 0 / 12px 12px,
+      var(--cc-cap);
+  }
+  .cc-impact[data-side] .cc-impact-in::after {
+    background:
+      radial-gradient(rgba(255, 255, 255, 0.35) 24%, transparent 26%) 0 0 / 12px 12px,
+      radial-gradient(circle, var(--t-hi), var(--t) 70%);
+  }
+  .cc-impact-in > * {
+    position: relative;
+    z-index: 1;
+  }
+  .cc-impact b {
+    font: 400 104px/0.9 var(--sk-display);
+    letter-spacing: 0.03em;
+    color: var(--cc-white);
+    white-space: nowrap;
+    text-shadow:
+      var(--cc-outline),
+      7px 7px 0 var(--cc-ink);
+  }
+  .cc-impact[data-big] b {
+    font-size: 140px;
+  }
+  .cc-impact span {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 6px 14px 3px;
+    border: 3px solid var(--cc-ink);
+    font: 400 28px/1 var(--sk-display);
+    letter-spacing: 0.05em;
+    color: var(--cc-ink);
+    background: var(--cc-white);
+    rotate: 3deg;
+  }
+
+  /* ───────── Motion ───────── */
+
+  @keyframes cc-boing {
+    0% {
+      opacity: 0;
+      scale: 0.4;
+      rotate: -8deg;
+    }
+    45% {
+      opacity: 1;
+      scale: 1.08 0.92;
+    }
+    65% {
+      scale: 0.96 1.05;
+    }
+    82% {
+      scale: 1.02 0.99;
+    }
+  }
+  @keyframes cc-boom {
+    0% {
+      opacity: 0;
+      scale: 0.2;
+      rotate: -20deg;
+    }
+    50% {
+      opacity: 1;
+      scale: 1.12 0.9;
+    }
+    70% {
+      scale: 0.95 1.06;
+    }
+    86% {
+      scale: 1.02 0.98;
+    }
+  }
+  @keyframes cc-throb {
+    50% {
+      scale: 1.03;
+    }
+  }
+  @keyframes cc-pop {
+    0% {
+      opacity: 0;
+      scale: 0.5;
+    }
+    60% {
+      opacity: 1;
+      scale: 1.08 0.94;
+    }
+  }
+  @keyframes cc-wiggle {
+    25% {
+      rotate: -3deg;
+    }
+    75% {
+      rotate: 3deg;
+    }
+  }
+  @keyframes cc-jitter {
+    50% {
+      translate: 2px -1px;
+      rotate: 4deg;
+    }
+  }
+  @keyframes cc-count {
+    from {
+      opacity: 0;
+      scale: 2;
+    }
+    40% {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+  @keyframes cc-flash-a {
+    from {
+      background: rgba(var(--tr), 0.55);
+      scale: 1.04;
+    }
+  }
+  @keyframes cc-flash-b {
+    from {
+      background: rgba(var(--tr), 0.55);
+      scale: 1.04;
+    }
+  }
+  @keyframes cc-impact {
+    0% {
+      opacity: 0;
+      scale: 0.2;
+      rotate: calc(var(--cc-tilt) - 25deg);
+    }
+    18% {
+      opacity: 1;
+      scale: 1.18;
+      rotate: var(--cc-tilt);
+    }
+    28% {
+      scale: 0.9 1.06;
+    }
+    38% {
+      scale: 1.05 0.97;
+      rotate: calc(var(--cc-tilt) + 4deg);
+    }
+    48%,
+    80% {
+      opacity: 1;
+      scale: 1;
+      rotate: var(--cc-tilt);
+    }
+    100% {
+      opacity: 0;
+      scale: 1.25;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk[data-skin='comic'] .bc-enter,
+    .sk[data-skin='comic'] .cc-row[data-new],
+    .sk[data-skin='comic'] .cc-clock[data-low],
+    .sk[data-skin='comic'] .cc-count,
+    .sk[data-skin='comic'] .cc-boom,
+    .sk[data-skin='comic'] .cc-boom-in,
+    .sk[data-skin='comic'] .cc-streak,
+    .sk[data-skin='comic'] .cc-score-row[data-flash],
+    .sk[data-skin='comic'] .cc-track > i[data-live],
+    .sk[data-skin='comic'] .cc-goal[data-celebrate],
+    .sk[data-skin='comic'] .bc-tag[data-alert='hot'] {
+      animation: none;
+    }
+    .cc-impact {
+      display: none;
+    }
+  }
+}
