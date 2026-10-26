@@ -60,12 +60,13 @@ type ConfirmDialogProps = {
   description: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
+  confirmVariant?: 'accent' | 'danger';
   onConfirm: () => void;
   container?: Container;
 };
 
 /** Destructive confirmation (Base UI AlertDialog). */
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = 'Cancel', onConfirm, container }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = 'Cancel', confirmVariant = 'accent', onConfirm, container }: ConfirmDialogProps) {
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal container={container}>
@@ -78,7 +79,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           <div className="mt-1 grid grid-cols-2 gap-2.5">
             <AlertDialog.Close render={<Button variant="ghost" />}>{cancelLabel}</AlertDialog.Close>
             <AlertDialog.Close
-              render={<Button variant="accent" />}
+              render={<Button variant={confirmVariant} />}
               onClick={onConfirm}
             >
               {confirmLabel}

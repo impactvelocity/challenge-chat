@@ -41,6 +41,7 @@ export const api = {
   channels: () => request<{ channels: ChannelSummary[] }>("/api/channels"),
   createChannel: (displayName: string, slug: string, setup: { twitchLogin: string; primary: string; accent: string }) =>
     request<{ channel: ChannelSummary }>("/api/channels", { method: "POST", body: JSON.stringify({ displayName, slug, ...setup }) }),
+  deleteChannel: () => request<{ nextChannel: ChannelSummary }>("/api/channel", { method: "DELETE" }),
   updateChannel: (displayName: string, slug: string) => request("/api/channel", { method: "PATCH", body: JSON.stringify({ displayName, slug }) }),
   updateScoringRules: (rules: ScoringRules) => request<{ rules: ScoringRules }>("/api/scoring-rules", { method: "PATCH", body: JSON.stringify({ rules }) }),
   updateOverlayConfig: (config: OverlayConfig) => request<{ config: OverlayConfig }>("/api/overlay-config", { method: "PATCH", body: JSON.stringify({ config }) }),

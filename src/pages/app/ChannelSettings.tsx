@@ -43,6 +43,7 @@ import { getTheme, resolveSettings, useThemes, type SettingDef } from '@/overlay
 import { lighten } from '@/theme/accent';
 import { useTheme } from '@/theme/ThemeProvider';
 import { api, type ModSummary } from '@/api';
+import { channelPath } from '@/framework/channel';
 import { AppPage, TopBar, useChannel, useRole } from './shell-context';
 import { Avatar, CopyField, Led, OwnerOnly, PageTitle, Section } from './parts';
 
@@ -190,6 +191,8 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [overwrite, setOverwrite] = useState<Exclude<ScoringPreset, 'custom'> | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const preset = presetOf(form);
@@ -324,11 +327,11 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
           <Section title="Delete Board">
             <Well className="flex flex-wrap items-center gap-4 px-5 py-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-[13px] leading-relaxed text-ink-soft">Removes {channel.displayName} with its rounds, challenges and moderators, and its OBS links stop working</span>
-                <span className="hint">Board deletion is not available yet.</span>
+                <span className="text-[13px] leading-relaxed text-ink-soft">Removes {channel.displayName} with its rounds, challenges and moderator access. Its OBS links will stop working.</span>
+                <span className="hint">You need at least one other board to continue.</span>
               </div>
-              <Button size="sm" variant="ghost" disabled title="Board deletion is not implemented by the server yet">
-                Delete board
+              <Button size="sm" variant="ghost" className="text-[#ff8a95]" onClick={() => setDeleteOpen(true)} disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Delete board'}
               </Button>
             </Well>
           </Section>
@@ -508,6 +511,24 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
         confirmLabel="Replace"
         cancelLabel="Keep my values"
         onConfirm={() => overwrite && applyPreset(overwrite)}
+      />
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${channel.displayName}?`}
+        description="This permanently deletes its rounds, challenges, moderator access, uploaded branding, and integration token. Existing OBS links will stop working. This cannot be undone."
+        confirmLabel="Delete board"
+        cancelLabel="Keep board"
+        confirmVariant="danger"
+        onConfirm={() => {
+          setDeleting(true);
+          void api.deleteChannel().then(({ nextChannel }) => {
+            window.location.assign(channelPath('/', nextChannel.id));
+          }).catch((caught) => {
+            setDeleting(false);
+            toast.add({ title: 'Could not delete board', description: caught instanceof Error ? caught.message : 'Try again' });
+          });
+        }}
       />
     </>
   );

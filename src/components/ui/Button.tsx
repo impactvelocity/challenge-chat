@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
 type ButtonProps = ComponentProps<typeof BaseButton> & {
-  variant?: 'default' | 'accent' | 'ghost' | 'solid' | 'quiet';
+  variant?: 'default' | 'accent' | 'danger' | 'ghost' | 'solid' | 'quiet';
   size?: 'xs' | 'sm' | 'md' | 'lg';
   /** Square icon-only button. Pair with `aria-label`. */
   icon?: boolean;

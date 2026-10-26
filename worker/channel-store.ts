@@ -47,6 +47,20 @@ export async function createChannel(db: D1Database, input: unknown): Promise<Cha
   return { id, displayName: parsed.displayName, slug: parsed.slug, setupComplete: true };
 }
 
+export async function deleteChannel(db: D1Database, channelId: string): Promise<ChannelSummary> {
+  const next = await db.prepare(
+    "SELECT id, display_name AS displayName, broadcaster_login AS slug, setup_completed AS setupComplete FROM channels WHERE id != ? AND setup_completed = 1 ORDER BY created_at, id LIMIT 1",
+  ).bind(channelId).first<Omit<ChannelSummary, "setupComplete"> & { setupComplete: number }>();
+  if (!next) throw new AuthError("Create another board before deleting your only board", 409);
+
+  await db.batch([
+    // auth_invites predates the Channel foreign key, so remove its scoped rows explicitly.
+    db.prepare("DELETE FROM auth_invites WHERE channel_id = ?").bind(channelId),
+    db.prepare("DELETE FROM channels WHERE id = ?").bind(channelId),
+  ]);
+  return { ...next, setupComplete: Boolean(next.setupComplete) };
+}
+
 export async function updateScoringRules(db: D1Database, channelId: string, input: unknown): Promise<ScoringRules> {
   const rules = ScoringRulesSchema.parse(input);
   const serialized = JSON.stringify(rules);

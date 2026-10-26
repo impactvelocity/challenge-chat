@@ -43,7 +43,7 @@ function liveNamespace() {
           storage: {
             get: async (key: string) => values.get(key),
             put: async (key: string | Record<string, unknown>, value: unknown) => typeof key === "string" ? values.set(key, value) : Object.entries(key).forEach(([entry, item]) => values.set(entry, item)),
-            setAlarm: async () => {}, deleteAlarm: async () => {},
+            setAlarm: async () => {}, deleteAlarm: async () => {}, deleteAll: async () => values.clear(),
           },
           getWebSockets: () => sockets,
         };
@@ -210,6 +210,32 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Twitch channel names can be at most 25 characters" });
+  });
+
+  it("deletes a board and its scoped data, then returns the next board", async () => {
+    const deleted = await create("delete-me");
+    const kept = await create("keep-me");
+    const challengeId = await suggestion(deleted);
+    const mod = await call("/api/auth/mods", { method: "POST", channel: deleted, cookie: ownerCookie, data: { displayName: "Board Mod" } });
+    expect(mod.status).toBe(201);
+
+    const response = await call("/api/channel", { method: "DELETE", channel: deleted, cookie: ownerCookie });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ nextChannel: expect.objectContaining({ id: kept, displayName: "keep-me" }) });
+    expect((await call("/api/state", { channel: deleted, cookie: ownerCookie })).status).toBe(404);
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM channels WHERE id = ?").get(deleted)?.total).toBe(0);
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM sessions WHERE channel_id = ?").get(deleted)?.total).toBe(0);
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM challenges WHERE id = ?").get(challengeId)?.total).toBe(0);
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM channel_memberships WHERE channel_id = ?").get(deleted)?.total).toBe(0);
+    expect(db.sql.prepare("SELECT COUNT(*) AS total FROM auth_invites WHERE channel_id = ?").get(deleted)?.total).toBe(0);
+  });
+
+  it("keeps the only configured board", async () => {
+    const only = await create("only-board");
+    const response = await call("/api/channel", { method: "DELETE", channel: only, cookie: ownerCookie });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Create another board before deleting your only board" });
+    expect((await call("/api/state", { channel: only, cookie: ownerCookie })).status).toBe(200);
   });
 
   it("keeps closed and unselected suggestions in the channel inbox for later rounds", async () => {

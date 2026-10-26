@@ -123,6 +123,12 @@ export class LiveSessionCoordinator {
     return json({ ok: true });
   }
 
+  private async deleteChannel(): Promise<Response> {
+    for (const socket of this.state.getWebSockets()) socket.close(4004, "Board deleted");
+    await this.state.storage.deleteAll();
+    return json({ ok: true });
+  }
+
   private async createRun(request: Request): Promise<Response> {
     const existing = await this.state.storage.get<StoredLiveRun>("framework:live");
     if (existing && ["countdown", "active", "paused"].includes(existing.run.status)) {
@@ -187,6 +193,7 @@ export class LiveSessionCoordinator {
     if (request.method === "POST" && url.pathname === "/internal/legacy-state") return this.publishLegacy(request);
     if (request.method === "POST" && url.pathname === "/internal/revoke-user") return this.revokeUser(request);
     if (request.method === "POST" && url.pathname === "/internal/revoke-session") return this.revokeSession(request);
+    if (request.method === "POST" && url.pathname === "/internal/delete-channel") return this.deleteChannel();
     if (request.method === "POST" && url.pathname === "/framework/runs") return this.createRun(request);
     if (request.method === "GET" && url.pathname === "/framework/runs/live") return this.readRun();
 

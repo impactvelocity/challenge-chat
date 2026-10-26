@@ -42,7 +42,7 @@ import {
   type AuthEnv,
 } from "./auth";
 import { DEFAULT_CHANNEL_ID, type ChannelScope } from "../shared/channels";
-import { channelScope, createChannel, integrationStatus, listChannels, requireChannelAccess, rotateIntegrationToken, updateChannel, updateScoringRules } from "./channel-store";
+import { channelScope, createChannel, deleteChannel, integrationStatus, listChannels, requireChannelAccess, rotateIntegrationToken, updateChannel, updateScoringRules } from "./channel-store";
 export { LiveSessionCoordinator } from "./live-session";
 
 interface Env extends AuthEnv {
@@ -70,6 +70,15 @@ function requestedChannel(request: Request): string {
 
 function liveSession(env: Env, scope: ChannelScope): DurableObjectStub {
   return env.LIVE_SESSIONS.getByName(scope.sessionId);
+}
+
+async function deleteChannelAssets(bucket: R2Bucket, channelId: string): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list({ prefix: `brand/${channelId}/`, cursor });
+    if (page.objects.length) await bucket.delete(page.objects.map((object) => object.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
 }
 
 async function resolveScope(request: Request, env: Env, actor?: NonNullable<Awaited<ReturnType<typeof getActor>>>): Promise<ChannelScope> {
@@ -241,6 +250,19 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     }
   }
   const scope = await resolveScope(request, env, actor);
+  if (method === "DELETE" && path === "/api/channel") {
+    if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
+    const denied = requireSameOrigin(request); if (denied) return denied;
+    const nextChannel = await deleteChannel(env.DB, scope.channelId);
+    await Promise.all([
+      liveSession(env, scope).fetch("https://coordinator/internal/delete-channel", { method: "POST" })
+        .catch((error) => console.error("Could not close deleted board sockets", error)),
+      env.ASSETS_BUCKET
+        ? deleteChannelAssets(env.ASSETS_BUCKET, scope.channelId).catch((error) => console.error("Could not remove board assets", error))
+        : Promise.resolve(),
+    ]);
+    return json({ nextChannel });
+  }
   if (method === "GET" && path === "/api/channel/integration") {
     if (actor.role !== "owner") return json({ error: "Owner access required" }, 403);
     const token = await integrationStatus(env.DB, scope.channelId);
@@ -435,7 +457,8 @@ export default {
       if (frameworkResponse) return frameworkResponse;
       const response = await handleApi(request, env);
       if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !new URL(request.url).pathname.startsWith("/api/auth/")) {
-        if (new URL(request.url).pathname !== "/api/channels") context.waitUntil(publishLegacyState(request, env));
+        const path = new URL(request.url).pathname;
+        if (path !== "/api/channels" && !(request.method === "DELETE" && path === "/api/channel")) context.waitUntil(publishLegacyState(request, env));
       }
       return response;
     } catch (error) {
