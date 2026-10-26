@@ -11,7 +11,7 @@ const LABEL: Record<SettingsTab, string> = {
   scoring: 'Scoring',
   voting: 'Voting',
   theme: 'Theme',
-  mods: 'Mods',
+  mods: 'Moderators',
   obs: 'OBS',
   ai: 'AI',
 };

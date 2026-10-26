@@ -53,7 +53,7 @@ export const SETTINGS_TABS = [
   { value: 'scoring', label: 'Scoring', icon: TrophyIcon },
   { value: 'voting', label: 'Voting', icon: ListIcon },
   { value: 'theme', label: 'Theme', icon: SparkleIcon },
-  { value: 'mods', label: 'Mods', icon: UsersIcon },
+  { value: 'mods', label: 'Moderators', icon: UsersIcon },
   { value: 'obs', label: 'OBS', icon: MonitorIcon },
   { value: 'ai', label: 'AI', icon: BoltIcon },
 ] as const;
@@ -616,10 +616,12 @@ function Moderators({ channel }: { channel: Channel }) {
       <Section
         title="Moderators"
         actions={
-          <Button variant="accent" size="sm" onClick={() => void invite()}>
-            <PlusIcon size={16} />
-            Invite moderator
-          </Button>
+          (mods.length > 0 || pending.length > 0) && (
+            <Button variant="accent" size="sm" onClick={() => void invite()}>
+              <PlusIcon size={16} />
+              Invite moderator
+            </Button>
+          )
         }
       >
         {fresh && fresh.expires > now && (
@@ -646,9 +648,36 @@ function Moderators({ channel }: { channel: Channel }) {
           </Screen>
         )}
 
-        {/* Runs to the panel's edges like the inbox; pending invites sit above the moderators they'll become. */}
-        <div className="-mx-4 sm:-mx-7">
-          <table className={EDGE_TABLE}>
+        {mods.length === 0 && pending.length === 0 ? (
+          <div className="pt-8 pb-2">
+            <Screen className="relative overflow-hidden px-6 py-10 text-center sm:px-10 sm:py-12">
+              <div className="pointer-events-none absolute inset-x-[18%] top-0 h-px bg-gradient-to-r from-transparent via-accent/70 to-transparent" aria-hidden="true" />
+              <div className="relative mx-auto flex max-w-[520px] flex-col items-center">
+                <div className="relative mb-6 flex h-[74px] w-[92px] items-center justify-center" aria-hidden="true">
+                  <span className="absolute left-0 h-12 w-12 rounded-full border border-white/10 bg-white/[.035]" />
+                  <span className="relative grid h-16 w-16 place-items-center rounded-[20px] border border-accent/35 bg-accent/10 text-accent-text shadow-[0_0_28px_rgba(var(--ar),.12)]">
+                    <UsersIcon size={29} />
+                  </span>
+                  <span className="absolute right-0 bottom-0 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[#101214] bg-accent text-accent-ink shadow-[0_0_16px_rgba(var(--ar),.45)]">
+                    <PlusIcon size={14} />
+                  </span>
+                </div>
+                <strong className="text-2xl leading-tight font-bold tracking-[-.015em] text-pretty text-ink-strong">Bring someone into the control room</strong>
+                <p className="mt-3 mb-0 max-w-[48ch] text-sm leading-relaxed text-pretty text-ink-sub">
+                  Invite someone you trust to review challenges, run votes, and keep rounds moving while you play.
+                </p>
+                <Button variant="accent" className="mt-6" onClick={() => void invite()}>
+                  <PlusIcon size={16} />
+                  Invite moderator
+                </Button>
+                <span className="mt-4 text-xs leading-relaxed text-ink-muted">Invite links work once and expire after 15 minutes.</span>
+              </div>
+            </Screen>
+          </div>
+        ) : (
+          /* Runs to the panel's edges like the inbox; pending invites sit above the moderators they'll become. */
+          <div className="-mx-4 sm:-mx-7">
+            <table className={EDGE_TABLE}>
             <thead>
               <tr>
                 <th>Moderator</th>
@@ -713,16 +742,10 @@ function Moderators({ channel }: { channel: Channel }) {
                   </td>
                 </tr>
               ))}
-              {mods.length === 0 && pending.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-10 text-center text-[14px] text-ink-muted">
-                    No moderators yet — invite someone you trust to run the queue while you play
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
-        </div>
+          </div>
+        )}
       </Section>
 
       <Divider />
