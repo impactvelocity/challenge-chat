@@ -53,6 +53,8 @@ POST /api/channel/mods         (owner grants existing mod access)
 GET  /api/channel/integration  (owner reads token metadata only)
 POST /api/channel/integration  (owner generates/replaces token, shown once)
 GET  /api/public/leaderboard   (single public Challenger ranking)
+PATCH /api/overlay-config      (owner-only theme/settings/elements)
+PATCH /api/session-settings    (owner-only channel UI/session preferences)
 ```
 
 Channel-specific endpoints use `?channel=ID`; omission selects the original `demo-channel`. `/api/channels` and deployment login/logout are global. `GET /api/auth/mods?all=1&channel=ID` lists deployment moderator identities with Channel assignments so the owner can grant an existing identity access. All challenge, ballot, leaderboard, and live-run mutations resolve IDs within the selected Channel's active session. Channel creation creates a new collecting session; completed sessions can be rotated from the control panel and remain visible in history.
@@ -73,13 +75,13 @@ Only one countdown/active/paused run may exist per session. The engine, not inte
 
 ## Surface customization
 
-See [`overlay-renderer-system.md`](./overlay-renderer-system.md) for the proposed preset and custom overlay registry. It is a design note for future implementation.
+`src/creator.tsx` mounts the route shell in `src/App.tsx`; product screens live under `src/pages/main/`. They consume the same headless connection layer, so a deployment can replace the creator composition without changing the Worker, engine, or adapters.
 
-The reference control panel and overlay currently live in `src/App.tsx`. Both consume the same headless connection layer. A creator can replace `CreatorApp` with a different route shell and render either surface from scratch without changing the Worker, engine, or integration adapters.
+The production OBS route is `/overlay?channel=ID`. `src/overlay/sources/live.ts` combines the public D1 projection and generic live-run projection into the normalized SDK snapshot documented in [`src/overlay/README.md`](../src/overlay/README.md). `/overlay/studio` uses the SDK's mock source for Game and Events while persisting only the selected theme, settings, and element switches.
 
-The generic framework projection is available in the reference OBS renderer at `/overlay?engine=framework`. The original challenge-show overlay remains `/overlay` while the migration is in progress.
+Built-in themes live under `src/overlay/themes/` and are registered in `src/overlay/themes/index.ts`. Setup, Settings, Studio, and OBS discover themes from that registry. Channel-owned overlay configuration is validated generically in the Worker and projected publicly; the React-side theme schema resolves exact defaults and control values. Unknown stored theme IDs fall back to Broadcast.
 
-The theme contract deliberately separates control-panel tokens under `theme.control` from broadcast colors and motion. Full component replacement remains available when tokens are insufficient.
+The control-panel accent is a per-browser preference. Broadcast colors and theme configuration are channel-owned server data, keeping operator preferences out of OBS. Full component replacement remains available when tokens are insufficient.
 
 ## Deploy and security state
 

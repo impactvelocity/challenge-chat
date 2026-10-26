@@ -11,8 +11,9 @@ The project is evolving into a self-hosted framework: game and service adapters 
 - Session lifecycle from open suggestions through configurable shortlists, multi-select votes, final challenge decks, live rounds, and recaps
 - Classic (1 point), Arcade (100 points), and Custom scoring with optional session bonuses and named clean-sweep multipliers
 - Attempt tracking, adjudication, Streamer/Chat session history and streaks, plus contributor and Challenger rankings
-- OBS-friendly `/overlay` route with active, voting, result, and idle states
-- Three visual presets, custom colors, and logo uploads to Cloudflare R2
+- OBS-friendly `/overlay?channel=…` route driven by the public projection and live WebSocket updates
+- Nine registered overlay themes with per-theme settings, element switches, previews, and a full mock-data studio
+- Creator control room, first-board setup, public scoreboards, channel settings, and moderator-safe surface controls from one responsive design system
 - D1 persistence behind a Cloudflare Worker API
 - Generic counter/gauge/flag metrics, declarative rules, countdown/deadline alarms, idempotent event intake, and a live-run API
 - One Durable Object per session for serialized run updates and WebSocket fan-out
@@ -30,7 +31,21 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Before starting Vite, copy `.dev.vars.example` to `.dev.vars` and replace `OWNER_SETUP_TOKEN` with a unique code (for example, from `openssl rand -hex 32`). Open the local URL printed by Vite, then set the owner password on the first visit. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly. The dashboard is `/`; the browser-source overlay is `/overlay` and needs no login.
+Before starting Vite, copy `.dev.vars.example` to `.dev.vars` and replace `OWNER_SETUP_TOKEN` with a unique code (for example, from `openssl rand -hex 32`). Open the local URL printed by Vite, then set the owner password on the first visit. Alternatively, set `OWNER_PASSWORD` in `.dev.vars` to use that Worker secret directly. The control room is `/`; the browser-source overlay is `/overlay?channel=CHANNEL_ID` and needs no login.
+
+## Surface routes
+
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `/` and `/inbox` | Live creator control room and challenge inbox | Owner or assigned moderator |
+| `/settings/:tab?` | General, scoring, voting, theme, mods, OBS, and AI settings | Signed in; owner-only sections are also enforced by the Worker |
+| `/setup?channel=…` | New-board onboarding and overlay theme selection | Signed in |
+| `/overlay?channel=…` | Transparent OBS browser source using real public state | Public |
+| `/overlay/studio?channel=…` | Theme studio with mock game/events and channel-owned appearance settings | Signed in; moderator appearance controls are read-only |
+| `/c/:channelId` | Public scoreboard and history | Public when enabled for the Channel |
+| `/invite` | One-use moderator invite redemption | Public magic link |
+
+The overlay registry and source contract are documented in [`src/overlay/README.md`](./src/overlay/README.md). UI/backend limitations that remain intentionally empty or disabled are tracked in [`GAPS.md`](./GAPS.md).
 
 The parser works without a key. To enable OpenAI Structured Outputs locally, add this to `.dev.vars`:
 
@@ -97,7 +112,9 @@ The live framework adds one `LiveSessionCoordinator` Durable Object per active s
 - Start composition changes in `src/creator.tsx`.
 - Build custom React surfaces on `useChallengeChatState` or `useChallengeChatController` from `src/framework/use-challenge-chat.ts`.
 - Use `useChallengeChatState("overlay")` for public-only output; the default admin scope requires creator access.
-- Customize broadcast and control-panel theme tokens independently in the dashboard design-system editor.
+- Compose the creator experience under `src/pages/main/`; use `src/pages/app/ChannelSettings.tsx` for the shared settings body.
+- Add an overlay theme as a folder under `src/overlay/themes/`, then register it in `src/overlay/themes/index.ts`. Setup, Settings, Studio, and OBS all read that registry.
+- Keep overlay theme IDs, settings, and elements declarative. The Worker accepts only bounded primitive configuration values and never evaluates runtime JavaScript.
 - Add game telemetry through normalized `/api/v1/runs/:runId/events` envelopes.
 - Start from `integrations/reporter.ts` and the hypothetical `integrations/examples/horror-kills.ts` adapter when wiring a real game's server API or local helper.
 - Repository skills under `.agents/skills` guide Codex through surface customization and integration work.

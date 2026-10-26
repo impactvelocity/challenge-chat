@@ -36,7 +36,6 @@
     "@fontsource/pirata-one": "^5.3.0",
     "@formkit/auto-animate": "^0.8.4",
     "@vitejs/plugin-react": "latest",
-    "cal-sans": "^2.1.1",
     "clsx": "^2.1.1",
     "react": "latest",
     "react-beautiful-color": "^2.1.0",
