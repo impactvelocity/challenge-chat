@@ -548,7 +548,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
         </Panel>
 
         {onSettings ? (
-          role === 'owner' ? <Settings tab={settingsTab} channel={channel} /> : <Panel className="p-8 text-center text-ink-sub">Owner access required.</Panel>
+          role === 'owner' ? <Settings tab={settingsTab} channel={channel} onSaved={controller.refresh} /> : <Panel className="p-8 text-center text-ink-sub">Owner access required.</Panel>
         ) : onInbox ? (
           <Inbox
             items={inbox}

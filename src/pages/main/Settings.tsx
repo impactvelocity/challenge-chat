@@ -17,7 +17,7 @@ const LABEL: Record<SettingsTab, string> = {
 };
 
 /** Channel settings inside the main (/) shell: a row of text tabs over one section at a time. */
-export function Settings({ tab, channel }: { tab: string | undefined; channel: Channel }) {
+export function Settings({ tab, channel, onSaved }: { tab: string | undefined; channel: Channel; onSaved?: () => Promise<void> }) {
   const current: SettingsTab = SETTINGS_TABS.some((t) => t.value === tab) ? (tab as SettingsTab) : 'general';
   // Keep ?stage so going back lands on the same session step.
   const { search } = useLocation();
@@ -56,7 +56,7 @@ export function Settings({ tab, channel }: { tab: string | undefined; channel: C
         </nav>
       </div>
       <div className="settings-form flex min-w-0 flex-col gap-8 px-4 pt-7 pb-7 sm:px-7 sm:pb-8">
-        <SettingsBody tab={current} channel={channel} />
+        <SettingsBody tab={current} channel={channel} onSaved={onSaved} />
       </div>
     </Panel>
   );

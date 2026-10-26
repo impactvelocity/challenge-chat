@@ -103,12 +103,12 @@ export function ChannelSettings() {
 }
 
 /** The body of one settings section. Shared by this page and the main (/) settings page. */
-export function SettingsBody({ tab, channel }: { tab: SettingsTab; channel: Channel }) {
+export function SettingsBody({ tab, channel, onSaved }: { tab: SettingsTab; channel: Channel; onSaved?: () => Promise<void> }) {
   return (
     <>
-      {tab === 'general' && <General channel={channel} part="general" />}
-      {tab === 'scoring' && <General channel={channel} part="scoring" />}
-      {tab === 'voting' && <General channel={channel} part="voting" />}
+      {tab === 'general' && <General channel={channel} part="general" onSaved={onSaved} />}
+      {tab === 'scoring' && <General channel={channel} part="scoring" onSaved={onSaved} />}
+      {tab === 'voting' && <General channel={channel} part="voting" onSaved={onSaved} />}
       {tab === 'theme' && <OverlayTheme />}
       {tab === 'mods' && <Moderators channel={channel} />}
       {tab === 'obs' && <Overlays channel={channel} />}
@@ -160,7 +160,7 @@ function Example({ children }: { children: ReactNode }) {
   );
 }
 
-function General({ channel, part }: { channel: Channel; part: 'general' | 'scoring' | 'voting' }) {
+function General({ channel, part, onSaved }: { channel: Channel; part: 'general' | 'scoring' | 'voting'; onSaved?: () => Promise<void> }) {
   const toast = useToasts();
   const session = useSessionSettings();
   const theme = useTheme();
@@ -237,6 +237,7 @@ function General({ channel, part }: { channel: Channel; part: 'general' | 'scori
         }));
       }
       await Promise.all(tasks);
+      await onSaved?.();
       setSaved(form);
       toast.add({ title: 'Saved', description: started ? 'New rules start next round' : 'Applied to the current round' });
     } catch (caught) {

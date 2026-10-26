@@ -219,6 +219,26 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     expect(await response.json()).toEqual({ error: "Twitch channel names can be at most 25 characters" });
   });
 
+  it("persists voting defaults and updates an untouched collecting round", async () => {
+    const channel = await create("voting-rules");
+    const current = await state(channel);
+    const voting = { shortlistSize: 6, winnersCount: 2, votesPerViewer: 4, durationSeconds: 180 };
+    const rules = { ...current.channel.scoringRules, voting };
+
+    const response = await call("/api/scoring-rules", {
+      method: "PATCH",
+      channel,
+      cookie: ownerCookie,
+      data: { rules },
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).rules.voting).toEqual(voting);
+    const refreshed = await state(channel);
+    expect(refreshed.channel.scoringRules.voting).toEqual(voting);
+    expect(refreshed.session.scoringRules.voting).toEqual(voting);
+  });
+
   it("deletes a board and its scoped data, then returns the next board", async () => {
     const deleted = await create("delete-me");
     const kept = await create("keep-me");
