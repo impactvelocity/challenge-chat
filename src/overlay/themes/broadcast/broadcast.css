@@ -163,18 +163,6 @@
     background: rgba(255, 255, 255, 0.08);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
-  .bc-tag[data-d='easy'] {
-    color: #8ff0a4;
-  }
-  .bc-tag[data-d='medium'] {
-    color: #ffd27a;
-  }
-  .bc-tag[data-d='hard'] {
-    color: #ff9b74;
-  }
-  .bc-tag[data-d='ridiculous'] {
-    color: #ff7ab8;
-  }
   /* Paused, time up, last try */
   .bc-tag[data-alert] {
     color: #ffd27a;

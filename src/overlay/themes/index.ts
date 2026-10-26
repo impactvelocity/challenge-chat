@@ -5,7 +5,6 @@ import { broadcast } from './broadcast';
 import { comic } from './comic';
 import { cozy } from './cozy';
 import { esports } from './esports';
-import { fantasy } from './fantasy';
 import { neon } from './neon';
 import { relic } from './relic';
 
@@ -16,8 +15,8 @@ import { relic } from './relic';
  *
  * Broadcast is the base; the rest share its scenes and elements through `kit/` and restyle them.
  */
-export const BUILT_IN = [broadcast, arena, arcade, neon, esports, fantasy, cozy, relic, comic];
+export const BUILT_IN = [broadcast, arena, arcade, neon, esports, cozy, relic, comic];
 
 for (const theme of BUILT_IN) registerTheme(theme);
 
-export { arcade, arena, broadcast, comic, cozy, esports, fantasy, neon, relic };
+export { arcade, arena, broadcast, comic, cozy, esports, neon, relic };

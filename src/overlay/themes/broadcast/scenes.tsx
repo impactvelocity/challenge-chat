@@ -1,6 +1,6 @@
 import { useBallot, useChallenge, useLineup, useOverlaySelector, useRound, useSides, useSubmissions } from '@/overlay/sdk';
 import { fmt, LiveDot } from '@/scoreboard/parts';
-import { Center, DifficultyTag, Lower, Pips } from './parts';
+import { Center, Lower, Pips } from './parts';
 import { useBroadcastSettings } from './settings';
 
 /* One component per scene. Each reads only the hooks it needs; the SDK keys them so they animate in. */
@@ -95,7 +95,7 @@ export function LineupScene() {
             <span className="bc-key">{index + 1}</span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <b className="truncate">{c.title}</b>
-              <span className="bc-by">{index === 0 ? 'Up first' : `${c.difficulty[0].toUpperCase()}${c.difficulty.slice(1)} · from ${c.by}`}</span>
+              <span className="bc-by">{index === 0 ? 'Up first' : `from ${c.by}`}</span>
             </span>
             <span className="bc-num bc-pts">+{fmt(c.points)}</span>
           </li>
@@ -136,7 +136,6 @@ export function LiveScene() {
         )}
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <DifficultyTag c={c} />
         <span className="bc-tag bc-num">+{fmt(c.points)} pts</span>
         {attempts?.max != null && attempts.max > 1 && (
           <span className="bc-tag">

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import type { Challenge } from '@/overlay/sdk';
 
 /** A card along the bottom, opposite the stack. */
 export function Lower({ wide, side, children }: { wide?: boolean; side?: string; children: ReactNode }) {
@@ -18,14 +17,6 @@ export function Center({ children }: { children: ReactNode }) {
     <div className="bc-center">
       <div>{children}</div>
     </div>
-  );
-}
-
-export function DifficultyTag({ c }: { c: Challenge }) {
-  return (
-    <span className="bc-tag" data-d={c.difficulty}>
-      {c.difficulty[0].toUpperCase() + c.difficulty.slice(1)}
-    </span>
   );
 }
 

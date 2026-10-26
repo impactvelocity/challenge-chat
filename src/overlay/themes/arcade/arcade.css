@@ -137,22 +137,6 @@
         0 0 0 3px var(--ac-ink),
         3px 3px 0 3px var(--ac-ink);
     }
-    & .bc-tag[data-d='easy'] {
-      color: var(--ac-ink);
-      background: #5ce36e;
-    }
-    & .bc-tag[data-d='medium'] {
-      color: var(--ac-ink);
-      background: var(--ac-yellow);
-    }
-    & .bc-tag[data-d='hard'] {
-      color: var(--ac-ink);
-      background: #ff8a3d;
-    }
-    & .bc-tag[data-d='ridiculous'] {
-      color: #fff;
-      background: var(--ac-pink);
-    }
     & .bc-tag[data-alert] {
       color: var(--ac-ink);
       background: var(--ac-yellow);

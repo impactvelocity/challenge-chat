@@ -109,7 +109,7 @@ export function SettingsBody({ tab, channel, onSaved }: { tab: SettingsTab; chan
       {tab === 'general' && <General channel={channel} part="general" onSaved={onSaved} />}
       {tab === 'scoring' && <General channel={channel} part="scoring" onSaved={onSaved} />}
       {tab === 'voting' && <General channel={channel} part="voting" onSaved={onSaved} />}
-      {tab === 'theme' && <OverlayTheme onSaved={onSaved} />}
+      {tab === 'theme' && <OverlayTheme channelName={channel.displayName} onSaved={onSaved} />}
       {tab === 'mods' && <Moderators channel={channel} />}
       {tab === 'obs' && <Overlays channel={channel} />}
       {tab === 'ai' && <AiSettings />}
@@ -908,7 +908,7 @@ const PREVIEW_SCENES = [
 type PreviewScene = (typeof PREVIEW_SCENES)[number]['value'];
 
 /** The overlay's look: draft a theme and its settings, then save them together. */
-function OverlayTheme({ onSaved }: { onSaved?: () => Promise<void> }) {
+function OverlayTheme({ channelName, onSaved }: { channelName: string; onSaved?: () => Promise<void> }) {
   const config = useOverlayConfig();
   const [draft, setDraft] = useState(config);
   const [saved, setSaved] = useState(config);
@@ -980,6 +980,7 @@ function OverlayTheme({ onSaved }: { onSaved?: () => Promise<void> }) {
             display={display}
             scene={scene === 'streamer' || scene === 'chat' ? 'result' : scene}
             winner={scene === 'chat' ? 'chat' : 'streamer'}
+            channelName={channelName}
             className="aspect-video rounded-[14px] bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,.08),0_0_0_1px_rgba(0,0,0,.7)]"
           />
           <div className="-mx-1 overflow-x-auto px-1 pb-1">

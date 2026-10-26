@@ -304,18 +304,6 @@
       background: var(--cc-white);
       box-shadow: 3px 3px 0 var(--cc-ink);
     }
-    & .bc-tag[data-d='easy'] {
-      background: #9cf0a6;
-    }
-    & .bc-tag[data-d='medium'] {
-      background: #ffd76a;
-    }
-    & .bc-tag[data-d='hard'] {
-      background: #ffa071;
-    }
-    & .bc-tag[data-d='ridiculous'] {
-      background: #ff8fc6;
-    }
     & .bc-tag[data-alert] {
       color: var(--cc-ink);
       background: var(--cc-cap);

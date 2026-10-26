@@ -94,8 +94,8 @@ function Guides() {
  * The real overlay, drawn by `display`'s theme over a mock session held at `scene`. For settings pages:
  * chat stays busy, but nothing moves the session on until `scene` changes.
  */
-export function OverlayPreview({ display, scene, winner = 'streamer', className }: { display: Display; scene: Scene; winner?: Side; className?: string }) {
-  const [source] = useState(() => createMockSource({ scene, winner, display, hold: true }));
+export function OverlayPreview({ display, scene, winner = 'streamer', channelName, className }: { display: Display; scene: Scene; winner?: Side; channelName?: string; className?: string }) {
+  const [source] = useState(() => createMockSource({ scene, winner, display, channelName, hold: true }));
   useEffect(() => source.controls.seed(scene, winner), [source, scene, winner]);
   return (
     <div className={cn('relative overflow-hidden', className)}>

@@ -64,7 +64,7 @@ function runsOut(s: Session | null, now: number) {
  * `hold` keeps the session on the scene it's seeded at (for previews): chat stays busy, but no clock moves
  * it on, and the scene starts over before any of its clocks runs out, so a preview never sits at time up.
  */
-export function createMockSource(init: { scene?: Scene; winner?: Side; display: Display; options?: Partial<EngineOptions>; hold?: boolean }): MockSource {
+export function createMockSource(init: { scene?: Scene; winner?: Side; display: Display; channelName?: string; options?: Partial<EngineOptions>; hold?: boolean }): MockSource {
   let opts: EngineOptions = { ...DEFAULT_OPTIONS, ...init.options };
   let autoplay = false;
   const o = () => (autoplay ? { ...opts, ...AUTOPLAY } : opts);
@@ -72,7 +72,12 @@ export function createMockSource(init: { scene?: Scene; winner?: Side; display: 
   let held: { scene: Scene; winner?: Side } = { scene: init.scene ?? 'live', winner: init.winner };
 
   const now0 = Date.now();
-  let snap: OverlaySnapshot = { ...mockBoard(now0), session: seedSession(init.scene ?? 'live', now0, opts, init.winner), display: init.display };
+  const board = mockBoard(now0);
+  if (init.channelName) {
+    board.channel = { ...board.channel, name: init.channelName };
+    board.sides = { ...board.sides, streamer: { ...board.sides.streamer, name: init.channelName } };
+  }
+  let snap: OverlaySnapshot = { ...board, session: seedSession(init.scene ?? 'live', now0, opts, init.winner), display: init.display };
   snap = withMetric(snap, 'kills', snap.session?.stage === 'live' || snap.session?.stage === 'done' ? 2 : 0);
 
   const sinks = new Set<SourceSink>();

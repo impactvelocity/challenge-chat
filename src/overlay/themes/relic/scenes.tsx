@@ -1,6 +1,6 @@
 import { useChallenge, useLineup, useOverlaySelector, useSides } from '@/overlay/sdk';
 import { fmt, LiveDot } from '@/scoreboard/parts';
-import { Center, DifficultyTag, Lower, Pips } from '../broadcast/parts';
+import { Center, Lower, Pips } from '../broadcast/parts';
 import { useBroadcastSettings } from '../broadcast/settings';
 
 /* Broadcast's live and result scenes with horror copy: challenges are trials, a call is a survival or a soul taken. */
@@ -36,7 +36,6 @@ export function LiveScene() {
         )}
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <DifficultyTag c={c} />
         <span className="bc-tag bc-num">+{fmt(c.points)} pts</span>
         {attempts?.max != null && attempts.max > 1 && (
           <span className="bc-tag">

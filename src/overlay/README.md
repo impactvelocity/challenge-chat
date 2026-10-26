@@ -71,7 +71,7 @@ const { glow, corner } = myTheme.useSettings();
 
 ### Built-in themes
 
-Broadcast is the base. The other eight share its scenes and elements through `themes/kit/` and restyle them from their own stylesheet under `.sk[data-skin='…']`, swapping in their own components where the idea needs different markup (and wherever a light surface would fight Broadcast's white text). Each carries the kit's `CORE` settings (both side colours, stack side, size) plus two of its own, and one signature element.
+Broadcast is the base. The other seven share its scenes and elements through `themes/kit/` and restyle them from their own stylesheet under `.sk[data-skin='…']`, swapping in their own components where the idea needs different markup (and wherever a light surface would fight Broadcast's white text). Each carries the kit's `CORE` settings (both side colours, stack side, size) plus two of its own, and one signature element.
 
 | Theme | Own settings | Signature element |
 | --- | --- | --- |
@@ -79,7 +79,6 @@ Broadcast is the base. The other eight share its scenes and elements through `th
 | Arcade Clash | Pixel numbers, Sticker tilt | VS health bars as the scoreboard (`banner`); Combo Pops (`fx`) |
 | Creator Neon | Glow, Scan lines | Hype Meter (`stack`) |
 | Esports Command | HUD colour, Tactical grid | Match Status (`banner`) |
-| Fantasy Quest | Surface (parchment/jewel), Magic sparkles | Quest Log (`stack`) |
 | Cozy Corner | Paper (cream/cocoa), Handwritten notes | To-Do Note (`stack`) |
 | Dark Relic | Distress, Flicker | Doom Clock (`corner`) |
 | Comic Chaos | Paper (pop/pulp), Wonky panels | Impact Words (`fx`) |
