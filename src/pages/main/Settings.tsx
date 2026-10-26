@@ -14,6 +14,7 @@ const LABEL: Record<SettingsTab, string> = {
   mods: 'Moderators',
   obs: 'OBS',
   ai: 'AI',
+  dev: 'Dev',
 };
 
 /** Channel settings inside the main (/) shell: a row of text tabs over one section at a time. */

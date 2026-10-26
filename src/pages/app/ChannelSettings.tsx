@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
+  ArrowRightIcon,
   BoltIcon,
   ExternalIcon,
   ListIcon,
@@ -10,6 +11,7 @@ import {
   SparkleIcon,
   TrophyIcon,
   UsersIcon,
+  KeyIcon,
 } from '@/components/icons';
 import {
   Button,
@@ -45,9 +47,10 @@ import { complement, lighten } from '@/theme/accent';
 import { useTheme } from '@/theme/ThemeProvider';
 import { api, type ModSummary } from '@/api';
 import { channelPath } from '@/framework/channel';
+import { mockViewerId, parseMockChatMessage } from '@/dev/mock-chat';
 import { AppPage, TopBar, useChannel, useRole } from './shell-context';
 import { Avatar, CopyField, Led, OwnerOnly, PageTitle, Section } from './parts';
-import { DEFAULT_THEME } from '../../../shared/contracts';
+import { DEFAULT_THEME, type AppState } from '../../../shared/contracts';
 
 export const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: SettingsIcon },
@@ -57,6 +60,7 @@ export const SETTINGS_TABS = [
   { value: 'mods', label: 'Moderators', icon: UsersIcon },
   { value: 'obs', label: 'OBS', icon: MonitorIcon },
   { value: 'ai', label: 'AI', icon: BoltIcon },
+  { value: 'dev', label: 'Dev', icon: KeyIcon },
 ] as const;
 
 const TABS = SETTINGS_TABS;
@@ -114,6 +118,7 @@ export function SettingsBody({ tab, channel, onSaved }: { tab: SettingsTab; chan
       {tab === 'mods' && <Moderators channel={channel} />}
       {tab === 'obs' && <Overlays channel={channel} />}
       {tab === 'ai' && <AiSettings />}
+      {tab === 'dev' && <DevTools channel={channel} onSaved={onSaved} />}
     </>
   );
 }
@@ -967,6 +972,198 @@ function AiSettings() {
               />
             </Rule>
           )}
+        </div>
+      </Section>
+    </>
+  );
+}
+
+/* ───────── Dev ───────── */
+
+type MockChatLine = {
+  id: string;
+  viewer: string;
+  message: string;
+  detail: string;
+  failed?: boolean;
+};
+
+function DevTools({ channel, onSaved }: { channel: Channel; onSaved?: () => Promise<void> }) {
+  const [state, setState] = useState<AppState | null>(null);
+  const [viewer, setViewer] = useState('TestViewer');
+  const [message, setMessage] = useState('');
+  const [lines, setLines] = useState<MockChatLine[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void api.state().then(setState).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not load the board'));
+  }, [channel.id]);
+
+  const append = (line: Omit<MockChatLine, 'id'>) => {
+    setLines((current) => [...current, { ...line, id: crypto.randomUUID() }].slice(-30));
+  };
+
+  const sync = async () => {
+    const next = await api.state();
+    setState(next);
+    if (onSaved) await onSaved();
+    return next;
+  };
+
+  const send = async () => {
+    const name = viewer.trim();
+    const text = message.trim();
+    if (!name) return setError('Give the mock viewer a name');
+    if (!text) return setError('Write a chat message or command');
+    setBusy(true);
+    setError(null);
+    try {
+      const command = parseMockChatMessage(text);
+      let detail = 'Local chat message — no board event sent';
+
+      if (command.type === 'invalid') {
+        throw new Error(command.error);
+      } else if (command.type === 'challenge') {
+        const current = await api.state();
+        await api.createChallenge({ text: command.text, game: 'Mock chat', author: { displayName: name.slice(0, 40) } });
+        detail = current.session.phase === 'collecting' && current.session.submissionsOpen ? 'Challenge sent to Submissions' : 'Challenge saved to Inbox';
+      } else if (command.type === 'vote') {
+        const current = await api.state();
+        const entry = current.ballot?.entries[command.position - 1];
+        if (!current.ballot) throw new Error('Open voting before sending a !vote command');
+        if (!entry) throw new Error(`Choose a vote from 1–${current.ballot.entries.length}`);
+        await api.vote(current.ballot.id, entry.challenge.id, mockViewerId(name));
+        detail = `Vote sent for ${entry.challenge.title}`;
+      }
+
+      append({ viewer: name, message: text, detail });
+      setMessage('');
+      if (command.type !== 'message') await sync();
+    } catch (caught) {
+      const description = caught instanceof Error ? caught.message : 'Could not send this event';
+      setError(description);
+      append({ viewer: name, message: text, detail: description, failed: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const phase = state?.session.phase ?? 'loading';
+  const challengeDestination = state?.session.phase === 'collecting' && state.session.submissionsOpen ? 'Submissions' : 'Inbox';
+
+  return (
+    <>
+      <Section title="Mock Chat" sub={`Send realistic chat commands into ${channel.displayName}. These use the selected board's real server state.`}>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,.8fr)]">
+          <Screen className="flex min-h-[360px] flex-col overflow-hidden p-0">
+            <div className="flex items-center justify-between gap-4 border-b border-white/[.07] px-5 py-3.5">
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink-strong">
+                <Led tone="ok" />
+                #{channel.broadcasterLogin || channel.slug}
+              </span>
+              <span className="mono text-[11px] tracking-[.1em] text-ink-muted">{phase.toUpperCase()}</span>
+            </div>
+            <div className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto px-5 py-5" aria-live="polite">
+              {lines.length ? lines.map((line) => (
+                <div key={line.id} className="flex items-start gap-3 text-sm">
+                  <Avatar name={line.viewer} size={28} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <b className="font-semibold text-accent-text">{line.viewer}</b>
+                      <span className="break-words text-ink">{line.message}</span>
+                    </span>
+                    <span className={cn('mt-1 block text-xs', line.failed ? 'text-red-300' : 'text-ink-muted')}>{line.detail}</span>
+                  </span>
+                </div>
+              )) : (
+                <div className="m-auto flex max-w-[320px] flex-col items-center gap-2 text-center">
+                  <span className="grid size-12 place-items-center rounded-[16px] border border-accent/25 bg-accent/10 text-accent-text">
+                    <BoltIcon size={22} />
+                  </span>
+                  <strong className="text-lg text-ink-strong">Chat simulator ready</strong>
+                  <span className="text-sm leading-relaxed text-pretty text-ink-sub">Send a command below and watch it enter the real round flow.</span>
+                </div>
+              )}
+            </div>
+          </Screen>
+
+          <form
+            className="flex flex-col gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!busy) void send();
+            }}
+          >
+            <TextField
+              label="Viewer"
+              value={viewer}
+              maxLength={40}
+              placeholder="TestViewer"
+              onChange={(event) => setViewer(event.target.value)}
+            />
+            <TextField
+              label="Chat message"
+              value={message}
+              maxLength={500}
+              placeholder="!challenge Win without healing"
+              error={error ?? undefined}
+              onChange={(event) => {
+                setMessage(event.target.value);
+                if (error) setError(null);
+              }}
+              suffix={
+                <Button type="submit" variant="accent" size="xs" icon disabled={busy || !message.trim()} aria-label="Send chat event">
+                  <ArrowRightIcon size={15} />
+                </Button>
+              }
+            />
+
+            <Well className="flex flex-col gap-3 p-4">
+              <Label>Quick commands</Label>
+              <button type="button" className="mono cursor-pointer border-0 bg-transparent p-0 text-left text-xs text-accent-text hover:text-ink-strong" onClick={() => setMessage('!challenge Win the next fight without healing')}>
+                !challenge Win the next fight without healing
+              </button>
+              <button type="button" className="mono cursor-pointer border-0 bg-transparent p-0 text-left text-xs text-accent-text hover:text-ink-strong" onClick={() => setMessage('!vote 1')}>
+                !vote 1
+              </button>
+              <span className="hint">Challenge commands currently go to <b className="text-ink-soft">{challengeDestination}</b>.</span>
+            </Well>
+
+            {state?.ballot ? (
+              <Well className="flex flex-col gap-2.5 p-4">
+                <Label>Open vote</Label>
+                {state.ballot.entries.map((entry, index) => (
+                  <button
+                    key={entry.challenge.id}
+                    type="button"
+                    className="flex cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-sm text-ink-soft hover:text-ink-strong"
+                    onClick={() => setMessage(`!vote ${index + 1}`)}
+                  >
+                    <span className="mono grid size-6 flex-none place-items-center rounded-md bg-white/[.06] text-xs text-ink-strong">{index + 1}</span>
+                    <span className="truncate">{entry.challenge.title}</span>
+                  </button>
+                ))}
+              </Well>
+            ) : (
+              <span className="hint">Open a vote in the control room to enable <b className="mono text-ink-soft">!vote</b> events.</span>
+            )}
+          </form>
+        </div>
+      </Section>
+
+      <Divider />
+
+      <Section title="Supported Events" sub="The simulator uses authenticated control-room APIs and never talks to the overlay directly.">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Well className="flex flex-col gap-2 p-5">
+            <span className="mono text-sm font-semibold text-accent-text">!challenge idea</span>
+            <span className="text-sm leading-relaxed text-ink-sub">Creates a real viewer suggestion. Closed submissions route it to Inbox automatically.</span>
+          </Well>
+          <Well className="flex flex-col gap-2 p-5">
+            <span className="mono text-sm font-semibold text-accent-text">!vote number</span>
+            <span className="text-sm leading-relaxed text-ink-sub">Casts one real vote for the named mock viewer while a ballot is open.</span>
+          </Well>
         </div>
       </Section>
     </>
