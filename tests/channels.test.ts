@@ -8,7 +8,7 @@ import { LiveSessionCoordinator } from "../worker/live-session";
 class TestD1 {
   sql = new DatabaseSync(":memory:");
   constructor() {
-    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql"]) {
+    for (const migration of ["0001_init.sql", "0002_auth.sql", "0003_channels.sql", "0004_session_rules.sql", "0005_single_leaderboard.sql", "0006_surface_settings.sql", "0007_owner_profile.sql", "0008_channel_setup.sql", "0009_challenge_inbox.sql"]) {
       this.sql.exec(readFileSync(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
     }
   }
@@ -79,6 +79,7 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     return (await response.json() as any).channel.id as string;
   };
   const suggestion = async (channel: string, game = "Horror", name = "Alice") => {
+    expect((await call("/api/session/submissions", { method: "PATCH", channel, cookie: ownerCookie, data: { open: true } })).status).toBe(200);
     const response = await call("/api/challenges", { method: "POST", channel, cookie: ownerCookie, data: { text: "Get five kills in 90 seconds", game, author: { id: name, displayName: name } } });
     expect(response.status).toBe(201);
     return (await response.json() as any).id as string;
@@ -107,10 +108,12 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     legacy.exec(readFileSync(new URL("../migrations/0006_surface_settings.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0007_owner_profile.sql", import.meta.url), "utf8"));
     legacy.exec(readFileSync(new URL("../migrations/0008_channel_setup.sql", import.meta.url), "utf8"));
+    legacy.exec(readFileSync(new URL("../migrations/0009_challenge_inbox.sql", import.meta.url), "utf8"));
     expect(legacy.prepare("SELECT active_session_id FROM channels").get()?.active_session_id).toBe("demo-session");
     expect(legacy.prepare("SELECT user_id FROM channel_memberships").get()?.user_id).toBe("existing-mod");
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM points_ledger").get()?.total).toBe(1);
     expect(legacy.prepare("SELECT COUNT(*) AS total FROM sqlite_master WHERE type = 'table' AND name = 'leaderboards'").get()?.total).toBe(0);
+    expect(legacy.prepare("SELECT submissions_open FROM sessions").get()?.submissions_open).toBe(0);
     legacy.close();
   });
 
@@ -187,6 +190,57 @@ describe("channels and the Challenger leaderboard with persisted data", () => {
     const theme = { ...(await state(a)).theme, primary: "#123456" };
     expect((await call("/api/theme", { method: "PATCH", channel: a, cookie: ownerCookie, data: { theme } })).status).toBe(200);
     expect((await state(b)).theme.primary).toBe(original);
+  });
+
+  it("keeps closed and unselected suggestions in the channel inbox for later rounds", async () => {
+    const channel = await create("persistent-inbox");
+    expect((await state(channel)).session.submissionsOpen).toBe(false);
+
+    const closedSuggestion = await call("/api/challenges", {
+      method: "POST",
+      channel,
+      cookie: ownerCookie,
+      data: { text: "Win without taking damage", game: "Action", author: { id: "alice", displayName: "Alice" } },
+    });
+    expect(closedSuggestion.status).toBe(201);
+    const closedId = (await closedSuggestion.json() as any).id as string;
+    expect((await state(channel)).challenges.find((item: any) => item.id === closedId)).toMatchObject({ status: "inbox", needsReview: true });
+
+    expect((await call("/api/session/submissions", {
+      method: "PATCH", channel, cookie: ownerCookie, data: { open: true },
+    })).status).toBe(200);
+    expect((await call(`/api/challenges/${closedId}/status`, {
+      method: "POST", channel, cookie: ownerCookie, data: { status: "pending_review" },
+    })).status).toBe(200);
+    expect((await state(channel)).challenges.find((item: any) => item.id === closedId)?.status).toBe("pending_review");
+
+    const second = await suggestion(channel, "Action", "Bob");
+    const third = await suggestion(channel, "Action", "Carol");
+    for (const id of [closedId, second, third]) expect((await approve(channel, id)).status).toBe(200);
+
+    const opened = await call("/api/ballots", {
+      method: "POST", channel, cookie: ownerCookie, data: { challengeIds: [closedId, second], durationSeconds: 60, winnersCount: 1 },
+    });
+    expect(opened.status).toBe(201);
+    let current = await state(channel);
+    expect(current.session.submissionsOpen).toBe(false);
+    expect(current.challenges.find((item: any) => item.id === third)?.status).toBe("inbox");
+
+    const duringVote = await call("/api/challenges", {
+      method: "POST",
+      channel,
+      cookie: ownerCookie,
+      data: { text: "Finish the level backwards", game: "Action", author: { id: "dana", displayName: "Dana" } },
+    });
+    const duringVoteId = (await duringVote.json() as any).id as string;
+    expect((await state(channel)).challenges.find((item: any) => item.id === duringVoteId)?.status).toBe("inbox");
+
+    const { id: ballotId } = await opened.json() as any;
+    expect((await call(`/api/ballots/${ballotId}/close`, { method: "POST", channel, cookie: ownerCookie })).status).toBe(200);
+    current = await state(channel);
+    expect(current.challenges.filter((item: any) => item.status === "queued")).toHaveLength(1);
+    expect(current.challenges.filter((item: any) => item.status === "inbox").map((item: any) => item.id)).toEqual(expect.arrayContaining([third, duringVoteId]));
+    expect(current.challenges.filter((item: any) => item.status === "inbox")).toHaveLength(3);
   });
 
   it("exposes one channel-scoped Challenger leaderboard and no multi-board API", async () => {

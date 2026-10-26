@@ -89,8 +89,6 @@ const STEP_LABEL: Record<Stage, string> = {
   done: 'Results',
 };
 
-const INBOX: InboxIdea[] = [];
-const INBOX_IDS = new Set(INBOX.map((i) => i.c.id));
 /** How long submissions are meant to stay open (seconds). A guide only — it never closes anything. */
 const SUBMIT_LENGTH = 600;
 
@@ -152,8 +150,9 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   const onSettings = !!useMatch('/settings') || settingsTab !== undefined;
   /** On a sub-page (inbox, settings) rather than the session itself. */
   const offMain = onInbox || onSettings;
-  const [opened, setOpened] = useState(state.challenges.length > 0);
-  const phaseStage: Record<AppState['session']['phase'], Stage> = { collecting: opened || state.challenges.length ? 'open' : 'new', voting: 'vote', ready: 'lock', live: 'live', complete: 'done' };
+  const hasRoundChallenges = state.challenges.some((item) => !['inbox', 'rejected'].includes(item.status));
+  const [opened, setOpened] = useState(state.session.submissionsOpen || hasRoundChallenges);
+  const phaseStage: Record<AppState['session']['phase'], Stage> = { collecting: opened || state.session.submissionsOpen || hasRoundChallenges ? 'open' : 'new', voting: 'vote', ready: 'lock', live: 'live', complete: 'done' };
   const stage = phaseStage[state.session.phase];
   /** A session is underway: from opening submissions until its results screen. */
   // Through the recap too: totals only, no history or leaderboards, until the session is filed.
@@ -170,16 +169,22 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
       search: location.search,
     });
 
-  const [inbox, setInbox] = useState<InboxIdea[]>(INBOX);
+  const inbox: InboxIdea[] = state.challenges
+    .filter((item) => item.status === 'inbox')
+    .map((item) => ({
+      c: challengeFromState(item),
+      at: new Date(item.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      seen: !item.needsReview,
+    }));
   const [queued, setQueued] = useState<string[]>([]);
   /** The top-bar badge counts only ideas nobody has looked at yet. */
   const newInInbox = inbox.filter((i) => !i.seen && !queued.includes(i.c.id)).length;
-  const initialChallenges = state.challenges.filter((item) => item.status !== 'rejected').map(challengeFromState);
+  const initialChallenges = state.challenges.filter((item) => !['rejected', 'inbox'].includes(item.status)).map(challengeFromState);
   const [ideas, setIdeas] = useState<Challenge[]>(initialChallenges);
   const [submitLeft, setSubmitLeft] = useState(SUBMIT_LENGTH);
   const [approved, setApproved] = useState<string[]>(state.challenges.filter((item) => ['approved', 'queued'].includes(item.status)).map((item) => item.id));
   /** Open stage: ideas are streaming in. Closing pauses the stream so ideas can be picked for the vote. */
-  const [accepting, setAccepting] = useState(true);
+  const [accepting, setAccepting] = useState(state.session.submissionsOpen);
   const [size, setSize] = useState(String(state.session.scoringRules.voting.winnersCount));
   const [voteLength, setVoteLength] = useState(String(state.session.scoringRules.voting.durationSeconds));
   const [entries, setEntries] = useState<Entry[]>(state.ballot?.entries.map((entry) => ({ c: challengeFromState(entry.challenge), votes: entry.votes })) ?? []);
@@ -246,7 +251,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
 
   /* Authoritative state updates every stage and list; local state only holds UI affordances. */
   useEffect(() => {
-    const visible = state.challenges.filter((item) => item.status !== 'rejected').map(challengeFromState);
+    const visible = state.challenges.filter((item) => !['rejected', 'inbox'].includes(item.status)).map(challengeFromState);
     const selected = state.challenges.filter((item) => ['queued', 'active', 'streamer_won', 'chat_won', 'skipped', 'voided'].includes(item.status));
     setIdeas(visible);
     setApproved(state.challenges.filter((item) => ['approved', 'queued'].includes(item.status)).map((item) => item.id));
@@ -257,6 +262,8 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
       c: challengeFromState(item), winner: item.status === 'streamer_won' ? 'streamer' : item.status === 'chat_won' ? 'chat' : null,
     })));
     setHistory(historyFromState(state));
+    setAccepting(state.session.submissionsOpen);
+    setQueued((current) => current.filter((id) => state.challenges.some((item) => item.id === id && item.status === 'inbox')));
     if (state.activeRound) setRound((currentRound) => ({ ...currentRound, attempts: state.activeRound!.attemptsUsed + 1, result: null }));
     if (state.ballot) setVoteLeft(Math.max(0, Math.ceil((new Date(state.ballot.endsAt).getTime() - Date.now()) / 1000)));
   }, [state]);
@@ -293,14 +300,19 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
     setAccepting(true);
     setOpened(true);
     go('open');
+    void controller.mutate(async () => {
+      if (state.session.phase === 'complete') await controller.actions.createSession();
+      await Promise.all(queued.map((id) => controller.actions.setStatus(id, 'pending_review')));
+      await controller.actions.setSubmissionsOpen(true);
+      setQueued([]);
+    });
   };
 
   /* ───────── Inbox ───────── */
 
   const moveToSubmissions = (items: InboxIdea[]) => {
-    const ids = items.map((i) => i.c.id);
-    setInbox((list) => list.filter((i) => !ids.includes(i.c.id)));
-    setIdeas((list) => [...items.map((i) => i.c), ...list]);
+    if (!items.length) return;
+    void controller.mutate(() => Promise.all(items.map((item) => controller.actions.setStatus(item.c.id, 'pending_review'))));
     toast.add({
       title: 'Added to submissions',
       description: items.length === 1 ? items[0].c.title : `${items.length} ideas`,
@@ -308,27 +320,26 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   };
 
   const addFromInbox = (item: InboxIdea) => {
-    if (stage === 'open') moveToSubmissions([item]);
+    if (stage === 'open' && accepting) moveToSubmissions([item]);
     else setQueued((q) => (q.includes(item.c.id) ? q.filter((x) => x !== item.c.id) : [...q, item.c.id]));
   };
 
   const addAllFromInbox = () => {
-    if (stage === 'open') moveToSubmissions(inbox);
+    if (stage === 'open' && accepting) moveToSubmissions(inbox);
     else setQueued(inbox.map((i) => i.c.id));
   };
 
   const rejectFromInbox = (item: InboxIdea) => {
-    const pos = inbox.indexOf(item);
     const wasQueued = queued.includes(item.c.id);
-    setInbox((list) => list.filter((i) => i !== item));
     setQueued((q) => q.filter((x) => x !== item.c.id));
+    void controller.mutate(() => controller.actions.setStatus(item.c.id, 'rejected'));
     toast.add({
       title: 'Deleted',
       description: item.c.title,
       actionProps: {
         children: 'Undo',
         onClick: () => {
-          setInbox((list) => [...list.slice(0, pos), item, ...list.slice(pos)]);
+          void controller.mutate(() => controller.actions.setStatus(item.c.id, 'inbox'));
           if (wasQueued) setQueued((q) => [...q, item.c.id]);
         },
       },
@@ -337,9 +348,10 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
 
   /** Take an idea out of this session but keep it for later, at the top of the inbox. */
   const moveToInbox = (c: Challenge) => {
+    void controller.mutate(() => controller.actions.setStatus(c.id, 'inbox'));
     toast.add({
-      title: 'Inbox is not connected yet',
-      description: `${c.title} stays in this round.`,
+      title: 'Moved to inbox',
+      description: `${c.title} can be added to a later round.`,
     });
   };
 
@@ -348,8 +360,14 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   };
 
   /** Pause the stream and stay put: the list becomes pickable for the vote. */
-  const closeSubmissions = () => setAccepting(false);
-  const reopenSubmissions = () => setAccepting(true);
+  const closeSubmissions = () => {
+    setAccepting(false);
+    void controller.mutate(() => controller.actions.setSubmissionsOpen(false));
+  };
+  const reopenSubmissions = () => {
+    setAccepting(true);
+    void controller.mutate(() => controller.actions.setSubmissionsOpen(true));
+  };
 
   const toggleApproved = (id: string) => {
     const on = approved.includes(id);
@@ -361,31 +379,7 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
   // Submissions table pages; newest ideas land on page 1. Clamp when ideas are removed.
   const [ideaPageRaw, setIdeaPage] = useState(1);
   const ideaPage = Math.min(ideaPageRaw, Math.max(1, Math.ceil(ideas.length / IDEA_PAGE)));
-  const startVoting = () => {
-    const moved: InboxIdea[] = leftovers.map((c) => ({
-      c,
-      at: 'Just now',
-      seen: true,
-    }));
-    if (moved.length) {
-      setInbox((list) => [...moved, ...list]);
-      toast.add({
-        title: `${moved.length} unpicked moved to inbox`,
-        description: 'Marked as seen for a later round',
-        actionProps: {
-          children: 'Undo',
-          // Back to the paused Open step with every idea where it was.
-          onClick: () => {
-            setInbox((list) => list.filter((i) => !moved.includes(i)));
-            setEntries([]);
-            setAccepting(false);
-            go('open');
-          },
-        },
-      });
-    }
-    openVoting();
-  };
+  const startVoting = () => openVoting();
 
   /** Approved ideas go on the ballot in the order they were submitted. */
   const openVoting = () => {
@@ -553,12 +547,12 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
           <Inbox
             items={inbox}
             queued={queued}
-            submitting={stage === 'open'}
+            submitting={stage === 'open' && accepting}
             canOpen={stage === 'new' || stage === 'done'}
             onAdd={addFromInbox}
             onReject={rejectFromInbox}
             onAddAll={addAllFromInbox}
-            onOpen={() => (stage === 'done' ? (startNew(), openSubmissions()) : openSubmissions())}
+            onOpen={openSubmissions}
           />
         ) : (
           <>
@@ -773,7 +767,6 @@ function ControlRoom({ controller }: { controller: ReturnType<typeof useChalleng
                               <td>
                                 <span className="flex min-w-0 items-center gap-2.5">
                                   <span className="truncate text-[15px] font-semibold text-ink-strong">{c.title}</span>
-                                  {INBOX_IDS.has(c.id) && <Tag>From inbox</Tag>}
                                 </span>
                                 <ChallengeMeta c={c} className="pt-1.5" />
                                 <span className="mono block truncate pt-0.5 text-[11px] text-ink-muted sm:hidden">@{c.by}</span>

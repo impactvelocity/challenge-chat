@@ -60,6 +60,7 @@ interface SessionRow {
   streamer_score: number;
   chat_score: number;
   phase: AppState["session"]["phase"];
+  submissions_open: number;
   scoring_rules_json: string;
   winner: ContestSide | null;
   sweep_winner: ContestSide | null;
@@ -209,15 +210,18 @@ export async function insertChallenge(
   author: { id: string; login: string; displayName: string },
   parserStatus: Challenge["parserStatus"],
 ): Promise<string> {
-  const session = await db.prepare("SELECT phase FROM sessions WHERE id = ? AND status = 'live'").bind(scope.sessionId).first<{ phase: string }>();
-  if (!session || session.phase !== "collecting") throw new Error("Suggestions are closed for this session");
+  const session = await db.prepare("SELECT phase, submissions_open FROM sessions WHERE id = ? AND status = 'live'")
+    .bind(scope.sessionId).first<{ phase: string; submissions_open: number }>();
+  if (!session) throw new Error("No active session is available");
   const id = crypto.randomUUID();
-  await challengeInsertStatement(db, scope, ChallengeDraftSchema.parse(draft), {
+  const parsed = ChallengeDraftSchema.parse(draft);
+  const goesToInbox = session.phase !== "collecting" || !Boolean(session.submissions_open);
+  await challengeInsertStatement(db, scope, goesToInbox ? { ...parsed, needsReview: true } : parsed, {
     id,
     authorId: author.id,
     authorLogin: author.login,
     authorDisplayName: author.displayName,
-    status: "pending_review",
+    status: goesToInbox ? "inbox" : "pending_review",
     parserStatus,
   }).run();
   return id;
@@ -259,18 +263,41 @@ export async function setChallengeStatus(
   db: D1Database,
   scope: ChannelScope,
   id: string,
-  status: "approved" | "queued" | "rejected",
+  status: "approved" | "queued" | "rejected" | "inbox" | "pending_review",
 ): Promise<void> {
   const challenge = await db
-    .prepare("SELECT c.author_id, c.author_display_name FROM challenges c JOIN sessions s ON s.id = c.session_id WHERE c.id = ? AND c.session_id = ? AND s.phase = 'collecting'")
-    .bind(id, scope.sessionId)
-    .first<{ author_id: string; author_display_name: string }>();
+    .prepare("SELECT c.author_id, c.author_display_name, c.status, c.needs_review, c.session_id FROM challenges c WHERE c.id = ? AND c.channel_id = ?")
+    .bind(id, scope.channelId)
+    .first<{ author_id: string; author_display_name: string; status: Challenge["status"]; needs_review: number; session_id: string }>();
   if (!challenge) throw new AuthError("Challenge not found in this channel", 404);
+
+  const session = await db.prepare("SELECT phase FROM sessions WHERE id = ? AND status = 'live'")
+    .bind(scope.sessionId).first<{ phase: string }>();
+  const isCollecting = session?.phase === "collecting";
+  const belongsToCurrentSession = challenge.session_id === scope.sessionId;
+  const isRoundCandidate = ["pending_review", "approved", "queued"].includes(challenge.status);
+  const allowed =
+    (status === "pending_review" && challenge.status === "inbox" && isCollecting)
+    || (status === "inbox" && ((belongsToCurrentSession && isRoundCandidate && isCollecting) || challenge.status === "rejected"))
+    || (status === "rejected" && (challenge.status === "inbox" || (belongsToCurrentSession && isRoundCandidate && isCollecting)))
+    || ((status === "approved" || status === "queued") && belongsToCurrentSession && isRoundCandidate && isCollecting);
+  if (!allowed) throw new Error("That challenge cannot be changed at this point in the round");
 
   const statements = [
     db
-      .prepare("UPDATE challenges SET status = ?, needs_review = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(status, id),
+      .prepare(
+        `UPDATE challenges SET session_id = CASE WHEN ? = 'pending_review' THEN ? ELSE session_id END,
+          status = ?, needs_review = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND channel_id = ?`,
+      )
+      .bind(
+        status,
+        scope.sessionId,
+        status === "pending_review" ? (challenge.needs_review ? "pending_review" : "approved") : status,
+        status === "approved" || status === "queued" ? 0 : challenge.needs_review,
+        id,
+        scope.channelId,
+      ),
   ];
 
   if (status === "approved" || status === "queued") {
@@ -293,6 +320,14 @@ export async function setChallengeStatus(
   }
 
   await db.batch(statements);
+}
+
+export async function setSubmissionsOpen(db: D1Database, scope: ChannelScope, open: boolean): Promise<void> {
+  const changed = await db
+    .prepare("UPDATE sessions SET submissions_open = ? WHERE id = ? AND channel_id = ? AND status = 'live' AND phase = 'collecting'")
+    .bind(open ? 1 : 0, scope.sessionId, scope.channelId)
+    .run();
+  if (!changed.meta.changes) throw new Error("Submissions can only be changed while collecting ideas");
 }
 
 export async function createBallot(
@@ -326,7 +361,12 @@ export async function createBallot(
     db
       .prepare("INSERT INTO ballots (id, session_id, status, ends_at, winners_count, votes_per_viewer) VALUES (?, ?, 'open', ?, ?, ?)")
       .bind(id, scope.sessionId, endsAt, winnersCount, rules.voting.votesPerViewer),
-    db.prepare("UPDATE sessions SET phase = 'voting' WHERE id = ?").bind(scope.sessionId),
+    db.prepare("UPDATE sessions SET phase = 'voting', submissions_open = 0 WHERE id = ?").bind(scope.sessionId),
+    db.prepare(
+      `UPDATE challenges SET status = 'inbox', needs_review = CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE session_id = ? AND status IN ('pending_review', 'approved', 'queued') AND id NOT IN (${placeholders})`,
+    ).bind(scope.sessionId, ...uniqueIds),
   ];
 
   uniqueIds.forEach((challengeId, index) => {
@@ -407,7 +447,7 @@ export async function closeBallot(db: D1Database, scope: ChannelScope, ballotId:
       .bind(winnerIds[0], ballotId),
     db
       .prepare(
-        `UPDATE challenges SET status = CASE WHEN id IN (${placeholders}) THEN 'queued' ELSE 'approved' END
+        `UPDATE challenges SET status = CASE WHEN id IN (${placeholders}) THEN 'queued' ELSE 'inbox' END
          WHERE id IN (SELECT challenge_id FROM ballot_entries WHERE ballot_id = ?)`,
       )
       .bind(...winnerIds, ballotId),
@@ -576,7 +616,7 @@ export async function completeSession(db: D1Database, scope: ChannelScope): Prom
   if (winner === "streamer") streamerScore += rules.team.sessionWinBonus;
   if (winner === "chat") chatScore += rules.team.sessionWinBonus;
   await db.prepare(
-    `UPDATE sessions SET phase = 'complete', streamer_score = ?, chat_score = ?, winner = ?, sweep_winner = ?, sweep_label = ?, completed_at = CURRENT_TIMESTAMP
+    `UPDATE sessions SET phase = 'complete', submissions_open = 0, streamer_score = ?, chat_score = ?, winner = ?, sweep_winner = ?, sweep_label = ?, completed_at = CURRENT_TIMESTAMP
      WHERE id = ? AND channel_id = ? AND status = 'live'`,
   ).bind(streamerScore, chatScore, winner, sweepWinner, sweepWinner ? rules.team.cleanSweep.label : null, scope.sessionId, scope.channelId).run();
   return { winner, sweepWinner };
@@ -747,8 +787,8 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
     db.prepare("SELECT * FROM channels WHERE id = ?").bind(scope.channelId).first<ChannelRow>(),
     db.prepare("SELECT * FROM sessions WHERE id = ?").bind(scope.sessionId).first<SessionRow>(),
     db
-      .prepare("SELECT * FROM challenges WHERE session_id = ? ORDER BY created_at ASC")
-      .bind(scope.sessionId)
+      .prepare("SELECT * FROM challenges WHERE session_id = ? OR (channel_id = ? AND status = 'inbox') ORDER BY created_at ASC")
+      .bind(scope.sessionId, scope.channelId)
       .all<ChallengeRow>(),
     db
       .prepare("SELECT * FROM rounds WHERE session_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1")
@@ -841,6 +881,7 @@ export async function loadState(db: D1Database, scope: ChannelScope, mode: "demo
       chatScore: session.chat_score,
       mode: session.mode,
       phase: session.phase,
+      submissionsOpen: Boolean(session.submissions_open),
       scoringRules: sessionRules,
       winner: session.winner,
       sweepWinner: session.sweep_winner,

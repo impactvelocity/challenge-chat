@@ -46,6 +46,7 @@ export const api = {
   updateSessionSettings: (settings: SessionSettings) => request<{ settings: SessionSettings }>("/api/session-settings", { method: "PATCH", body: JSON.stringify({ settings }) }),
   completeSession: () => request<{ winner: "streamer" | "chat" | null; sweepWinner: "streamer" | "chat" | null }>("/api/session/complete", { method: "POST", body: "{}" }),
   createSession: () => request<{ id: string }>("/api/sessions", { method: "POST", body: "{}" }),
+  setSubmissionsOpen: (open: boolean) => request("/api/session/submissions", { method: "PATCH", body: JSON.stringify({ open }) }),
   integrationStatus: () => request<{ token: { lastFour: string; createdAt: number } | null; environmentFallback: boolean }>("/api/channel/integration"),
   rotateIntegrationToken: () => request<{ token: string }>("/api/channel/integration", { method: "POST", body: "{}" }),
   state: () => request<AppState>("/api/state"),
@@ -65,7 +66,7 @@ export const api = {
     request<{ id: string; parserStatus: string }>("/api/challenges", { method: "POST", body: JSON.stringify(input) }),
   updateChallenge: (id: string, challenge: ChallengeDraft) =>
     request(`/api/challenges/${id}`, { method: "PATCH", body: JSON.stringify({ challenge }) }),
-  setStatus: (id: string, status: "approved" | "queued" | "rejected") =>
+  setStatus: (id: string, status: "approved" | "queued" | "rejected" | "inbox" | "pending_review") =>
     request(`/api/challenges/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   start: (id: string) => request(`/api/challenges/${id}/start`, { method: "POST", body: "{}" }),
   attempt: (id: string, delta: number) =>

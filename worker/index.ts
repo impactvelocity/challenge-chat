@@ -14,6 +14,7 @@ import {
   resetDemo,
   resolveChallenge,
   setChallengeStatus,
+  setSubmissionsOpen,
   startChallenge,
   updateChallengeDraft,
   updateOverlayConfig,
@@ -307,6 +308,12 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (path === "/api/session/complete" && method === "POST") {
     return json(await completeSession(env.DB, scope));
   }
+  if (path === "/api/session/submissions" && method === "PATCH") {
+    const input = await body<{ open?: boolean }>(request);
+    if (typeof input.open !== "boolean") throw new Error("Submissions state is required");
+    await setSubmissionsOpen(env.DB, scope, input.open);
+    return json({ ok: true });
+  }
   if (path === "/api/sessions" && method === "POST") {
     return json({ id: await createNextSession(env.DB, scope) }, 201);
   }
@@ -350,8 +357,8 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
 
   const statusId = idFrom(path, "status");
   if (method === "POST" && statusId) {
-    const input = await body<{ status?: "approved" | "queued" | "rejected" }>(request);
-    if (!input.status || !["approved", "queued", "rejected"].includes(input.status)) throw new Error("Invalid challenge status");
+    const input = await body<{ status?: "approved" | "queued" | "rejected" | "inbox" | "pending_review" }>(request);
+    if (!input.status || !["approved", "queued", "rejected", "inbox", "pending_review"].includes(input.status)) throw new Error("Invalid challenge status");
     await setChallengeStatus(env.DB, scope, statusId, input.status);
     return json({ ok: true });
   }

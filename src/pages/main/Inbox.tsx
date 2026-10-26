@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { CheckIcon, InboxIcon, InfoIcon, PlayCircleIcon, PlusIcon, TrashIcon } from '@/components/icons';
-import { Button, ConfirmDialog, Pagination, Panel, Tag, Tooltip } from '@/components/ui';
+import { Button, ConfirmDialog, Pagination, Panel, Tag, Tooltip, Well } from '@/components/ui';
 import type { Challenge } from '@/model';
 import { cn } from '@/lib/cn';
 import { ChallengeMeta } from '@/pages/app/parts';
@@ -11,9 +11,6 @@ import { EDGE_TABLE, EmptyTableState } from './Boards';
  * `seen`: someone already looked at it in a session (e.g. it wasn't picked for a vote), so it isn't counted as new.
  */
 export type InboxIdea = { c: Challenge; at: string; seen?: boolean };
-
-/** Mock: how many ideas the inbox would hold across every page. */
-const INBOX_TOTAL = 48;
 
 type Props = {
   items: InboxIdea[];
@@ -32,8 +29,10 @@ type Props = {
 export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onAddAll, onOpen }: Props) {
   const waiting = items.filter((i) => !queued.includes(i.c.id)).length;
   const [deleting, setDeleting] = useState<InboxIdea | null>(null);
-  // Mock: only one page of ideas exists, so paging just moves the highlight.
   const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(items.length / 10));
+  const safePage = Math.min(page, pageCount);
+  const visibleItems = items.slice((safePage - 1) * 10, safePage * 10);
   // Keep the text while the dialog animates closed.
   const lastDeleting = useRef<InboxIdea | null>(null);
   if (deleting) lastDeleting.current = deleting;
@@ -76,6 +75,15 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
         </div>
       </div>
 
+      <div className="px-4 pb-4 sm:px-7 sm:pb-5">
+        <Well className="flex items-start gap-3 px-4 py-3.5 text-[13px] leading-relaxed text-ink-sub">
+          <InboxIcon size={17} className="mt-0.5 flex-none text-accent-text" />
+          <p className="m-0 text-pretty">
+            Suggestions sent while submissions are closed—and ideas that do not make a round—stay here so you can add them to a later round.
+          </p>
+        </Well>
+      </div>
+
       <table className={EDGE_TABLE}>
         <thead>
           <tr>
@@ -96,7 +104,7 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
               </td>
             </tr>
           )}
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const { c } = item;
             const on = queued.includes(c.id);
             return (
@@ -135,9 +143,9 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
 
       {items.length > 0 && (
         <Pagination
-          page={page}
+          page={safePage}
           pageSize={10}
-          total={INBOX_TOTAL}
+          total={items.length}
           noun="challenges"
           onPageChange={setPage}
           className="border-t border-black/40 pt-3 pr-3 pl-4 shadow-[inset_0_1px_0_rgba(255,255,255,.04)] sm:pr-6 sm:pl-7"

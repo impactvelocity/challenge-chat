@@ -7,6 +7,7 @@ export const CHALLENGE_COUNTDOWN_SECONDS = 10;
 export const difficultyValues = ["easy", "medium", "hard", "ridiculous"] as const;
 export const verificationValues = ["moderator", "streamer", "chat-review"] as const;
 export const challengeStatusValues = [
+  "inbox",
   "pending_review",
   "approved",
   "voting",
@@ -185,6 +186,7 @@ export interface AppState {
     chatScore: number;
     mode: "open_queue" | "blitz" | "hype";
     phase: SessionPhase;
+    submissionsOpen: boolean;
     scoringRules: ScoringRules;
     winner: ContestSide | null;
     sweepWinner: ContestSide | null;
