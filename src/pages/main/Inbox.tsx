@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { CheckIcon, InfoIcon, PlayCircleIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { CheckIcon, InboxIcon, InfoIcon, PlayCircleIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { Button, ConfirmDialog, Pagination, Panel, Tag, Tooltip } from '@/components/ui';
 import type { Challenge } from '@/model';
 import { cn } from '@/lib/cn';
 import { ChallengeMeta } from '@/pages/app/parts';
-import { EDGE_TABLE } from './Boards';
+import { EDGE_TABLE, EmptyTableState } from './Boards';
 
 /**
  * A challenge chat suggested with !challenge. Viewers can send these any time, not just while submissions are open.
@@ -89,8 +89,10 @@ export function Inbox({ items, queued, submitting, canOpen, onAdd, onReject, onA
         <tbody>
           {items.length === 0 && (
             <tr>
-              <td colSpan={3} className="py-10 text-center text-[14px] text-ink-muted">
-                Inbox is empty — new !challenge suggestions land here
+              <td colSpan={3} className="!px-5 !pt-16 !pb-14 sm:!pt-20 sm:!pb-16">
+                <EmptyTableState side="streamer" icon={<InboxIcon size={20} />} eyebrow="Challenge inbox" title="Ideas from chat will land here">
+                  When viewers use <span className="mono text-ink-soft">!challenge</span>, their suggestions will be ready for you to review and add to a round.
+                </EmptyTableState>
               </td>
             </tr>
           )}

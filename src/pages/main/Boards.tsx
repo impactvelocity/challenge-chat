@@ -204,7 +204,7 @@ export const DRAWER_TABLE =
 export const EDGE_TABLE =
   'table w-full table-fixed max-sm:[&_td]:px-2 max-sm:[&_th]:px-2 [&_td:first-child]:pl-4 [&_td:last-child]:pr-3 [&_th:first-child]:pl-4 [&_th:last-child]:pr-3 sm:[&_td:first-child]:pl-7 sm:[&_td:last-child]:pr-6 sm:[&_th:first-child]:pl-7 sm:[&_th:last-child]:pr-6';
 
-function EmptyTableState({ side, icon, eyebrow, title, children }: { side: Side; icon: ReactNode; eyebrow: string; title: string; children: ReactNode }) {
+export function EmptyTableState({ side, icon, eyebrow, title, children }: { side: Side; icon: ReactNode; eyebrow: string; title: string; children: ReactNode }) {
   return (
     <div data-side={side} className="mx-auto flex max-w-[460px] flex-col items-center text-center">
       <div className="mb-5 flex items-center gap-3" aria-hidden="true">
@@ -215,8 +215,8 @@ function EmptyTableState({ side, icon, eyebrow, title, children }: { side: Side;
         <span className="h-px w-10 bg-[linear-gradient(90deg,rgba(var(--tr),.45),transparent)]" />
       </div>
       <span className="mono mb-2 text-[10px] font-semibold tracking-[.18em] text-[var(--t-hi)] uppercase opacity-80">{eyebrow}</span>
-      <strong className="text-[17px] leading-snug text-ink-strong">{title}</strong>
-      <span className="mt-2 max-w-[42ch] text-[13px] leading-relaxed text-ink-sub">{children}</span>
+      <strong className="text-2xl leading-tight font-bold tracking-[-.015em] text-pretty text-ink-strong">{title}</strong>
+      <span className="mt-3 max-w-[44ch] text-sm leading-relaxed text-pretty text-ink-sub">{children}</span>
     </div>
   );
 }
@@ -250,7 +250,7 @@ export function HistoryBoard({ history, current, live, onDelete, challengers }: 
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={3} className="!px-5 !pt-14 !pb-11 sm:!pt-16 sm:!pb-14">
+              <td colSpan={3} className="!px-5 !pt-16 !pb-14 sm:!pt-20 sm:!pb-16">
                 <EmptyTableState side="streamer" icon={<BoltIcon size={20} />} eyebrow="Round history" title="Your first round lands here">
                   Complete a round and its final score, result, and win streaks will build up here.
                 </EmptyTableState>
@@ -690,7 +690,7 @@ export function ChallengerBoard({ challengers, sessions }: { challengers: Challe
         <tbody>
           {top.length === 0 && (
             <tr>
-              <td colSpan={4} className="!px-5 !pt-14 !pb-11 sm:!pt-16 sm:!pb-14">
+              <td colSpan={4} className="!px-5 !pt-16 !pb-14 sm:!pt-20 sm:!pb-16">
                 <EmptyTableState side="chat" icon={<TrophyIcon size={20} />} eyebrow="Challenger rankings" title="Chat’s leaderboard starts here">
                   When viewer challenges make the lineup, their points and rankings will start to build.
                 </EmptyTableState>
