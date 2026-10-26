@@ -79,7 +79,9 @@ export class LiveSessionCoordinator {
     ]);
     // Pre-Channel cached snapshots lack the new contracts; the HTTP bootstrap
     // loads fresh state instead of replacing it with an old schema on connect.
-    if (legacy && legacy.state.channel.slug && Array.isArray(legacy.state.leaderboard)) {
+    const compatibleLeaderboard = legacy?.state.leaderboard?.every((entry) =>
+      Number.isFinite(entry.played) && Number.isFinite(entry.won));
+    if (legacy && legacy.state.channel.slug && Array.isArray(legacy.state.leaderboard) && compatibleLeaderboard) {
       server.send(JSON.stringify(role === "admin" ? legacy : {
         type: "overlay.changed",
         revision: legacy.revision,
