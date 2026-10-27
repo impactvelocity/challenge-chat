@@ -15,7 +15,7 @@ Challenge.chat is also an API-first framework: a headless engine accepts normali
 
 ## AI tool disclosure
 
-Claude Code is my primary AI development tool. For this hackathon, I upgraded to Codex Pro, and the application code was written with Codex. The sales page, video, and graphics were produced separately and were not made with Codex. When I began running low on my weekly Codex usage, I used my Claude Code account, which had a higher remaining limit, for a small documentation task. [Commit `885f0fe`](https://github.com/impactvelocity/Challenge-Chat/commit/885f0fecc3f75f90d8d193dee664f98de1ea2530) added the images created for the hackathon to this README with Claude Code, and I also used Claude Code for the subsequent license and badge update.
+The application code and core build for this hackathon were written with Codex. Claude Code, my usual AI development tool, was used only to edit this README and other documentation, not to build the application. I upgraded to Codex Pro for the hackathon, but when I began running low on my weekly Codex usage, I used my Claude Code account, which had a higher remaining limit, for those documentation edits. This included adding the hackathon images in [commit `885f0fe`](https://github.com/impactvelocity/Challenge-Chat/commit/885f0fecc3f75f90d8d193dee664f98de1ea2530) and the subsequent license and badge update. The sales page, video, and graphics were produced separately and were not made with Codex.
 
 ## Documentation
 
