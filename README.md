@@ -13,6 +13,10 @@ Run streamer-versus-chat challenges during a live broadcast. Viewers suggest ide
 
 Challenge.chat is also an API-first framework: a headless engine accepts normalized game events, applies rules, and publishes live state. The included React control panel and overlays are replaceable clients. Everything deploys as **one Cloudflare Worker**, with D1, Durable Objects, R2, and optional AI through Cloudflare AI Gateway.
 
+## AI tool disclosure
+
+Claude Code is my primary AI development tool. For this hackathon, I upgraded to Codex Pro, and the application code was written with Codex. The sales page, video, and graphics were produced separately and were not made with Codex. When I began running low on my weekly Codex usage, I used my Claude Code account, which had a higher remaining limit, for a small documentation task. [Commit `885f0fe`](https://github.com/impactvelocity/Challenge-Chat/commit/885f0fecc3f75f90d8d193dee664f98de1ea2530) added the images created for the hackathon to this README with Claude Code, and I also used Claude Code for the subsequent license and badge update.
+
 ## Documentation
 
 Start with the [documentation index](./docs/README.md) for the full guide set:
