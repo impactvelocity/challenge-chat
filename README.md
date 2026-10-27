@@ -1,5 +1,12 @@
 # Challenge.chat
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Built for Twitch](https://img.shields.io/badge/Built%20for-Twitch-9146FF?logo=twitch&logoColor=white)](https://dev.twitch.tv)
+[![Built with Codex](https://img.shields.io/badge/Built%20with-Codex-000000?logo=openai&logoColor=white)](https://openai.com/codex)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Deploy to Cloudflare](https://img.shields.io/badge/Deploy-Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://deploy.workers.cloudflare.com/?url=https://github.com/impactvelocity/Challenge-Chat)
+
 [![Challenge.chat: streamers already take challenges from chat. Challenge.chat keeps score.](https://www.challenge.chat/readme/01-cover.webp)](https://www.challenge.chat)
 
 Run streamer-versus-chat challenges during a live broadcast. Viewers suggest ideas, the creator or moderators prepare a shortlist, chat votes, and an OBS overlay follows the attempts and results.
